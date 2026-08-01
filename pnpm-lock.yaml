@@ -11422,34 +11422,6 @@ importers:
         specifier: ^2.11.14
         version: 2.11.14(@testing-library/jest-dom@7.0.0(@testing-library/dom@10.4.1))(solid-js@1.9.14)(supports-color@8.1.1)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.7)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.25))(terser@5.49.0)(yaml@2.9.0))
 
-  examples/solid/with-tanstack-form:
-    dependencies:
-      '@tanstack/solid-form':
-        specifier: ^1.33.2
-        version: 1.33.2(solid-js@1.9.14)
-      '@tanstack/solid-table':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table
-      solid-js:
-        specifier: ^1.9.14
-        version: 1.9.14
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@faker-js/faker':
-        specifier: ^10.5.0
-        version: 10.5.0
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-      vite:
-        specifier: ^8.2.0
-        version: 8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.7)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.25))(terser@5.49.0)(yaml@2.9.0)
-      vite-plugin-solid:
-        specifier: ^2.11.14
-        version: 2.11.14(@testing-library/jest-dom@7.0.0(@testing-library/dom@10.4.1))(solid-js@1.9.14)(supports-color@8.1.1)(vite@8.2.0(@types/node@26.1.2)(esbuild@0.28.1)(jiti@2.7.0)(less@4.6.7)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.25))(terser@5.49.0)(yaml@2.9.0))
-
   examples/solid/with-tanstack-query:
     dependencies:
       '@tanstack/solid-query':
@@ -20256,11 +20228,6 @@ packages:
   '@tanstack/router-vite-plugin@1.167.23':
     resolution: {integrity: sha512-MnkK6OIwtMtEeThZTZFMsClQeZCL7apA9kmj8h3roRS+hws5ttGqmy2gkxRlK5EQIfz2ePbefRey0us/qA3hLQ==}
     engines: {node: '>=20.19'}
-
-  '@tanstack/solid-form@1.33.2':
-    resolution: {integrity: sha512-jdUdVtr2ARotBmKV5SQubQNM7z8CGg53u4gB4773ggqNzWUxZbsYR2Vjy6/fkDX/1Lk1NMzqejszCW9m2HVp3Q==}
-    peerDependencies:
-      solid-js: '>=1.9.9'
 
   '@tanstack/solid-pacer@0.21.1':
     resolution: {integrity: sha512-0a0Fv35Ht3P6iQYDZKXInI1DkKzb4WYi3bxh+4lx9FDfvL4GDik7EKTkP8P5N/vJ8fF8by9oqls1BMIlaEywoQ==}
@@ -33910,12 +33877,6 @@ snapshots:
       - vite
       - vite-plugin-solid
       - webpack
-
-  '@tanstack/solid-form@1.33.2(solid-js@1.9.14)':
-    dependencies:
-      '@tanstack/form-core': 1.33.2
-      '@tanstack/solid-store': 0.11.0(solid-js@1.9.14)
-      solid-js: 1.9.14
 
   '@tanstack/solid-pacer@0.21.1(solid-js@1.9.14)':
     dependencies:
