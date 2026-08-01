@@ -11,8 +11,12 @@
  * hands fresh VirtualItem objects to <For>, which recreates the visible
  * items' DOM. That is fine here: the cells are plain text and the core's
  * measureElement is idempotent.
+ *
+ * Solid 2 note: effects are split into a tracked, pure compute half and an
+ * untracked effect half that may write signals, so option resolution happens
+ * in the compute half and the core is mutated in the effect half.
  */
-import { createRenderEffect, createSignal, onCleanup, onMount } from 'solid-js'
+import { createRenderEffect, createSignal, onSettled } from 'solid-js'
 import {
   Virtualizer,
   elementScroll,
@@ -30,7 +34,10 @@ export function createVirtualizer<
     'observeElementRect' | 'observeElementOffset' | 'scrollToFn'
   >,
 ): Virtualizer<TScrollElement, TItemElement> {
-  const [version, setVersion] = createSignal(0)
+  // ownedWrite: the initial run of the options render effect executes
+  // synchronously inside the creating component's owned scope, and the effect
+  // half bumps this signal — an intentional owned-scope write.
+  const [version, setVersion] = createSignal(0, { ownedWrite: true })
 
   const resolveOptions = (): VirtualizerOptions<
     TScrollElement,
@@ -52,18 +59,21 @@ export function createVirtualizer<
   )
 
   // The examples pass live option getters (e.g. a `count` that grows as rows
-  // load); spreading `options` inside this tracked scope subscribes to them,
-  // so the core re-receives fresh options whenever they change.
-  createRenderEffect(() => {
-    instance.setOptions(resolveOptions())
-    instance._willUpdate()
-    setVersion((current) => current + 1)
-  })
+  // load); spreading `options` inside the tracked compute half subscribes to
+  // them, so the core re-receives fresh options whenever they change.
+  createRenderEffect(
+    () => resolveOptions(),
+    (resolvedOptions) => {
+      instance.setOptions(resolvedOptions)
+      instance._willUpdate()
+      setVersion((current) => current + 1)
+    },
+  )
 
-  onMount(() => {
+  onSettled(() => {
     const cleanup = instance._didMount()
     instance._willUpdate()
-    onCleanup(cleanup)
+    return cleanup
   })
 
   return new Proxy(instance, {

@@ -161,7 +161,7 @@ function App() {
               <tr>
                 <For each={headerGroup.headers}>
                   {(header) => (
-                    <th colSpan={header.colSpan}>
+                    <th colspan={header.colSpan}>
                       <Show when={!header.isPlaceholder}>
                         <div>
                           <table.FlexRender header={header} />
@@ -327,11 +327,14 @@ function IndeterminateCheckbox(props: {
 }) {
   let ref: HTMLInputElement | undefined
 
-  createEffect(() => {
-    if (typeof props.indeterminate === 'boolean' && ref) {
-      ref.indeterminate = !props.checked && props.indeterminate
-    }
-  })
+  createEffect(
+    () => ({ indeterminate: props.indeterminate, checked: props.checked }),
+    ({ indeterminate, checked }) => {
+      if (typeof indeterminate === 'boolean' && ref) {
+        ref.indeterminate = !checked && indeterminate
+      }
+    },
+  )
 
   return (
     <input

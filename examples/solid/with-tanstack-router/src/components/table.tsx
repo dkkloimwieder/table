@@ -75,10 +75,13 @@ export default function Table<T extends Record<string, string | number>>(
   })
 
   // Sync controlled state with table store
-  createEffect(() => {
-    table.baseAtoms.pagination.set(props.pagination)
-    table.baseAtoms.sorting.set(props.sorting)
-  })
+  createEffect(
+    () => ({ pagination: props.pagination, sorting: props.sorting }),
+    ({ pagination, sorting }) => {
+      table.baseAtoms.pagination.set(pagination)
+      table.baseAtoms.sorting.set(sorting)
+    },
+  )
 
   return (
     <div>
@@ -91,7 +94,7 @@ export default function Table<T extends Record<string, string | number>>(
                   {(header) => {
                     const fieldMeta = header.column.columnDef.meta
                     return (
-                      <th colSpan={header.colSpan}>
+                      <th colspan={header.colSpan}>
                         <Show when={!header.isPlaceholder}>
                           <>
                             <div

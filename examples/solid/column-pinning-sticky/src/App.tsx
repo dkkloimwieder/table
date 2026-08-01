@@ -10,8 +10,8 @@ import {
 } from '@tanstack/solid-table'
 import { For, createSignal } from 'solid-js'
 import { makeData } from './makeData'
+import type { JSX } from '@solidjs/web'
 import type { Column } from '@tanstack/solid-table'
-import type { JSX } from 'solid-js'
 import type { Person } from './makeData'
 
 const features = tableFeatures({
@@ -181,7 +181,7 @@ function App() {
                       const { column } = header
                       return (
                         <th
-                          colSpan={header.colSpan}
+                          colspan={header.colSpan}
                           style={{ ...getCommonPinningStyles(column) }}
                         >
                           <div class="nowrap">

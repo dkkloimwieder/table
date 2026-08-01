@@ -1,7 +1,7 @@
 import { keepPreviousData, useQuery } from '@tanstack/solid-query'
-import { createAtom, useSelector } from '@tanstack/solid-store'
 import {
   FlexRender,
+  createAtom,
   createColumnHelper,
   createTable,
   rowPaginationFeature,
@@ -46,7 +46,7 @@ function App() {
     pageIndex: 0,
     pageSize: 10,
   })
-  const pagination = useSelector(paginationAtom)
+  const pagination = () => paginationAtom.get()
 
   const dataQuery = useQuery(() => ({
     queryKey: ['data', pagination()],
@@ -82,7 +82,7 @@ function App() {
               <tr>
                 <For each={headerGroup.headers}>
                   {(header) => (
-                    <th colSpan={header.colSpan}>
+                    <th colspan={header.colSpan}>
                       {header.isPlaceholder ? null : (
                         <FlexRender header={header} />
                       )}

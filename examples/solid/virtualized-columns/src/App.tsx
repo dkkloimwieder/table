@@ -86,7 +86,7 @@ function App() {
 
 // Important: Keep both virtualizers and the scroll container ref in the same component.
 // The ref must be undefined when createVirtualizer runs (before JSX return),
-// so that onMount can set up scroll observers after the element is in the DOM.
+// so that onSettled can set up scroll observers after the element is in the DOM.
 function TableContainer(props: { table: SolidTable<typeof features, Person> }) {
   const visibleColumns = () => props.table.getVisibleLeafColumns()
   const rows = () => props.table.getRowModel().rows
@@ -110,10 +110,12 @@ function TableContainer(props: { table: SolidTable<typeof features, Person> }) {
 
   // re-measure virtual column widths when a column is resized so the
   // virtualizer's scroll math stays in sync with the rendered widths
-  createEffect(() => {
-    void props.table.atoms.columnSizing?.get()
-    columnVirtualizer.measure()
-  })
+  createEffect(
+    () => props.table.atoms.columnSizing?.get(),
+    () => {
+      columnVirtualizer.measure()
+    },
+  )
 
   // dynamic row height virtualization - alternatively you could use a simpler fixed row height strategy without `measureElement`
   const rowVirtualizer = createVirtualizer<HTMLDivElement, HTMLTableRowElement>(

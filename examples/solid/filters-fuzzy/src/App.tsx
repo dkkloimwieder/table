@@ -134,13 +134,16 @@ function App() {
     debugColumns: false,
   })
 
-  createEffect(() => {
-    if (table.atoms.columnFilters.get()[0]?.id === 'fullName') {
-      if (table.atoms.sorting.get()[0]?.id !== 'fullName') {
+  createEffect(
+    () =>
+      table.atoms.columnFilters.get()[0]?.id === 'fullName' &&
+      table.atoms.sorting.get()[0]?.id !== 'fullName',
+    (shouldPinFullNameSort) => {
+      if (shouldPinFullNameSort) {
         table.setSorting([{ id: 'fullName', desc: false }])
       }
-    }
-  })
+    },
+  )
 
   return (
     <div class="demo-root">
@@ -164,7 +167,7 @@ function App() {
               <tr>
                 <For each={headerGroup.headers}>
                   {(header) => (
-                    <th colSpan={header.colSpan}>
+                    <th colspan={header.colSpan}>
                       {header.isPlaceholder ? null : (
                         <>
                           <div
@@ -307,9 +310,12 @@ function DebouncedInput(props: {
 }) {
   const [value, setValue] = createSignal(props.value)
 
-  createEffect(() => {
-    setValue(props.value)
-  })
+  createEffect(
+    () => props.value,
+    (nextValue) => {
+      setValue(nextValue)
+    },
+  )
 
   const onChangeDebouncer = new Debouncer(
     (nextValue: string | number) => props.onChange(nextValue),
@@ -317,9 +323,12 @@ function DebouncedInput(props: {
   )
   onCleanup(() => onChangeDebouncer.cancel())
 
-  createEffect(() => {
-    onChangeDebouncer.maybeExecute(value())
-  })
+  createEffect(
+    () => value(),
+    (nextValue) => {
+      onChangeDebouncer.maybeExecute(nextValue)
+    },
+  )
 
   return (
     <input

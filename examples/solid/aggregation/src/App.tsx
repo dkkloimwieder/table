@@ -1,5 +1,4 @@
 import {
-  rowAggregationFeature,
   aggregationFn_count,
   aggregationFn_extent,
   aggregationFn_mean,
@@ -11,6 +10,7 @@ import {
   createTable,
   filterFn_includesString,
   metaHelper,
+  rowAggregationFeature,
   rowPaginationFeature,
   rowSelectionFeature,
   tableFeatures,
@@ -229,7 +229,7 @@ function App() {
               <tr>
                 <For each={group.headers}>
                   {(header) => (
-                    <th colSpan={header.colSpan}>
+                    <th colspan={header.colSpan}>
                       {header.isPlaceholder ? null : header.column.id ===
                         'item' ? (
                         `${rowSource()} total`

@@ -1,6 +1,7 @@
 import {
   FlexRender,
   columnSizingFeature,
+  createAtom,
   createColumnHelper,
   createSortedRowModel,
   createTable,
@@ -9,8 +10,7 @@ import {
   tableFeatures,
 } from '@tanstack/solid-table'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/solid-query'
-import { createAtom, useSelector } from '@tanstack/solid-store'
-import { For, Show, createMemo, onMount } from 'solid-js'
+import { For, Show, createMemo, onSettled } from 'solid-js'
 import { createVirtualizer } from './createVirtualizer'
 import { fetchData } from './makeData'
 import type { Person, PersonApiResponse } from './makeData'
@@ -66,7 +66,7 @@ function App() {
   let tableContainerRef: HTMLDivElement | undefined
 
   const sortingAtom = createAtom<SortingState>([])
-  const sorting = useSelector(sortingAtom)
+  const sorting = () => sortingAtom.get()
 
   const query = useInfiniteQuery<PersonApiResponse>(() => ({
     queryKey: ['people', sorting()],
@@ -104,8 +104,8 @@ function App() {
     }
   }
 
-  // Check on mount to see if the table is already scrolled to the bottom and immediately needs to fetch more data
-  onMount(() => {
+  // Check once settled to see if the table is already scrolled to the bottom and immediately needs to fetch more data
+  onSettled(() => {
     fetchMoreOnBottomReached(tableContainerRef)
   })
 
@@ -126,7 +126,7 @@ function App() {
 
   // Important: The virtualizer and the scroll container ref must be in the same
   // component scope, and NOT inside a <Show> wrapper. <Show> creates a reactive
-  // boundary that disrupts the virtualizer's onMount timing.
+  // boundary that disrupts the virtualizer's onSettled timing.
   const rowVirtualizer = createVirtualizer<HTMLDivElement, HTMLTableRowElement>(
     {
       get count() {

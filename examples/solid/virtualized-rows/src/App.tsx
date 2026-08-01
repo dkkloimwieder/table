@@ -123,7 +123,7 @@ function App() {
 
 // Important: Keep the virtualizer and the scroll container ref in the same component.
 // The ref must be undefined when createVirtualizer runs (before JSX return),
-// so that onMount can set up scroll observers after the element is in the DOM.
+// so that onSettled can set up scroll observers after the element is in the DOM.
 function VirtualizedTable(props: {
   table: SolidTable<typeof features, Person>
 }) {
@@ -269,11 +269,14 @@ function IndeterminateCheckbox(props: {
 }) {
   let ref: HTMLInputElement | undefined
 
-  createEffect(() => {
-    if (typeof props.indeterminate === 'boolean' && ref) {
-      ref.indeterminate = !props.checked && props.indeterminate
-    }
-  })
+  createEffect(
+    () => ({ indeterminate: props.indeterminate, checked: props.checked }),
+    ({ indeterminate, checked }) => {
+      if (typeof indeterminate === 'boolean' && ref) {
+        ref.indeterminate = !checked && indeterminate
+      }
+    },
+  )
 
   return (
     <input

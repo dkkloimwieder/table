@@ -21,16 +21,9 @@ import {
   tableFeatures,
 } from '@tanstack/solid-table'
 import { compareItems, rankItem } from '@tanstack/match-sorter-utils'
-import {
-  For,
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-  splitProps,
-} from 'solid-js'
+import { For, createEffect, createMemo, createSignal, omit } from 'solid-js'
 import { makeData } from './makeData'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 import type { Person } from './makeData'
 import type {
@@ -147,11 +140,14 @@ function IndeterminateCheckbox(
   } & JSX.InputHTMLAttributes<HTMLInputElement>,
 ) {
   let ref!: HTMLInputElement
-  createEffect(() => {
-    if (typeof props.indeterminate === 'boolean') {
-      ref.indeterminate = !props.checked && props.indeterminate
-    }
-  })
+  createEffect(
+    () => ({ indeterminate: props.indeterminate, checked: props.checked }),
+    ({ indeterminate, checked }) => {
+      if (typeof indeterminate === 'boolean') {
+        ref.indeterminate = !checked && indeterminate
+      }
+    },
+  )
 
   return <input type="checkbox" ref={ref} {...props} />
 }
@@ -164,20 +160,22 @@ function DebouncedInput(
   } & Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'>,
 ) {
   const [value, setValue] = createSignal(props.value)
-  const [, rest] = splitProps(props, ['value', 'onChange', 'debounce'])
+  const rest = omit(props, 'value', 'onChange', 'debounce')
 
-  createEffect(() => {
-    setValue(props.value)
-  })
+  createEffect(
+    () => props.value,
+    (v) => {
+      setValue(v)
+    },
+  )
 
-  createEffect(() => {
-    const currentValue = value()
-    const timeout = setTimeout(
-      () => props.onChange(currentValue),
-      props.debounce ?? 300,
-    )
-    onCleanup(() => clearTimeout(timeout))
-  })
+  createEffect(
+    () => ({ value: value(), debounce: props.debounce ?? 300 }),
+    ({ value: currentValue, debounce }) => {
+      const timeout = setTimeout(() => props.onChange(currentValue), debounce)
+      return () => clearTimeout(timeout)
+    },
+  )
 
   return (
     <input
@@ -291,7 +289,7 @@ function TableHeader(props: {
   })
 
   return (
-    <th style={style()} colSpan={props.header.colSpan}>
+    <th style={style()} colspan={props.header.colSpan}>
       {!props.header.isPlaceholder ? (
         <>
           <div class="header-row">

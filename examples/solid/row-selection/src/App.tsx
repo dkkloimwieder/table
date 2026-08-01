@@ -164,7 +164,7 @@ function App() {
               <tr>
                 <For each={headerGroup.headers}>
                   {(header) => (
-                    <th colSpan={header.colSpan}>
+                    <th colspan={header.colSpan}>
                       <Show when={!header.isPlaceholder}>
                         <>
                           <FlexRender header={header} />
@@ -206,7 +206,7 @@ function App() {
                 onChange={table.getToggleAllPageRowsSelectedHandler()}
               />
             </td>
-            <td colSpan={20}>
+            <td colspan={20}>
               Page Rows ({table.getRowModel().rows.length.toLocaleString()})
             </td>
           </tr>
@@ -361,11 +361,14 @@ function IndeterminateCheckbox(props: {
 }) {
   let ref: HTMLInputElement | undefined
 
-  createEffect(() => {
-    if (typeof props.indeterminate === 'boolean' && ref) {
-      ref.indeterminate = !props.checked && props.indeterminate
-    }
-  })
+  createEffect(
+    () => ({ checked: props.checked, indeterminate: props.indeterminate }),
+    ({ checked, indeterminate }) => {
+      if (typeof indeterminate === 'boolean' && ref) {
+        ref.indeterminate = !checked && indeterminate
+      }
+    },
+  )
 
   return (
     <input

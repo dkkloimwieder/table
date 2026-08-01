@@ -1,5 +1,6 @@
 import {
   FlexRender,
+  createAtom,
   createColumnHelper,
   createPaginatedRowModel,
   createSortedRowModel,
@@ -10,16 +11,17 @@ import {
   sortFn_text,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { createAtom, useSelector } from '@tanstack/solid-store'
 import { For, createSignal } from 'solid-js'
 import { makeData } from './makeData'
 import type { Person } from './makeData'
 import type { PaginationState, SortingState } from '@tanstack/solid-table'
 
 // This example demonstrates managing individual slices of table state via
-// external TanStack Store atoms. Each atom is a stand-alone, subscribable
-// reactive cell — you can read, write, or subscribe to it from anywhere,
-// which makes it convenient for sharing state across components or modules.
+// external atoms created with the adapter's `createAtom` — Solid-native
+// signals that implement the TanStack Store `Atom` contract. Each atom is a
+// stand-alone, subscribable reactive cell — you can read, write, or subscribe
+// to it from anywhere, which makes it convenient for sharing state across
+// components or modules.
 
 const features = tableFeatures({
   rowPaginationFeature,
@@ -70,8 +72,9 @@ function App() {
     pageSize: 10,
   })
 
-  // Subscribe to each atom independently — fine-grained Solid reactivity.
-  const pagination = useSelector(paginationAtom)
+  // Read each atom independently — `.get()` is tracked wherever it is called
+  // from a reactive scope, so you keep fine-grained Solid reactivity.
+  const pagination = () => paginationAtom.get()
 
   // Create the table and pass your per-slice external atoms.
   const table = createTable({
@@ -101,7 +104,7 @@ function App() {
               <tr>
                 <For each={headerGroup.headers}>
                   {(header) => (
-                    <th colSpan={header.colSpan}>
+                    <th colspan={header.colSpan}>
                       {header.isPlaceholder ? null : (
                         <div
                           class={
