@@ -66,7 +66,8 @@
           "label": "solid",
           "children": [
             { "label": "Quick Start", "to": "framework/solid/quick-start" },
-            { "label": "Migrating to V9", "to": "framework/solid/guide/migrating" }
+            { "label": "Migrating to V9", "to": "framework/solid/guide/migrating" },
+            { "label": "Solid 2 Upgrade", "to": "framework/solid/guide/solid-2" }
           ]
         },
         {
