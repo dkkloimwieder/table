@@ -15,7 +15,6 @@ import {
   sortFn_text,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { createHotkeys } from '@tanstack/solid-hotkeys'
 import { makeData } from './makeData'
 import type { Cell } from '@tanstack/solid-table'
@@ -150,7 +149,7 @@ function App() {
   const stressTest = () => setData(makeData(1_000))
 
   const table = createTable({
-    key: 'cell-selection', // needed for devtools
+    key: 'cell-selection', // identifies this table instance (used by TanStack Devtools when attached)
     features,
     get data() {
       return data()
@@ -167,8 +166,6 @@ function App() {
     // isCellRangeSelectionEvent: event => Boolean(event.metaKey), // use Meta instead of Shift
     debugTable: true,
   })
-
-  useTanStackTableDevtools(table)
 
   const randomizeColumns = () => {
     table.setColumnOrder(

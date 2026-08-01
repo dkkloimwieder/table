@@ -10690,15 +10690,9 @@ importers:
       '@faker-js/faker':
         specifier: ^10.5.0
         version: 10.5.0
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -10740,18 +10734,12 @@ importers:
 
   examples/solid/basic-external-atoms:
     dependencies:
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-store':
         specifier: ^0.11.0
         version: 0.11.0(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -10771,15 +10759,9 @@ importers:
 
   examples/solid/basic-external-state:
     dependencies:
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -10799,15 +10781,9 @@ importers:
 
   examples/solid/basic-use-table:
     dependencies:
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -10824,18 +10800,12 @@ importers:
 
   examples/solid/cell-selection:
     dependencies:
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-hotkeys':
         specifier: ^0.10.0
         version: 0.10.0(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -11031,15 +11001,9 @@ importers:
 
   examples/solid/composable-tables:
     dependencies:
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -11247,15 +11211,9 @@ importers:
       '@tanstack/match-sorter-utils':
         specifier: workspace:*
         version: link:../../../packages/match-sorter-utils
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -11319,15 +11277,9 @@ importers:
 
   examples/solid/row-selection:
     dependencies:
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -11472,21 +11424,12 @@ importers:
 
   examples/solid/with-tanstack-form:
     dependencies:
-      '@tanstack/solid-devtools':
-        specifier: ^0.8.9
-        version: 0.8.9(csstype@3.2.3)(solid-js@1.9.14)
       '@tanstack/solid-form':
         specifier: ^1.33.2
         version: 1.33.2(solid-js@1.9.14)
-      '@tanstack/solid-form-devtools':
-        specifier: ^0.2.31
-        version: 0.2.31(@types/react@19.2.16)(csstype@3.2.3)(preact@10.29.7)(react@19.2.8)(solid-js@1.9.14)(vue@3.5.40(typescript@6.0.3))
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-table-devtools':
-        specifier: workspace:*
-        version: link:../../../packages/solid-table-devtools
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -20313,18 +20256,6 @@ packages:
   '@tanstack/router-vite-plugin@1.167.23':
     resolution: {integrity: sha512-MnkK6OIwtMtEeThZTZFMsClQeZCL7apA9kmj8h3roRS+hws5ttGqmy2gkxRlK5EQIfz2ePbefRey0us/qA3hLQ==}
     engines: {node: '>=20.19'}
-
-  '@tanstack/solid-devtools@0.8.9':
-    resolution: {integrity: sha512-0Mu8zkId46vK0fC+bmbUi3RwQS957hwERWRAQLZeqYCD0Hme9xd8ywo29TzQzpugtZjfNjizYQxXSVGNxfmUpQ==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      solid-js: '>=1.9.7'
-
-  '@tanstack/solid-form-devtools@0.2.31':
-    resolution: {integrity: sha512-KfIadxxdzNYGZtwmbXTHZrrFPO4ro3+89cNcrluYHM4KEo8JS5rMjfT8jAxPnBVfT0YriLL5eUC9N8NoW1nrbQ==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      solid-js: '>=1.9.7'
 
   '@tanstack/solid-form@1.33.2':
     resolution: {integrity: sha512-jdUdVtr2ARotBmKV5SQubQNM7z8CGg53u4gB4773ggqNzWUxZbsYR2Vjy6/fkDX/1Lk1NMzqejszCW9m2HVp3Q==}
@@ -33975,27 +33906,6 @@ snapshots:
       - vite
       - vite-plugin-solid
       - webpack
-
-  '@tanstack/solid-devtools@0.8.9(csstype@3.2.3)(solid-js@1.9.14)':
-    dependencies:
-      '@tanstack/devtools': 0.13.0(csstype@3.2.3)(solid-js@1.9.14)
-      solid-js: 1.9.14
-    transitivePeerDependencies:
-      - bufferutil
-      - csstype
-      - utf-8-validate
-
-  '@tanstack/solid-form-devtools@0.2.31(@types/react@19.2.16)(csstype@3.2.3)(preact@10.29.7)(react@19.2.8)(solid-js@1.9.14)(vue@3.5.40(typescript@6.0.3))':
-    dependencies:
-      '@tanstack/devtools-utils': 0.4.0(@types/react@19.2.16)(preact@10.29.7)(react@19.2.8)(solid-js@1.9.14)(vue@3.5.40(typescript@6.0.3))
-      '@tanstack/form-devtools': 0.2.31(@types/react@19.2.16)(csstype@3.2.3)(preact@10.29.7)(react@19.2.8)(solid-js@1.9.14)(vue@3.5.40(typescript@6.0.3))
-      solid-js: 1.9.14
-    transitivePeerDependencies:
-      - '@types/react'
-      - csstype
-      - preact
-      - react
-      - vue
 
   '@tanstack/solid-form@1.33.2(solid-js@1.9.14)':
     dependencies:

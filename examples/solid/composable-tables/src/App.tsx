@@ -1,5 +1,4 @@
 import { For, createSignal } from 'solid-js'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { createAppColumnHelper, createAppTable } from './hooks/table'
 import { IndeterminateCheckbox } from './components/indeterminate-checkbox'
 import { makeData, makeProductData } from './makeData'
@@ -79,7 +78,7 @@ function UsersTable() {
 
   // Create the table - features and rowModels are already configured!
   const table = createAppTable({
-    key: 'users-table', // needed for devtools
+    key: 'users-table', // identifies this table instance (used by TanStack Devtools when attached)
     columns,
     get data() {
       return data()
@@ -88,8 +87,6 @@ function UsersTable() {
     enableRowSelection: true,
     // more table options
   })
-
-  useTanStackTableDevtools(table)
 
   return (
     <table.AppTable>
@@ -298,7 +295,7 @@ function ProductsTable() {
 
   // Create the table using the same createAppTable hook
   const table = createAppTable({
-    key: 'products-table', // needed for devtools
+    key: 'products-table', // identifies this table instance (used by TanStack Devtools when attached)
     debugTable: true,
     columns,
     get data() {
@@ -307,8 +304,6 @@ function ProductsTable() {
     getRowId: (row) => row.id,
     enableRowSelection: true,
   })
-
-  useTanStackTableDevtools(table)
 
   return (
     <table.AppTable>

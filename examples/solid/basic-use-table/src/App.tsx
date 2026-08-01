@@ -1,5 +1,4 @@
 import { FlexRender, createTable, tableFeatures } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { For, createSignal } from 'solid-js'
 import type { ColumnDef } from '@tanstack/solid-table'
 
@@ -93,7 +92,7 @@ function App() {
 
   // 6. Create the table instance with required features, columns, and data
   const table = createTable({
-    key: 'basic-use-table', // needed for devtools
+    key: 'basic-use-table', // identifies this table instance (used by TanStack Devtools when attached)
     debugTable: true,
     features, // new required option in V9. Tell the table which features you are importing and using (better tree-shaking)
     columns,
@@ -101,8 +100,6 @@ function App() {
       return data()
     },
   })
-
-  useTanStackTableDevtools(table)
 
   // 7. Render your table markup from the table instance APIs
   return (

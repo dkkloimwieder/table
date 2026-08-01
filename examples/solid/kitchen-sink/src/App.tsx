@@ -20,7 +20,6 @@ import {
   stockFeatures,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { compareItems, rankItem } from '@tanstack/match-sorter-utils'
 import {
   For,
@@ -554,7 +553,7 @@ function App() {
   const [data, setData] = createSignal(makeData(1_000))
 
   const table = createAppTable({
-    key: 'kitchen-sink', // needed for devtools
+    key: 'kitchen-sink', // identifies this table instance (used by TanStack Devtools when attached)
     columns,
     get data() {
       return data()
@@ -571,8 +570,6 @@ function App() {
     keepPinnedRows: true,
     debugTable: true,
   })
-
-  useTanStackTableDevtools(table)
 
   const columnSizeVars = createMemo(() => {
     void table.atoms.columnResizing.get()

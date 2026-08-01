@@ -10,7 +10,6 @@ import {
   sortFn_text,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { For, createSignal } from 'solid-js'
 import { makeData } from './makeData'
 import type { PaginationState, SortingState } from '@tanstack/solid-table'
@@ -70,7 +69,7 @@ function App() {
 
   // Create the table and pass state + onChange handlers
   const table = createTable({
-    key: 'basic-external-state', // needed for devtools
+    key: 'basic-external-state', // identifies this table instance (used by TanStack Devtools when attached)
     debugTable: true,
     features,
     columns,
@@ -88,8 +87,6 @@ function App() {
     onSortingChange: setSorting, // raise sorting state changes to our own state management
     onPaginationChange: setPagination, // raise pagination state changes to our own state management
   })
-
-  useTanStackTableDevtools(table)
 
   return (
     <div class="demo-root">
