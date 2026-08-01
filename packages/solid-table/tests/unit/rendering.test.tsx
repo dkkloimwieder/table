@@ -437,6 +437,11 @@ describe('createTableHook runtime', () => {
     expect(tableFromContext).toBe(tableRef)
   })
 
+  // D25.7 — the context hooks must throw OUR actionable messages, not
+  // Solid's ContextNotFoundError (the null default suppresses it). Hooks are
+  // deliberately called in component BODIES: a throw inside a JSX expression
+  // escapes as a StatusError + [REACTIVITY_HALTED] and silently kills later
+  // renders in the module.
   test('context hooks fail with actionable errors outside their providers', () => {
     const hook = createTestHook()
 
