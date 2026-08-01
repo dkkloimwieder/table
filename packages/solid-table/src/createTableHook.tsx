@@ -1,7 +1,8 @@
 import { createColumnHelper as coreCreateColumnHelper } from '@tanstack/table-core'
-import { createContext, mergeProps, useContext } from 'solid-js'
+import { createContext, useContext } from 'solid-js'
 import { createTable } from './createTable'
 import { FlexRender } from './FlexRender'
+import { mergeObjects } from './merge-objects'
 import type { SolidTable } from './createTable'
 import type { Component, JSXElement } from 'solid-js'
 import type {
@@ -815,7 +816,7 @@ export function createTableHook<
     THeaderComponents
   > {
     // Merge default options with provided options (provided takes precedence)
-    const mergedProps = mergeProps(defaultTableOptions, tableOptions)
+    const mergedProps = mergeObjects(defaultTableOptions, tableOptions)
     const table = createTable<TFeatures, TData>(
       mergedProps as TableOptions<TFeatures, TData>,
     )

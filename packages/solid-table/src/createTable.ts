@@ -1,12 +1,7 @@
 import { constructTable } from '@tanstack/table-core'
-import {
-  createComputed,
-  getOwner,
-  mergeProps,
-  onCleanup,
-  untrack,
-} from 'solid-js'
+import { createComputed, getOwner, onCleanup, untrack } from 'solid-js'
 import { FlexRender } from './FlexRender'
+import { mergeObjects } from './merge-objects'
 import { solidReactivity } from './reactivity'
 import type { JSX } from 'solid-js'
 import type {
@@ -65,20 +60,20 @@ export function createTable<
   const owner = getOwner()!
   const reactivity = solidReactivity(owner)
 
-  const mergedOptions = mergeProps(tableOptions, {
+  const mergedOptions = mergeObjects(tableOptions, {
     features: {
       coreReactivityFeature: reactivity,
       ...tableOptions.features,
     },
   }) as any
 
-  const resolvedOptions = mergeProps(
+  const resolvedOptions = mergeObjects(
     {
       mergeOptions: (
         defaultOptions: TableOptions<TFeatures, TData>,
         options: TableOptions<TFeatures, TData>,
       ) => {
-        return mergeProps(defaultOptions, options)
+        return mergeObjects(defaultOptions, options)
       },
     },
     mergedOptions,
@@ -89,6 +84,11 @@ export function createTable<
     TData
   >
 
+  // Sync options reactively. This merge stays getter-preserving (rather than
+  // using `flatMerge` like the Svelte adapter) because Solid tracks the option
+  // getters where they are read: a row-model memo reading `table.options.data`
+  // subscribes to the caller's signal through the live getter chain, without
+  // this computation having to depend on every option.
   createComputed(() => {
     const userState = tableOptions.state
     if (userState) {
@@ -99,7 +99,10 @@ export function createTable<
 
     untrack(() => {
       table.setOptions((prev) => {
-        return mergeProps(prev, mergedOptions) as TableOptions<TFeatures, TData>
+        return mergeObjects(prev, mergedOptions) as TableOptions<
+          TFeatures,
+          TData
+        >
       })
     })
   })
