@@ -6,6 +6,10 @@ packages:
   - packages/*
 
 overrides:
+  # single @solidjs/web copy: solid-router 2.0.0-beta.28 pins 2.0.0-beta.27 as a
+  # regular dependency; two copies would mean two template caches and two
+  # event-delegation roots
+  '@solidjs/web': 2.0.0-beta.29
   '@types/react': 19.2.16
   '@tanstack/alpine-table': 'workspace:*'
   '@tanstack/angular-table-devtools': 'workspace:*'
