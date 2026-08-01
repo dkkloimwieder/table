@@ -25,7 +25,7 @@ overrides:
   '@tanstack/vue-table-devtools': workspace:*
   '@tanstack/vue-table': workspace:*
 
-packageExtensionsChecksum: sha256-kdMrH6YFBP5cMTJikpCMbz6Nj8NoVILHjAEjHhVi+hI=
+packageExtensionsChecksum: sha256-t8fN8Tl27Trp8hxnTkjUyaKQCQUXLiGnEHJR3qE9Qek=
 
 importers:
 
@@ -14308,7 +14308,7 @@ importers:
     devDependencies:
       '@solidjs/testing-library':
         specifier: ^0.8.10
-        version: 0.8.10(solid-js@1.9.14)
+        version: 0.8.10(@solidjs/web@2.0.0-experimental.0(solid-js@1.9.14))(solid-js@1.9.14)
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -19713,10 +19713,16 @@ packages:
     engines: {node: '>= 14'}
     peerDependencies:
       '@solidjs/router': '>=0.9.0'
+      '@solidjs/web': '>=2.0.0-0 <3.0.0'
       solid-js: '>=1.0.0'
     peerDependenciesMeta:
       '@solidjs/router':
         optional: true
+
+  '@solidjs/web@2.0.0-experimental.0':
+    resolution: {integrity: sha512-bGtCTQr0mHxK11c+g/XmdSIIoHYagdRxK6yzbOoURblTsKiBrFGPtoqR7lDJ+dWcvP96KzW8R/r4k3nVNgLdpQ==}
+    peerDependencies:
+      solid-js: ^2.0.0-experimental.0
 
   '@spectrum-icons/ui@3.7.1':
     resolution: {integrity: sha512-veQymocUYo5OciXQajSailOdbWe+k6+2ehfF8D4d0V923D4xOUadtT253xXZ5vEQjPat6Kyp2WDKeQNjd7kL1w==}
@@ -33251,9 +33257,16 @@ snapshots:
     dependencies:
       solid-js: 1.9.14
 
-  '@solidjs/testing-library@0.8.10(solid-js@1.9.14)':
+  '@solidjs/testing-library@0.8.10(@solidjs/web@2.0.0-experimental.0(solid-js@1.9.14))(solid-js@1.9.14)':
     dependencies:
+      '@solidjs/web': 2.0.0-experimental.0(solid-js@1.9.14)
       '@testing-library/dom': 10.4.1
+      solid-js: 1.9.14
+
+  '@solidjs/web@2.0.0-experimental.0(solid-js@1.9.14)':
+    dependencies:
+      seroval: 1.5.4
+      seroval-plugins: 1.5.4(seroval@1.5.4)
       solid-js: 1.9.14
 
   '@spectrum-icons/ui@3.7.1(@adobe/react-spectrum@3.47.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)':

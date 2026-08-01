@@ -47,6 +47,9 @@
         "tests/type-tests/public-surface.tsx!"
       ]
     },
+    "packages/solid-table": {
+      "ignoreDependencies": ["@solidjs/web"]
+    },
     "packages/svelte-table": {
       "entry": [
         "src/index.ts!",

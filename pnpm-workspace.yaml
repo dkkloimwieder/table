@@ -24,6 +24,16 @@ overrides:
   '@tanstack/vue-table': 'workspace:*'
 
 packageExtensions:
+  # Solid 2 transition (remove at Solid 2 GA): testing-library's `>=2.0.0`
+  # peers do not match 2.0.0-beta.x prereleases, and vite-plugin-solid 3 has
+  # not yet added jest-dom ^7 to its peer range.
+  '@solidjs/testing-library':
+    peerDependencies:
+      solid-js: '>=2.0.0-0 <3.0.0'
+      '@solidjs/web': '>=2.0.0-0 <3.0.0'
+  vite-plugin-solid:
+    peerDependencies:
+      '@testing-library/jest-dom': '^5.16.6 || ^6.0.0 || ^7.0.0'
   '@analogjs/vite-plugin-angular':
     peerDependencies:
       '@angular/compiler': '^17.0.0 || ^18.0.0 || ^19.0.0 || ^20.0.0 || ^21.0.0 || ^22.0.0'
