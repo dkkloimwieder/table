@@ -14,8 +14,8 @@ import {
   rowPaginationFeature,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { createDebouncer } from '@tanstack/solid-pacer/debouncer'
-import { For, createSignal } from 'solid-js'
+import { Debouncer } from '@tanstack/pacer/debouncer'
+import { For, createSignal, onCleanup } from 'solid-js'
 import { makeData } from './makeData'
 import ColumnFilter from './ColumnFilter'
 import type { Person } from './makeData'
@@ -116,10 +116,11 @@ function App() {
     debugColumns: false,
   })
 
-  const globalFilterDebouncer = createDebouncer(
+  const globalFilterDebouncer = new Debouncer(
     (value: string) => table.setGlobalFilter(value),
     { wait: 500 },
   )
+  onCleanup(() => globalFilterDebouncer.cancel())
 
   return (
     <div class="demo-root">

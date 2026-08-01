@@ -1,5 +1,8 @@
 packages:
   - examples/**/*
+  # parked pending @tanstack/solid-form Solid 2 support (no Solid-2 release
+  # line exists); source and docs nav stay in-tree — see the example's README
+  - '!examples/solid/with-tanstack-form'
   - packages/*
 
 overrides:

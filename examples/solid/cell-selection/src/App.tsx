@@ -15,8 +15,6 @@ import {
   sortFn_text,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
-import { createHotkeys } from '@tanstack/solid-hotkeys'
 import { makeData } from './makeData'
 import type { Cell } from '@tanstack/solid-table'
 import type { Person } from './makeData'
@@ -150,7 +148,7 @@ function App() {
   const stressTest = () => setData(makeData(1_000))
 
   const table = createTable({
-    key: 'cell-selection', // needed for devtools
+    key: 'cell-selection', // identifies this table instance (used by TanStack Devtools when attached)
     features,
     get data() {
       return data()
@@ -167,8 +165,6 @@ function App() {
     // isCellRangeSelectionEvent: event => Boolean(event.metaKey), // use Meta instead of Shift
     debugTable: true,
   })
-
-  useTanStackTableDevtools(table)
 
   const randomizeColumns = () => {
     table.setColumnOrder(
@@ -193,48 +189,60 @@ function App() {
     ),
   )
 
-  let gridRef!: HTMLDivElement
-
-  // keyboard navigation is TanStack Hotkeys driving the table's imperative
-  // APIs; table-core ships no keydown handling of its own
-  createHotkeys(
-    [
-      { hotkey: 'ArrowUp', callback: () => table.moveCellSelection('up') },
-      { hotkey: 'ArrowDown', callback: () => table.moveCellSelection('down') },
-      { hotkey: 'ArrowLeft', callback: () => table.moveCellSelection('left') },
-      {
-        hotkey: 'ArrowRight',
-        callback: () => table.moveCellSelection('right'),
-      },
-      {
-        hotkey: 'Shift+ArrowUp',
-        callback: () => table.extendCellSelection('up'),
-      },
-      {
-        hotkey: 'Shift+ArrowDown',
-        callback: () => table.extendCellSelection('down'),
-      },
-      {
-        hotkey: 'Shift+ArrowLeft',
-        callback: () => table.extendCellSelection('left'),
-      },
-      {
-        hotkey: 'Shift+ArrowRight',
-        callback: () => table.extendCellSelection('right'),
-      },
-      { hotkey: 'Mod+A', callback: () => table.selectAllCells() },
-      { hotkey: 'Escape', callback: () => table.resetCellSelection(true) },
-      {
-        hotkey: 'Mod+C',
-        callback: () => {
-          void navigator.clipboard.writeText(
-            toTsv(table.getSelectedCellRangesData()),
-          )
-        },
-      },
-    ],
-    () => ({ target: gridRef }),
-  )
+  // keyboard navigation is a plain keydown handler driving the table's
+  // imperative APIs; table-core ships no keydown handling of its own. It is
+  // bound to the grid element below, so it only fires while focus is inside
+  // the grid — the paste textarea sits outside it. Skip editable targets,
+  // require exact modifiers (Mod = Cmd on macOS, Ctrl elsewhere), and
+  // preventDefault only on a match so arrows never scroll the page.
+  const isMac = navigator.platform.startsWith('Mac')
+  const arrowDirections = {
+    ArrowUp: 'up',
+    ArrowDown: 'down',
+    ArrowLeft: 'left',
+    ArrowRight: 'right',
+  } as const
+  const handleGridKeydown = (event: KeyboardEvent) => {
+    const target = event.target
+    if (
+      target instanceof HTMLInputElement ||
+      target instanceof HTMLTextAreaElement ||
+      target instanceof HTMLSelectElement ||
+      (target instanceof HTMLElement && target.isContentEditable)
+    ) {
+      return
+    }
+    const mod = isMac ? event.metaKey : event.ctrlKey
+    const otherMod = isMac ? event.ctrlKey : event.metaKey
+    if (event.altKey || otherMod) {
+      return
+    }
+    const direction =
+      event.key in arrowDirections
+        ? arrowDirections[event.key as keyof typeof arrowDirections]
+        : undefined
+    let handled = true
+    if (direction !== undefined && !mod) {
+      if (event.shiftKey) {
+        table.extendCellSelection(direction)
+      } else {
+        table.moveCellSelection(direction)
+      }
+    } else if (event.key === 'Escape' && !mod && !event.shiftKey) {
+      table.resetCellSelection(true)
+    } else if (event.key.toLowerCase() === 'a' && mod && !event.shiftKey) {
+      table.selectAllCells()
+    } else if (event.key.toLowerCase() === 'c' && mod && !event.shiftKey) {
+      void navigator.clipboard.writeText(
+        toTsv(table.getSelectedCellRangesData()),
+      )
+    } else {
+      handled = false
+    }
+    if (handled) {
+      event.preventDefault()
+    }
+  }
 
   return (
     <div class="demo-root">
@@ -341,7 +349,7 @@ function App() {
         {table.getCellSelectionColumnIds().length} columns
       </div>
       <div class="spacer-sm" />
-      <div ref={gridRef} tabindex={0}>
+      <div tabindex={0} onKeyDown={handleGridKeydown}>
         <table>
           <thead>
             <For each={table.getHeaderGroups()}>
@@ -496,8 +504,8 @@ function App() {
         <label for="paste-target">Paste Test:</label>
         {/*
           scratch area for pasting a copied selection back in, to eyeball the
-          tab-separated shape. It sits outside the grid ref, so the table
-          hotkeys never intercept typing or Mod+V in here.
+          tab-separated shape. It sits outside the grid element, so the grid
+          keydown handler never intercepts typing or Mod+V in here.
         */}
         <textarea
           id="paste-target"

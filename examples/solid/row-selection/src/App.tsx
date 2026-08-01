@@ -12,7 +12,6 @@ import {
   rowSelectionFeature,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { makeData } from './makeData'
 import type {
   Column,
@@ -121,7 +120,7 @@ function App() {
   ]
 
   const table = createTable({
-    key: 'row-selection', // needed for devtools
+    key: 'row-selection', // identifies this table instance (used by TanStack Devtools when attached)
     features,
     get data() {
       return data()
@@ -141,8 +140,6 @@ function App() {
     // isRowRangeSelectionEvent: event => Boolean(event.metaKey), // use Meta instead of Shift
     debugTable: true,
   })
-
-  useTanStackTableDevtools(table)
   tableRef.current = table
 
   return (

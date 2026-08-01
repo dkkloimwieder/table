@@ -13,10 +13,10 @@
  * the old `mergeProps` name in `@solidjs/web`, so nothing in this package may
  * import either binding.
  *
- * One deliberate difference from Solid 1's `mergeProps` and from the Svelte
- * adapter's copy of this file: a key whose only descriptors are plain values of
- * `undefined` is left off the result entirely instead of being defined as an
- * `undefined`-yielding property. `constructTable` spreads the options
+ * One deliberate difference from Solid 1's `mergeProps` (since ported back
+ * into the Svelte adapter's copy of this file): a key whose only descriptors
+ * are plain values of `undefined` is left off the result entirely instead of
+ * being defined as an `undefined`-yielding property. `constructTable` spreads the options
  * (`{ ...defaultOptions, ...tableOptions }`), and an own key holding
  * `undefined` overrides the feature default there even though every merge along
  * the way skips it.

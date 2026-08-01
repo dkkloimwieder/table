@@ -9,8 +9,8 @@ import {
   sortFns,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { createVirtualizer } from '@tanstack/solid-virtual'
 import { For, createEffect, createSignal } from 'solid-js'
+import { createVirtualizer } from './createVirtualizer'
 import { makeColumns, makeData } from './makeData'
 import type {
   Cell,
@@ -19,7 +19,7 @@ import type {
   Row,
   SolidTable,
 } from '@tanstack/solid-table'
-import type { VirtualItem, Virtualizer } from '@tanstack/solid-virtual'
+import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 import type { Person } from './makeData'
 
 const features = tableFeatures({

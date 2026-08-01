@@ -1,5 +1,5 @@
-import { createDebouncer } from '@tanstack/solid-pacer/debouncer'
-import { For, Show, createMemo } from 'solid-js'
+import { Debouncer } from '@tanstack/pacer/debouncer'
+import { For, Show, createMemo, onCleanup } from 'solid-js'
 import type { Person } from './makeData'
 import type { features } from './App'
 import type { Column, Table } from '@tanstack/solid-table'
@@ -13,10 +13,11 @@ function ColumnFilter(props: {
     .flatRows[0]?.getValue(props.column.id)
 
   const columnFilterValue = () => props.column.getFilterValue()
-  const columnFilterDebouncer = createDebouncer(
+  const columnFilterDebouncer = new Debouncer(
     (value: unknown) => props.column.setFilterValue(value),
     { wait: 500 },
   )
+  onCleanup(() => columnFilterDebouncer.cancel())
 
   const sortedUniqueValues = createMemo(() =>
     typeof firstValue === 'number'

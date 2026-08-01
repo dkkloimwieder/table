@@ -1,5 +1,4 @@
 import { For, Show, createEffect, createMemo, createSignal } from 'solid-js'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { z } from 'zod'
 import { makeData } from './makeData'
 import { useAppForm } from './form'
@@ -133,8 +132,6 @@ function FullTableFormExample() {
     },
     debugTable: true,
   })
-
-  useTanStackTableDevtools(table)
 
   const refreshData = () => {
     setData(makeData(100))
@@ -317,8 +314,6 @@ function RowSubmitFormExample() {
     },
     debugTable: true,
   })
-
-  useTanStackTableDevtools(table)
 
   const refreshData = () => {
     setData(makeData(100))
