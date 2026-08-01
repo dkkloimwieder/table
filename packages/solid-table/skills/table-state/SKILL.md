@@ -30,28 +30,34 @@ The Solid adapter backs core atoms with Solid signals and memos. An atom `.get()
 
 ## Setup
 
+<!-- skill-snippet:check prelude=scripts/skill-snippet-preludes/solid-table-context.ts -->
+
 ```tsx
 import { createMemo } from 'solid-js'
 
-const table = createTable({
-  features,
-  columns,
-  get data() {
-    return data()
-  },
-})
-const selectedCount = createMemo(
-  () => Object.keys(table.atoms.rowSelection.get()).length,
-)
-return <output>{selectedCount()}</output>
+export function SelectionSummary() {
+  const table = createTable({
+    features,
+    columns,
+    get data() {
+      return data()
+    },
+  })
+  const selectedCount = createMemo(
+    () => Object.keys(table.atoms.rowSelection.get()).length,
+  )
+  return <output>{selectedCount()}</output>
+}
 ```
 
 ## Core Patterns
 
 ### Control with a native signal
 
+<!-- skill-snippet:check prelude=scripts/skill-snippet-preludes/solid-table-context.ts -->
+
 ```tsx
-const [sorting, setSorting] = createSignal([])
+const [sorting, setSorting] = createSignal<SortingState>([])
 const table = createTable({
   features,
   columns,
@@ -78,10 +84,20 @@ onSortingChange: (updater) =>
 
 ### Own a slice with an external atom
 
+<!-- skill-snippet:check prelude=scripts/skill-snippet-preludes/solid-table-context.ts -->
+
 ```tsx
-import { createAtom } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
+
 const pagination = createAtom({ pageIndex: 0, pageSize: 20 })
-const table = createTable({ features, columns, data, atoms: { pagination } })
+const table = createTable({
+  features,
+  columns,
+  get data() {
+    return data()
+  },
+  atoms: { pagination },
+})
 ```
 
 ## Choose State Ownership
@@ -90,7 +106,7 @@ Use one owner for each slice:
 
 - Keep state internal and use feature methods for ordinary table-local interaction.
 - Use `initialState` for a starting/reset value. Later changes to that object do not reset state.
-- Prefer a stable `@tanstack/solid-store` atom through `atoms` when state is shared; feature methods write it directly.
+- Prefer a stable external atom (from the adapter's `createAtom`) through `atoms` when state is shared; feature methods write it directly.
 - Use a Solid signal through a reactive `state` getter plus `on[State]Change` for simple controlled state. Resolve raw values and updater functions.
 
 External atoms take precedence over controlled `state`, which syncs into the internal base atom. Do not configure two owners for one slice. The global v8 `onStateChange` option is gone; observe `table.store` when all state changes matter.

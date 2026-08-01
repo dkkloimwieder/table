@@ -20,6 +20,8 @@ This skill builds on `@tanstack/table-core#core` and `@tanstack/table-core#table
 
 ## Setup
 
+<!-- skill-snippet:check -->
+
 ```tsx
 import { For, createSignal } from 'solid-js'
 import {
@@ -82,6 +84,8 @@ export function PeopleTable() {
 ## Core Patterns
 
 ### Expose changing inputs through getters
+
+<!-- skill-snippet:check prelude=scripts/skill-snippet-preludes/solid-table-context.ts -->
 
 ```tsx
 const table = createTable({

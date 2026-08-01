@@ -13,7 +13,15 @@ const skillPaths = await glob('packages/*/skills/**/SKILL.md', {
 })
 const workspacePaths = Object.fromEntries(
   packages.flatMap((pkg) => [
-    [pkg.name, [resolve(rootDir, pkg.packageDir, 'src/index.ts')]],
+    [
+      pkg.name,
+      // Entry extension varies per package (e.g. solid-table uses index.tsx);
+      // TS tries path candidates in order.
+      [
+        resolve(rootDir, pkg.packageDir, 'src/index.ts'),
+        resolve(rootDir, pkg.packageDir, 'src/index.tsx'),
+      ],
+    ],
     [`${pkg.name}/*`, [resolve(rootDir, pkg.packageDir, 'src/*')]],
   ]),
 )
@@ -97,6 +105,10 @@ for (const skillPath of skillPaths) {
       ts.sys,
       dirname(configPath),
       {
+        // Workspace paths resolve to literal .ts/.tsx sources; without this,
+        // a bare-specifier import resolved that way crashes the checker
+        // (legal because noEmit is forced below).
+        allowImportingTsExtensions: true,
         baseUrl: rootDir,
         ignoreDeprecations: '6.0',
         noEmit: true,
@@ -109,7 +121,19 @@ for (const skillPath of skillPaths) {
       configPath,
     )
     const program = ts.createProgram([filePath], parsed.options)
-    const snippetDiagnostics = ts.getPreEmitDiagnostics(program)
+    // Snippets are illustrative fragments: declaring context a fence never
+    // reads is intentional, so unused-declaration diagnostics are dropped for
+    // the snippet file itself (workspace sources keep full strictness).
+    const unusedDiagnosticCodes = new Set([6133, 6192, 6196, 6198, 6205])
+    const snippetDiagnostics = ts
+      .getPreEmitDiagnostics(program)
+      .filter(
+        (diagnostic) =>
+          !(
+            diagnostic.file?.fileName === filePath.replace(/\\/g, '/') &&
+            unusedDiagnosticCodes.has(diagnostic.code)
+          ),
+      )
     if (snippetDiagnostics.length) {
       diagnostics.push(
         `${skillPath}:${fenceIndex + 1}\n${ts.formatDiagnosticsWithColorAndContext(snippetDiagnostics, formatHost)}`,
