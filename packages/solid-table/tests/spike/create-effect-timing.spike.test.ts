@@ -84,7 +84,7 @@ describe('(a) two-arg createEffect first-run timing', () => {
 
     createRoot(() => {
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
       createEffect(
         () => {
           computeRuns++
@@ -150,14 +150,14 @@ describe('(a) two-arg createEffect first-run timing', () => {
     createRoot(() => {
       const [s, setS] = createSignal(0)
       const [t, setT] = createSignal(100)
-      set = setS as unknown as Set<number>
+      set = setS
       readT = t
       createEffect(
         () => s(),
         (v: number) => {
           try {
             // Plain signal, NO { ownedWrite: true } — legal in the effect half.
-            ;(setT as unknown as Set<number>)(v + 1)
+            setT(v + 1)
             seen.push(v)
           } catch (e) {
             effectPhaseError = e
@@ -183,7 +183,7 @@ describe('(a) two-arg createEffect first-run timing', () => {
     createRoot(() => {
       const [, setA] = createSignal(0)
       try {
-        ;(setA as unknown as Set<number>)(1)
+        setA(1)
       } catch (e) {
         // Caught INSIDE the owned scope on purpose: letting this escape would
         // unwind through the runtime and can halt the reactive system.
@@ -193,7 +193,7 @@ describe('(a) two-arg createEffect first-run timing', () => {
       const [b, setB] = createSignal(0, { ownedWrite: true })
       readB = b
       try {
-        ;(setB as unknown as Set<number>)(1)
+        setB(1)
       } catch (e) {
         ownedError = e
       }
@@ -240,7 +240,7 @@ describe('(b) { defer: true } semantics', () => {
 
     createRoot(() => {
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
       createEffect(
         () => {
           computeRuns++
@@ -274,7 +274,7 @@ describe('(b) { defer: true } semantics', () => {
 
     createRoot(() => {
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
       createEffect(
         () => {
           computeRuns++
@@ -308,7 +308,7 @@ describe('(b) { defer: true } semantics', () => {
 
     createRoot(() => {
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
       createEffect(
         () => s(),
         (v: number) => {
@@ -338,7 +338,7 @@ describe('(c) { sync: true } semantics', () => {
 
     createRoot(() => {
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
       createEffect(
         () => {
           computeRuns++
@@ -396,7 +396,7 @@ describe('(c) { sync: true } semantics', () => {
       let set!: Set<number>
       createRoot(() => {
         const [s, setS] = createSignal(0)
-        set = setS as unknown as Set<number>
+        set = setS
         createEffect(
           () => s(),
           (v: number) => {
@@ -442,7 +442,7 @@ describe('(c) { sync: true } semantics', () => {
 
     createRoot(() => {
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
       createEffect(
         () => s(),
         (v: number) => {
@@ -469,7 +469,7 @@ describe('(d) cleanup + disposal contract', () => {
     createRoot((d) => {
       dispose = d
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
       createEffect(
         () => {
           onCleanup(() => log.push('computeCleanup'))
@@ -522,7 +522,7 @@ describe('(d) cleanup + disposal contract', () => {
 
     createRoot(() => {
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
 
       createEffect(
         () => s(),
@@ -576,7 +576,7 @@ describe('(d) cleanup + disposal contract', () => {
       outerDispose = od
       outerOwner = getOwner()
       const [s, setS] = createSignal(0)
-      set = setS as unknown as Set<number>
+      set = setS
       createRoot((id) => {
         innerDispose = id
         innerOwner = getOwner()
@@ -658,7 +658,7 @@ describe('(D4/D5) subscribe-bridge shape end to end', () => {
       tableOwner = getOwner() as Owner
       const [s, setS] = createSignal(0)
       atom = s
-      set = setS as unknown as Set<number>
+      set = setS
     })
 
     const unsubscribe = makeBridge(tableOwner, atom, (v) => seen.push(v))
@@ -703,7 +703,7 @@ describe('(D4/D5) subscribe-bridge shape end to end', () => {
       tableOwner = getOwner() as Owner
       const [s, setS] = createSignal(0)
       atom = s
-      set = setS as unknown as Set<number>
+      set = setS
     })
 
     const unsubscribe = makeBridge(tableOwner, atom, (v) => seen.push(v))

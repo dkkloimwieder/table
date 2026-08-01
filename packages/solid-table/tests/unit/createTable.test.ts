@@ -2,6 +2,7 @@ import { describe, expect, test, vi } from 'vitest'
 import { createEffect, createRoot, createSignal } from 'solid-js'
 import { createPaginatedRowModel, stockFeatures } from '@tanstack/table-core'
 import { createTable } from '../../src/createTable'
+import { settle } from '../utils/reactive'
 import type { ColumnDef, PaginationState } from '@tanstack/table-core'
 
 describe('createTable', () => {
@@ -57,15 +58,20 @@ describe('createTable', () => {
       })
 
       setPageSize = table.setPageSize
-      createEffect(() =>
-        rowIdsCaptor(table.getRowModel().rows.map((row) => row.id)),
+      createEffect(
+        () => table.getRowModel().rows.map((row) => row.id),
+        (ids: Array<string>) => {
+          rowIdsCaptor(ids)
+        },
       )
     })
 
     try {
+      settle()
       expect(rowIdsCaptor.mock.calls).toEqual([[['0', '1', '2', '3', '4']]])
 
       setPageSize(3)
+      settle()
 
       expect(rowIdsCaptor.mock.calls).toEqual([
         [['0', '1', '2', '3', '4']],

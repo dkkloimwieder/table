@@ -1,14 +1,9 @@
 import { describe, expect, test, vi } from 'vitest'
-import {
-  batch,
-  createEffect,
-  createMemo,
-  createRoot,
-  createSignal,
-} from 'solid-js'
+import { createEffect, createMemo, createRoot, createSignal } from 'solid-js'
 import { createAtom } from '@tanstack/store'
 import { stockFeatures } from '@tanstack/table-core'
 import { createTable } from '../../src/createTable'
+import { createEffectTestRoot, settle } from '../utils/reactive'
 import type { ColumnDef, RowSelectionState } from '@tanstack/table-core'
 
 describe('Solid adapter lifecycle and option ownership', () => {
@@ -20,15 +15,6 @@ describe('Solid adapter lifecycle and option ownership', () => {
   const titleColumn: ColumnDef<typeof stockFeatures, Data> = {
     id: 'title',
     accessorKey: 'title',
-  }
-
-  function createEffectTestRoot<T>(setup: () => T) {
-    let dispose!: () => void
-    const value = createRoot((rootDispose) => {
-      dispose = rootDispose
-      return setup()
-    })
-    return { dispose, value }
   }
 
   test('disposing the owner unsubscribes external atoms and stops reactions', () => {
@@ -47,11 +33,19 @@ describe('Solid adapter lifecycle and option ownership', () => {
       })
       const stateCaptor = vi.fn<(state: RowSelectionState) => void>()
 
-      createEffect(() => stateCaptor(table.atoms.rowSelection.get()))
+      createEffect(
+        () => table.atoms.rowSelection.get(),
+        (state: RowSelectionState) => {
+          stateCaptor(state)
+        },
+      )
 
       return { stateCaptor, table }
     })
     const { stateCaptor, table } = value
+
+    // Effect first runs are flush-deferred in Solid 2.
+    settle()
 
     expect(subscribeSpy).toHaveBeenCalledTimes(1)
 
@@ -59,6 +53,7 @@ describe('Solid adapter lifecycle and option ownership', () => {
     const unsubscribeSpy = vi.spyOn(subscription, 'unsubscribe')
 
     sourceAtom.set({ 1: true })
+    settle()
     expect(stateCaptor.mock.calls).toEqual([[{}], [{ 1: true }]])
 
     dispose()
@@ -66,12 +61,14 @@ describe('Solid adapter lifecycle and option ownership', () => {
     expect(unsubscribeSpy).toHaveBeenCalledTimes(1)
 
     sourceAtom.set({ 2: true })
+    settle()
 
     expect(sourceAtom.get()).toEqual({ 2: true })
     expect(table.atoms.rowSelection.get()).toEqual({ 1: true })
     expect(stateCaptor.mock.calls).toEqual([[{}], [{ 1: true }]])
 
     table.setRowSelection({ 3: true })
+    settle()
 
     expect(sourceAtom.get()).toEqual({ 2: true })
   })
@@ -95,13 +92,20 @@ describe('Solid adapter lifecycle and option ownership', () => {
       })
       const stateCaptor = vi.fn<(state: RowSelectionState) => void>()
 
-      createEffect(() => stateCaptor(table.atoms.rowSelection.get()))
+      createEffect(
+        () => table.atoms.rowSelection.get(),
+        (state: RowSelectionState) => {
+          stateCaptor(state)
+        },
+      )
 
       return { setControlledState, stateCaptor, table }
     })
     const { setControlledState, stateCaptor, table } = value
 
     try {
+      // Table-API value reads stay flush-free: settle-on-imperative-read
+      // (D10-A) is what these lines regression-test.
       expect(table.atoms.rowSelection.get()).toEqual({ 1: true })
 
       setControlledState({})
@@ -125,6 +129,7 @@ describe('Solid adapter lifecycle and option ownership', () => {
 
       setControlledState({})
       expect(table.atoms.rowSelection.get()).toEqual({})
+      settle()
       expect(stateCaptor.mock.calls).toEqual([
         [{ 1: true }],
         [{ 2: true }],
@@ -162,8 +167,18 @@ describe('Solid adapter lifecycle and option ownership', () => {
       const isSelectedCaptor = vi.fn<(selected: boolean) => void>()
       const isSelected = createMemo(() => table.getRow('1').getIsSelected())
 
-      createEffect(() => stateCaptor(table.atoms.rowSelection.get()))
-      createEffect(() => isSelectedCaptor(isSelected()))
+      createEffect(
+        () => table.atoms.rowSelection.get(),
+        (state: RowSelectionState) => {
+          stateCaptor(state)
+        },
+      )
+      createEffect(
+        () => isSelected(),
+        (selected: boolean) => {
+          isSelectedCaptor(selected)
+        },
+      )
 
       return { isSelectedCaptor, setControlledSelection, stateCaptor, table }
     })
@@ -180,6 +195,10 @@ describe('Solid adapter lifecycle and option ownership', () => {
       expect(table.atoms.rowSelection.get()).toEqual({ 1: true })
 
       table.setRowSelection({ 2: true })
+      // The table -> external sync rides a Solid effect, and the external
+      // atom is a raw Store atom without settle-on-read, so this read needs
+      // an explicit settle first.
+      settle()
       expect(externalAtom.get()).toEqual({ 2: true })
       expect(table.atoms.rowSelection.get()).toEqual({ 2: true })
       expect(stateCaptor.mock.calls).toEqual([
@@ -193,7 +212,7 @@ describe('Solid adapter lifecycle and option ownership', () => {
     }
   })
 
-  test('rapid batched option updates publish only the final data, columns, and option values', () => {
+  test('rapid consecutive option updates publish only the final data, columns, and option values', () => {
     const { dispose, value } = createEffectTestRoot(() => {
       const [data, setData] = createSignal<Array<Data>>([
         { id: '1', title: 'Initial' },
@@ -224,14 +243,23 @@ describe('Solid adapter lifecycle and option ownership', () => {
           }) => void
         >()
 
-      createEffect(() => {
-        const row = table.getRowModel().rows[0]!
-        snapshotCaptor({
-          canSelect: row.getCanSelect(),
-          columnIds: table.getAllLeafColumns().map((column) => column.id),
-          values: row.getAllCells().map((cell) => cell.getValue()),
-        })
-      })
+      createEffect(
+        () => {
+          const row = table.getRowModel().rows[0]!
+          return {
+            canSelect: row.getCanSelect(),
+            columnIds: table.getAllLeafColumns().map((column) => column.id),
+            values: row.getAllCells().map((cell) => cell.getValue()),
+          }
+        },
+        (snapshot: {
+          canSelect: boolean
+          columnIds: Array<string>
+          values: Array<unknown>
+        }) => {
+          snapshotCaptor(snapshot)
+        },
+      )
 
       return {
         setColumns,
@@ -243,13 +271,17 @@ describe('Solid adapter lifecycle and option ownership', () => {
     const { setColumns, setData, setEnableRowSelection, snapshotCaptor } = value
 
     try {
-      batch(() => {
-        setData([{ id: '2', title: 'Intermediate' }])
-        setColumns([idColumn, titleColumn])
-        setEnableRowSelection(false)
-        setData([{ id: '3', title: 'Final' }])
-        setColumns([titleColumn])
-      })
+      settle()
+
+      // Solid 1 needed batch() for this; Solid 2 auto-batches, so five bare
+      // setters plus a single settle() must still coalesce into exactly one
+      // additional snapshot.
+      setData([{ id: '2', title: 'Intermediate' }])
+      setColumns([idColumn, titleColumn])
+      setEnableRowSelection(false)
+      setData([{ id: '3', title: 'Final' }])
+      setColumns([titleColumn])
+      settle()
 
       expect(snapshotCaptor.mock.calls).toEqual([
         [
@@ -273,12 +305,23 @@ describe('Solid adapter lifecycle and option ownership', () => {
   })
 
   test('table APIs use the latest signal-backed option callback', () => {
-    createRoot((dispose) => {
-      const firstHandler = vi.fn()
-      const secondHandler = vi.fn()
-      const [onRowSelectionChange, setOnRowSelectionChange] =
+    // Writes happen outside the root: plain signals without `ownedWrite`
+    // hard-throw when written inside an owned scope in the Solid 2 dev
+    // runtime.
+    let dispose!: () => void
+    let setOnRowSelectionChange!: (
+      handler: () => ReturnType<typeof vi.fn>,
+    ) => void
+    let table!: ReturnType<typeof createTable<typeof stockFeatures, Data>>
+    const firstHandler = vi.fn()
+    const secondHandler = vi.fn()
+
+    createRoot((rootDispose) => {
+      dispose = rootDispose
+      const [onRowSelectionChange, setHandlerSignal] =
         createSignal(firstHandler)
-      const table = createTable({
+      setOnRowSelectionChange = setHandlerSignal
+      table = createTable({
         data: [{ id: '1', title: 'Title' }],
         columns: [idColumn, titleColumn],
         features: stockFeatures,
@@ -287,17 +330,17 @@ describe('Solid adapter lifecycle and option ownership', () => {
           return onRowSelectionChange()
         },
       })
-
-      table.toggleAllRowsSelected(true)
-      expect(firstHandler).toHaveBeenCalledTimes(1)
-      expect(secondHandler).not.toHaveBeenCalled()
-
-      setOnRowSelectionChange(() => secondHandler)
-      table.toggleAllRowsSelected(false)
-
-      expect(firstHandler).toHaveBeenCalledTimes(1)
-      expect(secondHandler).toHaveBeenCalledTimes(1)
-      dispose()
     })
+
+    table.toggleAllRowsSelected(true)
+    expect(firstHandler).toHaveBeenCalledTimes(1)
+    expect(secondHandler).not.toHaveBeenCalled()
+
+    setOnRowSelectionChange(() => secondHandler)
+    table.toggleAllRowsSelected(false)
+
+    expect(firstHandler).toHaveBeenCalledTimes(1)
+    expect(secondHandler).toHaveBeenCalledTimes(1)
+    dispose()
   })
 })

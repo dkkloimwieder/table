@@ -7,9 +7,20 @@ import { stockFeatures } from '@tanstack/table-core'
 import { FlexRender } from '../../src/FlexRender'
 import { createTable } from '../../src/createTable'
 import { createTableHook } from '../../src/createTableHook'
+import { settle } from '../utils/reactive'
 import type { ColumnDef } from '@tanstack/table-core'
 
 afterEach(() => cleanup())
+
+/**
+ * fireEvent never flushes in Solid 2 (testing-library 1.0), and un-flushed
+ * read-modify-write handlers collapse across consecutive events — settle
+ * after every dispatch (migration rule R1).
+ */
+function clickAndSettle(element: Element): void {
+  fireEvent.click(element)
+  settle()
+}
 
 describe('FlexRender', () => {
   type Data = { id: string; name: string }
@@ -138,13 +149,13 @@ describe('FlexRender', () => {
 
     expect(renderedCell()).toBe('cell:Ada')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show aggregate' }))
+    clickAndSettle(screen.getByRole('button', { name: 'Show aggregate' }))
     expect(renderedCell()).toBe('aggregate:Ada')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show placeholder' }))
+    clickAndSettle(screen.getByRole('button', { name: 'Show placeholder' }))
     expect(renderedCell()).toBe('')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Show normal' }))
+    clickAndSettle(screen.getByRole('button', { name: 'Show normal' }))
     expect(renderedCell()).toBe('cell:Ada')
   })
 
@@ -180,7 +191,7 @@ describe('FlexRender', () => {
       screen.getByRole('status', { name: 'rendered cell' }).textContent,
     ).toBe('cell:Ada')
 
-    fireEvent.click(screen.getByRole('button', { name: 'Replace cell' }))
+    clickAndSettle(screen.getByRole('button', { name: 'Replace cell' }))
 
     expect(
       screen.getByRole('status', { name: 'rendered cell' }).textContent,
@@ -220,7 +231,7 @@ describe('table.Subscribe', () => {
       screen.getByRole('status', { name: 'subscribed selection' }).textContent,
     ).toBe('false')
 
-    fireEvent.click(
+    clickAndSettle(
       screen.getByRole('button', { name: 'Select subscribed row' }),
     )
 

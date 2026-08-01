@@ -145,7 +145,7 @@ describe('(b) memo reads during the pending window', () => {
     createRoot(() => {
       const sig = createSignal(0)
       s = sig[0]
-      set = sig[1] as (v: number) => unknown
+      set = sig[1]
       m = createMemo(() => s() * 10)
     })
     expect(m()).toBe(0)
@@ -165,7 +165,7 @@ describe('(b) memo reads during the pending window', () => {
     createRoot(() => {
       const sig = createSignal(0)
       s = sig[0]
-      set = sig[1] as (v: number) => unknown
+      set = sig[1]
       m = createMemo(() => s() * 10)
       createEffect(
         () => m(),
@@ -241,7 +241,7 @@ describe('(b) memo reads during the pending window', () => {
     createRoot(() => {
       const sig = createSignal(0)
       s = sig[0]
-      set = sig[1] as (v: number) => unknown
+      set = sig[1]
       m = createMemo(() => s() * 10)
       createEffect(
         () => m(),
@@ -469,7 +469,7 @@ describe('(e) nested flush()', () => {
     createRoot(() => {
       const [a, sa] = createSignal(0, { ownedWrite: true })
       const [bb, sbb] = createSignal(0, { ownedWrite: true })
-      setA = sa as (v: number) => unknown
+      setA = sa
       b = bb
       createEffect(
         () => a(),
@@ -501,7 +501,7 @@ describe('(e) nested flush()', () => {
     createRoot(() => {
       const [a, sa] = createSignal(0, { ownedWrite: true })
       const [bb, sbb] = createSignal(0, { ownedWrite: true })
-      setA = sa as (v: number) => unknown
+      setA = sa
       b = bb
       createEffect(
         () => a(),
@@ -528,7 +528,7 @@ describe('(e) nested flush()', () => {
     let setS!: (v: number) => unknown
     createRoot(() => {
       const [s, ss] = createSignal(0)
-      setS = ss as (v: number) => unknown
+      setS = ss
       createEffect(
         () => {
           flush() // must not throw
@@ -565,8 +565,8 @@ describe('(e) nested flush()', () => {
     createRoot(() => {
       const [trigger, st] = createSignal(0)
       const [u, su] = createSignal(0, { ownedWrite: true })
-      setTrigger = st as (v: number) => unknown
-      setUnrelated = su as (v: number) => unknown
+      setTrigger = st
+      setUnrelated = su
       unrelated = u
       createEffect(
         () => trigger(),
@@ -589,7 +589,7 @@ describe('(e) nested flush()', () => {
     createRoot(() => {
       const [trigger, st] = createSignal(0)
       const [x, setX] = createSignal(0, { ownedWrite: true })
-      setTrigger = st as (v: number) => unknown
+      setTrigger = st
       createEffect(
         () => trigger(),
         (v: number) => {
@@ -620,7 +620,7 @@ describe('(f) microtask auto-settle', () => {
     createRoot(() => {
       const sig = createSignal(0)
       s = sig[0]
-      set = sig[1] as (v: number) => unknown
+      set = sig[1]
       createEffect(
         () => s(),
         (v: number) => {

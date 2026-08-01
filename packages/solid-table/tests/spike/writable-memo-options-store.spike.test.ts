@@ -84,10 +84,10 @@ function makeOptionsStore(signalOptions?: {
     { name: 'table/optionsStore', ...signalOptions } as never,
   )
   return {
-    dep: dep as () => number,
-    setDep: setDep as (n: number) => number,
-    options: options as () => Opts,
-    setOptions: setOptions as Fixture['setOptions'],
+    dep: dep,
+    setDep: setDep,
+    options: options,
+    setOptions: setOptions,
     computePrevs,
     computeRuns: () => computePrevs.length,
   }
@@ -769,7 +769,7 @@ describe('(f) D14 implementation recipe: ownedWrite + flush-before-write + settl
       /** D10 settle-on-read: only flush when the read is NOT tracked. */
       get: () => {
         if (!getObserver()) flush()
-        return raw() as Record<string, unknown>
+        return raw()
       },
       /**
        * flush-AROUND-write. Both halves are load-bearing:

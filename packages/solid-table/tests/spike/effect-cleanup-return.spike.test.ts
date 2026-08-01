@@ -43,7 +43,7 @@ it('throws and permanently halts the reactive system when the effect half return
   let set!: (v: number) => unknown
   createRoot(() => {
     const [s, setS] = createSignal(0)
-    set = setS as unknown as (v: number) => unknown
+    set = setS
     createEffect(
       () => s(),
       (v: number) => {

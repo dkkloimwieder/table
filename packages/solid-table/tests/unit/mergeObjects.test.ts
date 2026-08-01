@@ -8,6 +8,7 @@ import {
 import { createTable } from '../../src/createTable'
 import { createTableHook } from '../../src/createTableHook'
 import { flatMerge, mergeObjects } from '../../src/merge-objects'
+import { settle } from '../utils/reactive'
 import type { ColumnDef, OnChangeFn, SortingState } from '@tanstack/table-core'
 
 type Data = { id: string; title: string }
@@ -117,6 +118,9 @@ describe('mergeObjects', () => {
     expect(readTitle).toHaveBeenCalledOnce()
 
     setTitle('second')
+    // Raw getter chain read (not a table API) — Solid 2 defers the write, so
+    // settle first.
+    settle()
 
     expect(merged.title).toBe('second')
     expect(readTitle).toHaveBeenCalledTimes(2)

@@ -66,9 +66,7 @@ describe('options store as writable memo (D14)', () => {
       })
 
       expect(table.options.enableSorting).not.toBe(false)
-      table.setOptions(
-        (prev) => mergeObjects(prev, { enableSorting: false }) as typeof prev,
-      )
+      table.setOptions((prev) => mergeObjects(prev, { enableSorting: false }))
       expect(table.options.enableSorting).toBe(false)
 
       dispose()
@@ -95,9 +93,7 @@ describe('options store as writable memo (D14)', () => {
     })
 
     setData(makeData(4))
-    table.setOptions(
-      (prev) => mergeObjects(prev, { enableSorting: false }) as typeof prev,
-    )
+    table.setOptions((prev) => mergeObjects(prev, { enableSorting: false }))
 
     expect(table.getRowModel().rows).toHaveLength(4)
     expect(table.options.enableSorting).toBe(false)
