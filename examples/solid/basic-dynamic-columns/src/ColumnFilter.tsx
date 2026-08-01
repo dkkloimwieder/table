@@ -1,12 +1,12 @@
-import { createDebouncer } from '@tanstack/solid-pacer/debouncer'
-import { For, Match, Show, Switch, createMemo } from 'solid-js'
+import { Debouncer } from '@tanstack/pacer/debouncer'
+import { For, Match, Show, Switch, createMemo, onCleanup } from 'solid-js'
 import type { DataType, DynamicRow, features } from './App'
 import type { Column, Table } from '@tanstack/solid-table'
 
 // A different filter UI per data type. Solid's fine-grained reactivity keeps the
 // reads (getFilterValue, the faceted values) fresh on their own, so unlike the React
 // version there's no Subscribe wrapper needed. Text / range inputs are debounced via
-// the solid-pacer debouncer; the enum and boolean selects apply immediately.
+// a framework-agnostic pacer Debouncer; the enum and boolean selects apply immediately.
 function ColumnFilter(props: {
   column: Column<typeof features, DynamicRow>
   table: Table<typeof features, DynamicRow>
@@ -16,10 +16,11 @@ function ColumnFilter(props: {
 
   const filterValue = () => props.column.getFilterValue()
 
-  const filterDebouncer = createDebouncer(
+  const filterDebouncer = new Debouncer(
     (value: unknown) => props.column.setFilterValue(value),
     { wait: 500 },
   )
+  onCleanup(() => filterDebouncer.cancel())
 
   // number range hints
   const minMax = () => props.column.getFacetedMinMaxValues() ?? []
