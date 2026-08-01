@@ -4,7 +4,7 @@ import { createTable } from './createTable'
 import { FlexRender } from './FlexRender'
 import { mergeObjects } from './merge-objects'
 import type { SolidTable } from './createTable'
-import type { Component, JSXElement } from 'solid-js'
+import type { Component, Element as JSXElement } from 'solid-js'
 import type {
   AccessorFn,
   AccessorFnColumnDef,
@@ -590,12 +590,13 @@ export function createTableHook<
   TCellComponents,
   THeaderComponents
 > {
-  // Create contexts internally with TFeatures baked in
-  const TableContext = createContext<SolidTable<TFeatures, any>>(null as never)
-  const CellContext = createContext<Cell<TFeatures, any, any>>(null as never)
-  const HeaderContext = createContext<Header<TFeatures, any, any>>(
-    null as never,
-  )
+  // Create contexts internally with TFeatures baked in. The null default is
+  // honest in Solid 2: a provided default suppresses ContextNotFoundError, so
+  // useContext returns null outside a provider and the hand-written error
+  // messages below fire instead (design D19).
+  const TableContext = createContext<SolidTable<TFeatures, any> | null>(null)
+  const CellContext = createContext<Cell<TFeatures, any, any> | null>(null)
+  const HeaderContext = createContext<Header<TFeatures, any, any> | null>(null)
 
   /**
    * Create a column helper pre-bound to the features and components configured in this table hook.
@@ -823,11 +824,7 @@ export function createTableHook<
 
     // AppTable - Root wrapper that provides table context
     function AppTable(props: AppTableProps): JSXElement {
-      return (
-        <TableContext.Provider value={table}>
-          {props.children}
-        </TableContext.Provider>
-      )
+      return <TableContext value={table}>{props.children}</TableContext>
     }
 
     // AppCell - Wraps cell with context and pre-bound cellComponents
@@ -844,9 +841,9 @@ export function createTableHook<
         TCellComponents & { FlexRender: () => JSXElement }
 
       return (
-        <CellContext.Provider value={props.cell}>
+        <CellContext value={props.cell}>
           {props.children(extendedCell)}
-        </CellContext.Provider>
+        </CellContext>
       )
     }
 
@@ -857,16 +854,26 @@ export function createTableHook<
     function AppHeader<TValue extends CellData = CellData>(
       props: AppHeaderProps<TFeatures, TData, TValue, THeaderComponents>,
     ): JSXElement {
-      const extendedHeader = Object.assign(props.header, {
+      // Header groups and footer groups share the same Header instances, and
+      // AppHeader/AppFooter each assign their own FlexRender. Solid 2 defers
+      // child materialization past both assigns, so the instance-level
+      // property alone would resolve to whichever wrapper mounted last. The
+      // children value therefore carries its own FlexRender on a prototype
+      // wrapper; the shared instance still gets the components (collision
+      // free) and a FlexRender so `useHeaderContext()` keeps its typed shape.
+      const sharedHeader = Object.assign(props.header, {
         FlexRender: HeaderFlexRender,
         ...headerComponents,
+      })
+      const extendedHeader = Object.assign(Object.create(sharedHeader), {
+        FlexRender: HeaderFlexRender,
       }) as Header<TFeatures, TData, TValue> &
         THeaderComponents & { FlexRender: () => JSXElement }
 
       return (
-        <HeaderContext.Provider value={props.header}>
+        <HeaderContext value={props.header}>
           {props.children(extendedHeader)}
-        </HeaderContext.Provider>
+        </HeaderContext>
       )
     }
 
@@ -877,16 +884,21 @@ export function createTableHook<
     function AppFooter<TValue extends CellData = CellData>(
       props: AppHeaderProps<TFeatures, TData, TValue, THeaderComponents>,
     ): JSXElement {
-      const extendedHeader = Object.assign(props.header, {
+      // See AppHeader: the per-wrapper FlexRender must live on the children
+      // value, not only on the shared Header instance.
+      const sharedHeader = Object.assign(props.header, {
         FlexRender: FooterFlexRender,
         ...headerComponents,
+      })
+      const extendedHeader = Object.assign(Object.create(sharedHeader), {
+        FlexRender: FooterFlexRender,
       }) as Header<TFeatures, TData, TValue> &
         THeaderComponents & { FlexRender: () => JSXElement }
 
       return (
-        <HeaderContext.Provider value={props.header}>
+        <HeaderContext value={props.header}>
           {props.children(extendedHeader)}
-        </HeaderContext.Provider>
+        </HeaderContext>
       )
     }
 

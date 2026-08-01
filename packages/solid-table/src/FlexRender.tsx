@@ -1,5 +1,5 @@
 import { Match, Show, Switch, createComponent } from 'solid-js'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type {
   Cell,
   CellData,
@@ -81,7 +81,9 @@ export function FlexRender<
 >(props: FlexRenderProps<TFeatures, TData, TValue>) {
   return (
     <Switch>
-      {/* `keyed` is required so content re-renders when the prop changes to a
+      {/* `keyed` is MANDATORY in Solid 2, not an optimization choice: a
+          non-keyed Match child that snapshots the accessor renders stale
+          content and trips [STRICT_READ_UNTRACKED] when the prop changes to a
           new cell/header instance (e.g. new data under a persistent virtual
           item). Non-keyed Match only re-runs children on truthiness changes. */}
       <Match keyed when={'cell' in props && props.cell}>
