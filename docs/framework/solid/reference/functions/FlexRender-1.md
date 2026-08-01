@@ -9,7 +9,7 @@ title: FlexRender
 function FlexRender<TFeatures, TData, TValue>(props): Element;
 ```
 
-Defined in: [FlexRender.tsx:77](https://github.com/TanStack/table/blob/main/packages/solid-table/src/FlexRender.tsx#L77)
+Defined in: [packages/solid-table/src/FlexRender.tsx:77](https://github.com/TanStack/table/blob/main/packages/solid-table/src/FlexRender.tsx#L77)
 
 Simplified component wrapper of `flexRender`. Use this utility component to render headers, cells, or footers with custom markup.
 Only one prop (`cell`, `header`, or `footer`) may be passed.

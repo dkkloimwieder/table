@@ -13,6 +13,7 @@ title: "@tanstack/solid-table"
 - [AppHeaderProps](interfaces/AppHeaderProps.md)
 - [AppTableComponent](interfaces/AppTableComponent.md)
 - [AppTableProps](interfaces/AppTableProps.md)
+- [CreateAtomOptions](interfaces/CreateAtomOptions.md)
 - [CreateTableHookResult](interfaces/CreateTableHookResult.md)
 
 ## Type Aliases
@@ -32,6 +33,7 @@ title: "@tanstack/solid-table"
 
 ## Functions
 
+- [createAtom](functions/createAtom.md)
 - [createTable](functions/createTable.md)
 - [createTableHook](functions/createTableHook.md)
 - [flexRender](functions/flexRender.md)

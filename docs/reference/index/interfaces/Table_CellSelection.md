@@ -5,7 +5,7 @@ title: Table_CellSelection
 
 # Interface: Table\_CellSelection\<TFeatures, TData\>
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:193](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L193)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:192](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L192)
 
 ## Type Parameters
 
@@ -25,7 +25,7 @@ Defined in: [features/cell-selection/cellSelectionFeature.types.ts:193](https://
 _isSelectingCells: boolean;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:206](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L206)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:205](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L205)
 
 **`Internal`**
 
@@ -43,7 +43,7 @@ selection persisted mid-drag cannot rehydrate into a stuck drag.
 autoResetCellSelection: () => void;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:213](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L213)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:212](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L212)
 
 Schedules a cell selection reset after `data` changes.
 
@@ -62,7 +62,7 @@ model; you rarely need to invoke it yourself.
 extendCellSelection: (direction) => void;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:217](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L217)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:216](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L216)
 
 Extends the active range one step in a direction, keeping its anchor fixed.
 
@@ -84,7 +84,7 @@ Extends the active range one step in a direction, keeping its anchor fixed.
 getCellSelectionBounds: () => CellSelectionBounds[];
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:224](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L224)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:223](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L223)
 
 Returns the selected ranges resolved into inclusive display-order indexes.
 
@@ -103,7 +103,7 @@ corners no longer resolve are omitted.
 getCellSelectionColumnIds: () => string[];
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:228](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L228)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:227](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L227)
 
 Returns the ids of all columns intersected by the selection.
 
@@ -119,7 +119,7 @@ Returns the ids of all columns intersected by the selection.
 getCellSelectionColumnIndexes: () => Record<string, number>;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:237](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L237)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:236](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L236)
 
 **`Internal`**
 
@@ -140,7 +140,7 @@ is absent, since its `getColumnIndexes` static rebuilds on every call.
 getCellSelectionRowIds: () => string[];
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:241](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L241)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:240](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L240)
 
 Returns the ids of all rows intersected by the selection.
 
@@ -158,7 +158,7 @@ getFocusedCell: () =>
   | undefined;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:245](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L245)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:244](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L244)
 
 Returns the active cell, i.e. the anchor of the most recent range.
 
@@ -175,7 +175,7 @@ Returns the active cell, i.e. the anchor of the most recent range.
 getSelectedCellCount: () => number;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:252](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L252)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:251](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L251)
 
 Returns the number of selected cells.
 
@@ -194,7 +194,7 @@ cells for overlapping ranges or a per-cell `enableCellSelection` predicate.
 getSelectedCellIds: () => string[];
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:259](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L259)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:258](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L258)
 
 Returns the unique ids of all selected cells, in row-major order.
 
@@ -213,7 +213,7 @@ It is memoized and never runs unless called.
 getSelectedCellRangesData: () => unknown[][][];
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:267](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L267)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:266](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L266)
 
 Returns each selected range's values as a row-major grid.
 
@@ -233,7 +233,7 @@ representation, and any quoting rules are application decisions.
 moveCellSelection: (direction) => void;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:272](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L272)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:271](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L271)
 
 Moves the selection one step in a direction, collapsing it to a single
 cell. Columns that cannot be selected are skipped over.
@@ -256,7 +256,7 @@ cell. Columns that cannot be selected are skipped over.
 resetCellSelection: (defaultState?) => void;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:278](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L278)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:277](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L277)
 
 Resets `cellSelection` to `initialState.cellSelection`.
 
@@ -280,7 +280,7 @@ Pass `true` to ignore initial state and reset to an empty selection.
 selectAllCells: () => void;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:282](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L282)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:281](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L281)
 
 Selects every selectable cell in the table as one range.
 
@@ -296,7 +296,7 @@ Selects every selectable cell in the table as one range.
 selectCellRange: (range, opts?) => void;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:286](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L286)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:285](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L285)
 
 Selects a rectangle, replacing the current selection unless `additive`.
 
@@ -322,7 +322,7 @@ Selects a rectangle, replacing the current selection unless `additive`.
 setCellSelection: (updater) => void;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:293](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L293)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:292](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L292)
 
 Updates cell selection state with a next value or updater function.
 
@@ -344,7 +344,7 @@ Updates cell selection state with a next value or updater function.
 setFocusedCell: (rowId, columnId) => void;
 ```
 
-Defined in: [features/cell-selection/cellSelectionFeature.types.ts:297](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L297)
+Defined in: [features/cell-selection/cellSelectionFeature.types.ts:296](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/cell-selection/cellSelectionFeature.types.ts#L296)
 
 Collapses the selection to a single cell at the given coordinates.
 

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  // Pin source links to the canonical repo: typedoc otherwise derives the
+  // GitHub base URL from the local `origin` remote, so regenerating reference
+  // docs from a fork rewrites every "Defined in" link to the fork.
+  "sourceLinkTemplate": "https://github.com/TanStack/table/blob/{gitRevision}/{path}#L{line}"
+}

@@ -9,7 +9,7 @@ title: flexRender
 function flexRender<TProps>(Comp, props): Element;
 ```
 
-Defined in: [FlexRender.tsx:23](https://github.com/TanStack/table/blob/main/packages/solid-table/src/FlexRender.tsx#L23)
+Defined in: [packages/solid-table/src/FlexRender.tsx:23](https://github.com/TanStack/table/blob/main/packages/solid-table/src/FlexRender.tsx#L23)
 
 Renders a Solid table template value with the provided context props.
 

@@ -9,7 +9,7 @@ title: table_getBottomRows
 function table_getBottomRows<TFeatures, TData>(table): Row<TFeatures, TData>[];
 ```
 
-Defined in: [features/row-pinning/rowPinningFeature.utils.ts:170](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/row-pinning/rowPinningFeature.utils.ts#L170)
+Defined in: [features/row-pinning/rowPinningFeature.utils.ts:169](https://github.com/TanStack/table/blob/main/packages/table-core/src/features/row-pinning/rowPinningFeature.utils.ts#L169)
 
 Resolves the visible rows pinned to the bottom region.
 

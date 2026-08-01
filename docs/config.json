@@ -631,6 +631,7 @@
         {
           "label": "solid",
           "children": [
+            { "label": "createAtom", "to": "framework/solid/reference/functions/createAtom" },
             { "label": "createTable", "to": "framework/solid/reference/functions/createTable" },
             { "label": "createTableHook", "to": "framework/solid/reference/functions/createTableHook" },
             { "label": "SolidTable", "to": "framework/solid/reference/type-aliases/SolidTable" },
