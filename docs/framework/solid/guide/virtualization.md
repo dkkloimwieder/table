@@ -16,7 +16,7 @@ Use getters for reactive inputs such as `data` when passing Solid signals to `cr
 
 Here's how you set up your table to use virtualization with TanStack Table. Virtualization is a rendering strategy, so TanStack Table does not need a feature or row model for it.
 
-Install and import the Solid virtualizer adapter from `@tanstack/solid-virtual`. TanStack Table still owns rows, columns, and table state; the virtualizer owns scroll indexes and measurements.
+The Solid examples build on the framework-agnostic `@tanstack/virtual-core` through a small local `createVirtualizer` wrapper (see [Install TanStack Virtual](#install-tanstack-virtual) below — `@tanstack/solid-virtual` currently supports Solid 1 only). TanStack Table still owns rows, columns, and table state; the virtualizer owns scroll indexes and measurements.
 Also see the [TanStack Virtual table example](https://tanstack.com/virtual/latest/docs/framework/react/examples/table) (a React example, but the virtualizer options translate directly to `createVirtualizer`).
 
 ## Virtualization (Solid) Guide
@@ -39,13 +39,22 @@ For small tables, normal rendering is simpler and usually preferable.
 
 ### Install TanStack Virtual
 
-Install the Solid virtualizer adapter:
+`@tanstack/solid-virtual` currently supports Solid 1 only, while the v9 table adapter targets Solid 2 (see the [Solid 2 Upgrade](./solid-2) guide). Until solid-virtual ships a Solid 2 release, install the framework-agnostic virtualizer core instead:
 
 ```sh
-npm install @tanstack/solid-virtual
+npm install @tanstack/virtual-core
 ```
 
-The Solid examples use `createVirtualizer` from `@tanstack/solid-virtual`. TanStack Table still owns rows, columns, headers, cells, sizing, sorting, filtering, and other table state; TanStack Virtual decides which item indexes should render for the current scroll position.
+The Solid examples pair it with a small local `createVirtualizer` wrapper (copy `src/createVirtualizer.ts` from any of the three virtualized examples — the file is identical in all of them). The wrapper exposes the same `Virtualizer` instance API as solid-virtual's `createVirtualizer`, so everything below — and the option patterns in TanStack Virtual's own docs — applies unchanged. One behavioral difference: there is no store/reconcile layer, so each change hands fresh `VirtualItem` objects to `<For>`, which recreates the visible items' DOM — fine for plain cells, but rows with local state or expensive renderers may need keying or memoization. Once `@tanstack/solid-virtual` supports Solid 2, swapping the import back is the whole migration.
+
+How the wrapper works, in brief:
+
+- It creates a `virtual-core` `Virtualizer` and re-resolves the options object in the tracked half of a `createRenderEffect`, so live option getters (like a reactive `get count()`) re-subscribe automatically; the untracked effect half pushes the resolved options into the core and bumps the version signal.
+- A single version signal is bumped by the core's `onChange` callback (and whenever the resolved options are re-pushed), and the two render-time reads — `getVirtualItems()` and `getTotalSize()` — subscribe to it through a `Proxy`, which is what makes scrolling reactive.
+- The version signal is created with `{ ownedWrite: true }` because the render effect's first run executes synchronously inside the creating component's owned scope (a Solid 2 constraint — see [Writes during component setup](./solid-2#writes-during-component-setup)).
+- `onSettled` mounts the core (`_didMount()`) once the DOM exists and returns its cleanup.
+
+TanStack Table still owns rows, columns, headers, cells, sizing, sorting, filtering, and other table state; TanStack Virtual decides which item indexes should render for the current scroll position.
 
 The table itself is set up like any other v9 table. Declare your features with `tableFeatures()` and create the table with `createTable`; nothing about virtualization changes the table setup.
 
@@ -58,7 +67,8 @@ import {
   tableFeatures,
   createTable,
 } from '@tanstack/solid-table'
-import { createVirtualizer } from '@tanstack/solid-virtual'
+// the local wrapper over @tanstack/virtual-core described above
+import { createVirtualizer } from './createVirtualizer'
 
 const features = tableFeatures({
   columnSizingFeature,
@@ -142,7 +152,7 @@ The core idea is that sorting, filtering, grouping, and other row-model work sti
 const rows = () => table.getRowModel().rows
 ```
 
-The row virtualizer is configured with `count: rows.length`, a row height estimate, the scroll container, and an overscan value. The `tbody` is given the full virtual height with `rowVirtualizer.getTotalSize()`, while each rendered row is absolutely positioned with `transform: translateY(...)`.
+The row virtualizer is configured with a reactive `get count()` getter over `rows().length`, a row height estimate, the scroll container, and an overscan value. The `tbody` is given the full virtual height with `rowVirtualizer.getTotalSize()`, while each rendered row is absolutely positioned with `transform: translateY(...)`.
 
 The examples render cells from the current row with APIs like `row.getVisibleCells()` or `row.getAllCells()`, depending on whether the example needs visibility-aware cells or all cells.
 
@@ -175,14 +185,19 @@ const columnVirtualizer = createVirtualizer({
 Column virtualization uses a different rendering strategy than row virtualization. Instead of absolutely positioning columns, the examples add fake spacer cells to the left and right:
 
 ```tsx
-const virtualColumns = columnVirtualizer.getVirtualItems()
-const virtualPaddingLeft = virtualColumns[0]?.start ?? 0
-const virtualPaddingRight =
-  columnVirtualizer.getTotalSize() -
-  (virtualColumns[virtualColumns.length - 1]?.end ?? 0)
+const virtualPaddingLeft = () => {
+  const vcs = columnVirtualizer.getVirtualItems()
+  return vcs.length ? (vcs[0]?.start ?? 0) : undefined
+}
+
+const virtualPaddingRight = () => {
+  const vcs = columnVirtualizer.getVirtualItems()
+  if (!vcs.length) return undefined
+  return columnVirtualizer.getTotalSize() - (vcs[vcs.length - 1]?.end ?? 0)
+}
 ```
 
-Those spacer cells preserve the horizontal scroll width while the renderer only mounts the virtual columns. This approach keeps row rendering table-like and allows dynamic row height measurement to keep working.
+The paddings are thunks so the reads stay reactive (a component-body `getVirtualItems()` call would be a one-time snapshot), and they return `undefined` when there are no virtual columns so the renderer can skip the spacer cells entirely. Those spacer cells preserve the horizontal scroll width while the renderer only mounts the virtual columns. This approach keeps row rendering table-like and allows dynamic row height measurement to keep working.
 
 ### Virtualized Rows And Columns Together
 
@@ -217,7 +232,7 @@ if (scrollHeight - scrollTop - clientHeight < 500) {
 }
 ```
 
-If sorting is handled by the server, use manual sorting so the fetched data reflects the whole backend dataset rather than only the currently loaded rows. When sorting changes and the fetched dataset is replaced, scroll back to the top with `rowVirtualizer.scrollToIndex(0)`.
+If sorting is handled by the server, use manual sorting so the fetched data reflects the whole backend dataset rather than only the currently loaded rows (the Solid example does this with `manualSorting: true` and a sorting atom). When sorting changes and the fetched dataset is replaced, you can scroll back to the top with `rowVirtualizer.scrollToIndex(0)` — a pattern the React infinite-scrolling example implements.
 
 ### Dynamic Row Heights
 

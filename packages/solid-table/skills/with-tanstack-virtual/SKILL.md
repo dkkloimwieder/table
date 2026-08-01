@@ -19,10 +19,12 @@ sources:
 
 This skill builds on `@tanstack/table-core#core`, `getting-started`, and `table-state`. Virtualize the final Table model in the renderer; Virtual is not a Table feature.
 
+`@tanstack/solid-virtual` is Solid-1-only; under Solid 2 install `@tanstack/virtual-core` and copy the local `createVirtualizer` wrapper from `src/createVirtualizer.ts` in any of the three virtualized Solid examples (byte-identical in all three). The wrapper exposes the same `Virtualizer` API, so every pattern below is unchanged — though it has no store/reconcile layer, so `<For>` recreates visible items' DOM on each change (fine for plain cells; heavy cell renderers may need memoization). Swap the import back once solid-virtual ships Solid 2 support.
+
 ## Setup
 
 ```tsx
-import { createVirtualizer } from '@tanstack/solid-virtual'
+import { createVirtualizer } from './createVirtualizer' // local wrapper over @tanstack/virtual-core
 
 let scrollElement: HTMLDivElement | undefined
 const rows = () => table.getRowModel().rows
@@ -32,7 +34,7 @@ const virtualizer = createVirtualizer({
   },
   getScrollElement: () => scrollElement ?? null,
   estimateSize: () => 36,
-  getItemKey: (index) => rows()[index].id,
+  getItemKey: (index) => rows()[index].id, // optional
   overscan: 5,
 })
 ```
@@ -83,7 +85,7 @@ createVirtualizer({
 })
 ```
 
-The getter lets Solid Virtual track changes to the final row model.
+The getter lets the wrapper's render effect re-resolve options and push the new count into the core.
 
 Source: `examples/solid/virtualized-rows`
 
@@ -172,4 +174,4 @@ Source: `examples/solid/virtualized-rows`
 
 ## API Discovery
 
-Inspect `node_modules/@tanstack/solid-table/dist/index.d.ts` and installed `node_modules/@tanstack/solid-virtual/dist/`; use the maintained row, column, or infinite example for the matching CSS geometry contract.
+Inspect `node_modules/@tanstack/solid-table/dist/index.d.ts` and installed `node_modules/@tanstack/virtual-core/dist/` (plus the local `createVirtualizer.ts` wrapper); use the maintained row, column, or infinite example for the matching CSS geometry contract.
