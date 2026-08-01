@@ -12,6 +12,8 @@ TanStack Table v9 is currently published under the `beta` tag:
 npm install @tanstack/solid-table@beta
 ```
 
+The v9 adapter targets **Solid 2**: it peer-depends on `solid-js` and `@solidjs/web`, both at `>=2.0.0-beta.29 <3.0.0`. If your app is still on Solid 1, install the last Solid-1 adapter release from the `solid1` dist-tag instead (`npm install @tanstack/solid-table@solid1`), and see the [Solid 2 Upgrade guide](./guide/solid-2.md) when you are ready to move.
+
 ## Your First Table
 
 The component below is complete. Paste it into a Solid app and you will see a working table.
@@ -115,7 +117,7 @@ A few things to note:
 - `tableFeatures({})` declares which optional features the table uses. Registering only what you need keeps bundles small and gives TypeScript accurate types for the table instance.
 - The `get data()` getter keeps the table reactive: when the signal updates, the table sees the new data. Passing `data: data()` would capture a one-time snapshot.
 - `FlexRender` renders the `header`, `cell`, and `footer` definitions from your columns, whether they are plain values or Solid components. It is also available on the table instance as `table.FlexRender`.
-- The `key` option is optional unless you use the [TanStack Table Devtools](../../devtools). The devtools identify tables by `key`, and you register a table by calling `useTanStackTableDevtools(table)` from `@tanstack/solid-table-devtools`.
+- The `key` option is optional unless you use the [TanStack Table Devtools](../../devtools). The devtools identify tables by `key`, and you register a table by calling `useTanStackTableDevtools(table)` from `@tanstack/solid-table-devtools`. (The devtools currently support Solid 1 only — keeping `key` in place costs nothing and lights the table back up when Solid 2 support ships; see the [Solid 2 Upgrade guide](./guide/solid-2.md).)
 
 See the full [Basic createTable example](./examples/basic-use-table) for a runnable version with more columns and a footer.
 
