@@ -10712,9 +10712,9 @@ importers:
 
   examples/solid/basic-dynamic-columns:
     dependencies:
-      '@tanstack/solid-pacer':
+      '@tanstack/pacer':
         specifier: ^0.21.1
-        version: 0.21.1(solid-js@1.9.14)
+        version: 0.21.1
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
@@ -10803,9 +10803,6 @@ importers:
 
   examples/solid/cell-selection:
     dependencies:
-      '@tanstack/solid-hotkeys':
-        specifier: ^0.10.0
-        version: 0.10.0(solid-js@1.9.14)
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
@@ -11045,9 +11042,9 @@ importers:
 
   examples/solid/filters:
     dependencies:
-      '@tanstack/solid-pacer':
+      '@tanstack/pacer':
         specifier: ^0.21.1
-        version: 0.21.1(solid-js@1.9.14)
+        version: 0.21.1
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
@@ -11070,9 +11067,9 @@ importers:
 
   examples/solid/filters-faceted:
     dependencies:
-      '@tanstack/solid-pacer':
+      '@tanstack/pacer':
         specifier: ^0.21.1
-        version: 0.21.1(solid-js@1.9.14)
+        version: 0.21.1
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
@@ -11120,9 +11117,9 @@ importers:
       '@tanstack/match-sorter-utils':
         specifier: workspace:*
         version: link:../../../packages/match-sorter-utils
-      '@tanstack/solid-pacer':
+      '@tanstack/pacer':
         specifier: ^0.21.1
-        version: 0.21.1(solid-js@1.9.14)
+        version: 0.21.1
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
@@ -20264,12 +20261,6 @@ packages:
     resolution: {integrity: sha512-jdUdVtr2ARotBmKV5SQubQNM7z8CGg53u4gB4773ggqNzWUxZbsYR2Vjy6/fkDX/1Lk1NMzqejszCW9m2HVp3Q==}
     peerDependencies:
       solid-js: '>=1.9.9'
-
-  '@tanstack/solid-hotkeys@0.10.0':
-    resolution: {integrity: sha512-jThxkZMt1ShaQ/ynvyzHfwdbl15gTxJWXnQtbHuRHrzYFvuBB5fx4+D0jKQJ3sSq6XN3HwB3f9cVI0na5rN+Bw==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      solid-js: '>=1.7.0'
 
   '@tanstack/solid-pacer@0.21.1':
     resolution: {integrity: sha512-0a0Fv35Ht3P6iQYDZKXInI1DkKzb4WYi3bxh+4lx9FDfvL4GDik7EKTkP8P5N/vJ8fF8by9oqls1BMIlaEywoQ==}
@@ -33923,12 +33914,6 @@ snapshots:
   '@tanstack/solid-form@1.33.2(solid-js@1.9.14)':
     dependencies:
       '@tanstack/form-core': 1.33.2
-      '@tanstack/solid-store': 0.11.0(solid-js@1.9.14)
-      solid-js: 1.9.14
-
-  '@tanstack/solid-hotkeys@0.10.0(solid-js@1.9.14)':
-    dependencies:
-      '@tanstack/hotkeys': 0.8.0
       '@tanstack/solid-store': 0.11.0(solid-js@1.9.14)
       solid-js: 1.9.14
 
