@@ -9,6 +9,7 @@ import {
   runWithOwner,
   untrack,
 } from 'solid-js'
+import { mergeObjects } from './merge-objects'
 import type {
   Atom,
   AtomOptions,
@@ -21,6 +22,8 @@ import type {
   TableAtomOptions,
   TableReactivityBindings,
 } from '@tanstack/table-core/reactivity'
+
+const optionsStoreDebugName = 'table/optionsStore'
 
 function observerToCallback<T>(
   observerOrNext: Observer<T> | ((value: T) => void),
@@ -140,6 +143,54 @@ function signalToWritableAtom<T>(
   })
 }
 
+/**
+ * The options store as a Solid writable memo (design D14, validated by the
+ * writable-memo spike): `createSignal(fn, options)` keeps `table.options`
+ * pull-based — the stored object carries the caller's live option getters, so
+ * row-model reads are always current without an eager push-sync loop.
+ *
+ * `constructTable` builds the store's initial value with an object spread,
+ * which EVALUATES every user option getter into a snapshot. The compute
+ * re-layers the adapter's getter-carrying merged options (`getLiveOptions`)
+ * on top, doing eagerly-at-creation what the Solid 1 `createComputed`
+ * push-sync did on its synchronous first run. Later `setOptions` writes stay
+ * getter-preserving through the adapter's `mergeOptions` binding.
+ *
+ * `set` settles the queue on BOTH sides of the write: a manual write on a
+ * writable memo permanently swallows a same-tick pending dep change
+ * (REACTIVE_MANUAL_WRITE unschedules the recompute and nothing reschedules
+ * it), so the queue must be drained before writing; the trailing flush keeps
+ * the write immediately visible to the imperative reads that follow it inside
+ * table-core's synchronous update paths.
+ */
+function createOptionsStoreAtom<T>(
+  initialValue: T,
+  owner: Owner | null,
+  getLiveOptions?: () => unknown,
+): Atom<T> {
+  const [raw, setRaw] = runWithOwner(owner, () =>
+    createSignal<T>(
+      (prev) => mergeObjects(prev ?? initialValue, getLiveOptions?.()),
+      {
+        name: optionsStoreDebugName,
+        ownedWrite: true,
+      },
+    ),
+  )
+  return Object.assign(raw, {
+    set: (updater: T | ((prevVal: T) => T)) => {
+      flush()
+      typeof updater === 'function'
+        ? setRaw(updater as unknown as (prev: T) => T)
+        : setRaw(updater as Exclude<T, Function>)
+      flush()
+    },
+    get: () => readSettled(raw),
+    subscribe: ((observerOrNext: Observer<T> | ((value: T) => void)) =>
+      subscribeToSignal(raw, owner, observerOrNext)) as Atom<T>['subscribe'],
+  })
+}
+
 export interface CreateAtomOptions<T> extends AtomOptions<T> {
   /**
    * A debug name for the atom, shown by Solid's dev tooling.
@@ -183,7 +234,10 @@ export function createAtom<T>(
  * one, i.e. it tears. All writable atoms set `ownedWrite: true` because
  * table-core legitimately writes from reactive scopes.
  */
-export function solidReactivity(owner: Owner): TableReactivityBindings {
+export function solidReactivity(
+  owner: Owner,
+  getLiveOptions?: () => unknown,
+): TableReactivityBindings {
   const subscriptions = new Set<Subscription>()
 
   return {
@@ -210,6 +264,9 @@ export function solidReactivity(owner: Owner): TableReactivityBindings {
       value: T,
       options?: TableAtomOptions<T>,
     ): Atom<T> => {
+      if (options?.debugName === optionsStoreDebugName) {
+        return createOptionsStoreAtom(value, owner, getLiveOptions)
+      }
       const writableSignal = createSignal<T>(value as Exclude<T, Function>, {
         equals: options?.compare,
         name: options?.debugName,

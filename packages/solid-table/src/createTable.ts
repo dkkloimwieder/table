@@ -1,9 +1,9 @@
 import { constructTable } from '@tanstack/table-core'
-import { createComputed, getOwner, onCleanup, untrack } from 'solid-js'
+import { createOwner, getOwner, onCleanup, runWithOwner } from 'solid-js'
 import { FlexRender } from './FlexRender'
 import { mergeObjects } from './merge-objects'
 import { solidReactivity } from './reactivity'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type {
   RowData,
   Table,
@@ -57,8 +57,26 @@ export function createTable<
   TFeatures extends TableFeatures,
   TData extends RowData,
 >(tableOptions: TableOptions<TFeatures, TData>): SolidTable<TFeatures, TData> {
-  const owner = getOwner()!
-  const reactivity = solidReactivity(owner)
+  // In Solid 2 `runWithOwner(null, fn)` means "detach" rather than failing, so
+  // a missing owner would silently leak every table computation instead of
+  // crashing like the old `getOwner()!` did — warn and fall back to a
+  // detached owner (design D17).
+  const currentOwner = getOwner()
+  if (process.env.NODE_ENV !== 'production' && currentOwner === null) {
+    console.warn(
+      'createTable was called outside a reactive root. Table computations ' +
+        'will never be disposed. Create the table inside a component or ' +
+        'wrap the call in createRoot.',
+    )
+  }
+  const owner = currentOwner ?? createOwner()
+
+  // Late-bound: the reactivity bindings need the getter-carrying merged
+  // options for the options store, but building those options requires the
+  // bindings (they ride in as a feature). The thunk is only invoked from
+  // inside constructTable, after `liveOptions.current` is assigned.
+  const liveOptions: { current?: unknown } = {}
+  const reactivity = solidReactivity(owner, () => liveOptions.current)
 
   const mergedOptions = mergeObjects(tableOptions, {
     features: {
@@ -79,35 +97,20 @@ export function createTable<
     mergedOptions,
   ) as TableOptions<TFeatures, TData>
 
+  liveOptions.current = mergedOptions
+
   const table = constructTable(resolvedOptions) as unknown as SolidTable<
     TFeatures,
     TData
   >
 
-  // Sync options reactively. This merge stays getter-preserving (rather than
-  // using `flatMerge` like the Svelte adapter) because Solid tracks the option
-  // getters where they are read: a row-model memo reading `table.options.data`
-  // subscribes to the caller's signal through the live getter chain, without
-  // this computation having to depend on every option.
-  createComputed(() => {
-    const userState = tableOptions.state
-    if (userState) {
-      for (const key in userState) {
-        void (userState as Record<string, unknown>)[key]
-      }
-    }
-
-    untrack(() => {
-      table.setOptions((prev) => {
-        return mergeObjects(prev, mergedOptions) as TableOptions<
-          TFeatures,
-          TData
-        >
-      })
-    })
+  // No push-sync loop: the options store is a pull-based writable memo (see
+  // createOptionsStoreAtom) and every merge along the way is getter-preserving,
+  // so `table.options.data` reads the caller's signal through the live getter
+  // chain and is always current.
+  runWithOwner(owner, () => {
+    onCleanup(() => reactivity.unmount?.())
   })
-
-  onCleanup(() => reactivity.unmount?.())
 
   table.Subscribe = (props: {
     children: (atoms: Table<TFeatures, TData>['atoms']) => JSX.Element
