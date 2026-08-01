@@ -16,14 +16,14 @@ sources:
   - 'TanStack/table:docs/framework/solid/guide/pagination.md'
 ---
 
-This skill builds on `@tanstack/table-core#client-vs-server`, `getting-started`, and `table-state`. Query owns remote data; Table receives already processed rows for each manual stage.
+This skill builds on `@tanstack/table-core#client-vs-server`, `getting-started`, and `table-state`. Query owns remote data; Table receives already processed rows for each manual stage. Use `@tanstack/solid-query` v6 (`6.0.0-beta.6` or newer) — the Solid 2 release line matching this adapter.
 
 ## Setup
 
 ```tsx
 import { keepPreviousData, useQuery } from '@tanstack/solid-query'
-import { createAtom, useSelector } from '@tanstack/solid-store'
 import {
+  createAtom,
   createTable,
   rowPaginationFeature,
   tableFeatures,
@@ -32,7 +32,7 @@ import {
 const features = tableFeatures({ rowPaginationFeature })
 const emptyRows: Array<{ id: string }> = []
 const paginationAtom = createAtom({ pageIndex: 0, pageSize: 20 })
-const pagination = useSelector(paginationAtom)
+const pagination = () => paginationAtom.get()
 const result = useQuery(() => ({
   queryKey: ['people', pagination()],
   queryFn: () => fetchPeople(pagination()),

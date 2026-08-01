@@ -19,7 +19,7 @@ sources:
 
 Read `@tanstack/table-core#migrate-v8-to-v9`, `getting-started`, and `table-state`. Use this as the exhaustive Solid migration checklist. Check the installed declarations before emitting APIs for another beta.
 
-Framework prerequisite: Solid 1.3 or newer (`solid-js >=1.3`).
+Framework prerequisite: Solid 2 (`solid-js` and `@solidjs/web`, both `>=2.0.0-beta.29 <3.0.0`). Apps staying on Solid 1 install the last Solid-1 adapter from the `solid1` dist-tag instead (`npm install @tanstack/solid-table@solid1`); see the Solid 2 Upgrade guide for the Solid upgrade itself.
 
 ## Target architecture
 
@@ -105,7 +105,7 @@ const table = createTable({
 </table.Subscribe>
 ```
 
-Use `createAtom`/`useSelector` from `@tanstack/solid-store` for externally owned slices. An external atom wins over `state` for the same slice; do not combine ownership models accidentally.
+Use the adapter's `createAtom` export for externally owned slices (read it with a tracked `atom.get()`; `@tanstack/solid-store` is Solid-1-only). An external atom wins over `state` for the same slice; do not combine ownership models accidentally.
 
 ### Rendering and composition
 

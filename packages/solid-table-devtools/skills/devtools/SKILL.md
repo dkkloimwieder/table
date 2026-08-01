@@ -18,10 +18,11 @@ sources:
 
 This skill builds on @tanstack/table-core#core and @tanstack/table-devtools#devtools.
 
+The Solid devtools stack currently supports Solid 1 only (`@tanstack/solid-table-devtools` peers `solid-js <2.0.0`) — pair it with the `solid1` dist-tag adapter releases. In a Solid 2 app, keep the `key` table option but leave devtools unwired until the devtools packages ship Solid 2 support.
+
 ## Setup
 
 ```tsx
-import { TanStackDevtools } from '@tanstack/solid-devtools'
 import { createTable, tableFeatures } from '@tanstack/solid-table'
 import {
   tableDevtoolsPlugin,
@@ -29,6 +30,7 @@ import {
 } from '@tanstack/solid-table-devtools'
 
 const features = tableFeatures({})
+const plugin = tableDevtoolsPlugin()
 
 export function App() {
   const table = createTable({
@@ -38,9 +40,11 @@ export function App() {
     data: [],
   })
   useTanStackTableDevtools(table)
-  return <TanStackDevtools plugins={[tableDevtoolsPlugin()]} />
+  return null
 }
 ```
+
+Mount `plugin` in your devtools shell's `plugins` array — for example the `TanStackDevtools` component from `@tanstack/solid-devtools` (Solid 1 only).
 
 ## Hooks and Components
 
