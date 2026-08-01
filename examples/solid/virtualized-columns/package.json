@@ -19,7 +19,7 @@
   },
   "dependencies": {
     "@tanstack/solid-table": "^9.0.0-beta.65",
-    "@tanstack/solid-virtual": "^3.13.36",
+    "@tanstack/virtual-core": "^3.17.7",
     "solid-js": "^1.9.14"
   }
 }

@@ -11346,9 +11346,9 @@ importers:
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-virtual':
-        specifier: ^3.13.36
-        version: 3.13.36(solid-js@1.9.14)
+      '@tanstack/virtual-core':
+        specifier: ^3.17.7
+        version: 3.17.7
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -11377,9 +11377,9 @@ importers:
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-virtual':
-        specifier: ^3.13.36
-        version: 3.13.36(solid-js@1.9.14)
+      '@tanstack/virtual-core':
+        specifier: ^3.17.7
+        version: 3.17.7
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -11402,9 +11402,9 @@ importers:
       '@tanstack/solid-table':
         specifier: workspace:*
         version: link:../../../packages/solid-table
-      '@tanstack/solid-virtual':
-        specifier: ^3.13.36
-        version: 3.13.36(solid-js@1.9.14)
+      '@tanstack/virtual-core':
+        specifier: ^3.17.7
+        version: 3.17.7
       solid-js:
         specifier: ^1.9.14
         version: 1.9.14
@@ -20250,11 +20250,6 @@ packages:
     resolution: {integrity: sha512-2isL0ZnnyI1iN0V+QPrxE3OcPndohBgVlBcHZYoAOIAiU1WoWjVy0q5gb0suPu1Id0h5cKC23JnwzQTxWDZD0w==}
     peerDependencies:
       solid-js: ^1.6.0
-
-  '@tanstack/solid-virtual@3.13.36':
-    resolution: {integrity: sha512-9x4Eg3M+t7cY0/lswB6JnK1C/3YcsdBttUYQgSre+5zcwVJMZnp0Gy3mT++jeSN1bi7M5pxUPnAVoD1YE9DuLQ==}
-    peerDependencies:
-      solid-js: ^1.3.0
 
   '@tanstack/start-client-core@1.170.13':
     resolution: {integrity: sha512-o37M3msIK5ec87kPrIYJWXb1XPnjIe5/jrkGLXiXpFuVL99z7mhoBCzftKtVPtzqI8EElnRE/VGFYT9BHNnWcw==}
@@ -33901,11 +33896,6 @@ snapshots:
   '@tanstack/solid-store@0.11.0(solid-js@1.9.14)':
     dependencies:
       '@tanstack/store': 0.11.0
-      solid-js: 1.9.14
-
-  '@tanstack/solid-virtual@3.13.36(solid-js@1.9.14)':
-    dependencies:
-      '@tanstack/virtual-core': 3.17.7
       solid-js: 1.9.14
 
   '@tanstack/start-client-core@1.170.13':
