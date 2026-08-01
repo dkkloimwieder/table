@@ -135,14 +135,14 @@ table.resetColumnSizing(true)
 If you need to own the `columnSizing` state yourself (for example, to persist user-set column widths), the recommended v9 approach is an external atom passed to the table's `atoms` option. External atoms give you fine-grained subscriptions anywhere in your app, and other code can read or write the sizing state without going through the component that owns the table.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 import type { ColumnSizingState } from '@tanstack/solid-table'
 
 const features = tableFeatures({ columnSizingFeature })
 
 const columnSizingAtom = createAtom<ColumnSizingState>({})
 
-const columnSizing = useSelector(columnSizingAtom) // subscribe wherever it is needed
+const columnSizing = () => columnSizingAtom.get() // read wherever it is needed
 
 const table = createTable({
   features,

@@ -158,12 +158,12 @@ However, if you need access to the column filter state outside of the table, you
 If you need easy access to the column filter state in other parts of your application, you can own the column filter state slice yourself. The recommended way in v9 is an external atom passed through the `atoms` table option. Atoms preserve fine-grained subscriptions, and the filter values can be used elsewhere (such as in a query key for server-side filtering) without making the table depend on component-local state.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 
 const columnFiltersAtom = createAtom<ColumnFiltersState>([]) // can set initial column filter state here
 
-// subscribe to the atom wherever you need the value (e.g. for a query key)
-const columnFilters = useSelector(columnFiltersAtom)
+// read the atom wherever you need the value (e.g. for a query key)
+const columnFilters = () => columnFiltersAtom.get()
 
 const table = createTable({
   features,

@@ -158,12 +158,12 @@ The `globalFilter` state slice holds the current global filter value, usually a 
 If you need access to the global filter state outside of the table, you can own the slice yourself. The recommended way in v9 is an external atom passed through the `atoms` table option. Atoms preserve fine-grained subscriptions, and the filter value can be used elsewhere (such as in a query key for server-side filtering) without making the table depend on component-local state.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 
 const globalFilterAtom = createAtom<string>('')
 
-// subscribe to the atom wherever you need the value (e.g. for a query key)
-const globalFilter = useSelector(globalFilterAtom)
+// read the atom wherever you need the value (e.g. for a query key)
+const globalFilter = () => globalFilterAtom.get()
 
 const table = createTable({
   features,

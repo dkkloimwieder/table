@@ -139,7 +139,7 @@ By default, the `row.getCanExpand()` row instance API will return false unless i
         </tr>
         <Show when={row.getIsExpanded()}>
           <tr>
-            <td colSpan={row.getAllCells().length}>
+            <td colspan={row.getAllCells().length}>
               {/* Your custom UI goes here */}
             </td>
           </tr>
@@ -155,12 +155,12 @@ By default, the `row.getCanExpand()` row instance API will return false unless i
 If you need access to the expanded state of the rows in other parts of your application, you can own the `expanded` state slice yourself. The recommended way in v9 is an external atom passed through the `atoms` table option. Atoms preserve fine-grained subscriptions, and the expanded value can be read anywhere in your app without making the table depend on component-local state.
 
 ```ts
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 
 const expandedAtom = createAtom<ExpandedState>({})
 
-// subscribe to the atom wherever you need the value
-const expanded = useSelector(expandedAtom)
+// read the atom wherever you need the value
+const expanded = () => expandedAtom.get()
 
 const table = createTable({
   features,

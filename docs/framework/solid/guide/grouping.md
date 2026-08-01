@@ -131,13 +131,13 @@ const table = createTable({
 If you need access to the grouping state in other parts of your application, you can own the `grouping` state slice yourself. The recommended way in v9 is an external atom passed through the `atoms` table option. Atoms preserve fine-grained subscriptions, and the grouping value can be read anywhere in your app (such as in a query key for server-side grouping) without making the table depend on component-local state.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 import type { GroupingState } from '@tanstack/solid-table'
 
 const groupingAtom = createAtom<GroupingState>([])
 
-// subscribe to the atom wherever you need the value
-const grouping = useSelector(groupingAtom)
+// read the atom wherever you need the value
+const grouping = () => groupingAtom.get()
 
 const table = createTable({
   features,

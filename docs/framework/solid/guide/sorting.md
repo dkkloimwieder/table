@@ -86,12 +86,12 @@ However, if you need access to the sorting state outside of the table, you can "
 If you need easy access to the sorting state in other parts of your application, you can own the sorting state slice yourself. The recommended way in v9 is an external atom passed through the `atoms` table option. Atoms preserve fine-grained subscriptions, and the sorting value can be used elsewhere (such as in a query key for server-side sorting) without making the table depend on component-local state.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 
 const sortingAtom = createAtom<SortingState>([]) // can set initial sorting state here
 
-// subscribe to the atom wherever you need the value (e.g. for a query key)
-const sorting = useSelector(sortingAtom)
+// read the atom wherever you need the value (e.g. for a query key)
+const sorting = () => sortingAtom.get()
 
 const table = createTable({
   features,
@@ -155,14 +155,14 @@ Whether or not you should use client-side or server-side sorting depends entirel
 If you plan to just use your own server-side sorting in your back-end logic, you do not need to provide a sorted row model. But if you have provided a sorting row model, but you want to disable it, you can use the `manualSorting` table option.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 
 const features = tableFeatures({ rowSortingFeature }) // feature needed for sorting state/APIs
 
 const sortingAtom = createAtom<SortingState>([])
 
-// subscribe to the sorting state for your server-side query
-const sorting = useSelector(sortingAtom)
+// read the sorting state for your server-side query
+const sorting = () => sortingAtom.get()
 //...
 const table = createTable({
   features,

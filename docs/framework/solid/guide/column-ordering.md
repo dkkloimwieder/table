@@ -76,8 +76,8 @@ If you need to dynamically change the column order, or set the column order afte
 In v9, the recommended way to own a state slice is with an external atom passed to the table's `atoms` option. External atoms give you fine-grained subscriptions anywhere in your app, and other code can read or write the column order without going through the component that owns the table.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
 import {
+  createAtom,
   createTable,
   tableFeatures,
   columnOrderingFeature,
@@ -92,7 +92,7 @@ const columnOrderAtom = createAtom<ColumnOrderState>([
   'columnId3',
 ])
 
-const columnOrder = useSelector(columnOrderAtom) // subscribe wherever it is needed
+const columnOrder = () => columnOrderAtom.get() // read wherever it is needed
 
 const table = createTable({
   features,

@@ -57,8 +57,8 @@ Managing the `columnPinning` state is optional, and usually not necessary unless
 In v9, the recommended way to own a state slice is with an external atom passed to the table's `atoms` option. External atoms give you fine-grained subscriptions anywhere in your app, and other code can read or write the pinning state without going through the component that owns the table.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
 import {
+  createAtom,
   createTable,
   tableFeatures,
   columnPinningFeature,
@@ -72,7 +72,7 @@ const columnPinningAtom = createAtom<ColumnPinningState>({
   end: [],
 })
 
-const columnPinning = useSelector(columnPinningAtom) // subscribe wherever it is needed
+const columnPinning = () => columnPinningAtom.get() // read wherever it is needed
 
 const table = createTable({
   features,

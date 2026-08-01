@@ -33,7 +33,9 @@ A table instance has a few state surfaces:
 - `table.atoms` are readonly derived atoms exposed per registered state slice.
 - `table.store` is a readonly flat TanStack Store derived by putting all of the registered `table.atoms` together.
 
-The Solid adapter provides `solidReactivity(owner)` to the table's `coreReactivityFeature`. Core readonly atoms are Solid `createMemo` values and core writable atoms are Solid `createSignal` values. Because atom `.get()` reads through Solid signals and memos, table APIs can be consumed inside Solid computations and update only the computations that read the relevant state.
+The Solid adapter provides `solidReactivity(owner, getLiveOptions?)` to the table's `coreReactivityFeature`. Core readonly atoms are Solid `createMemo` values (created under the table's owner) and core writable atoms are Solid `createSignal` values (created with `ownedWrite`, because table-core legitimately writes them from its own reactive scopes). Because atom `.get()` reads through Solid signals and memos, table APIs can be consumed inside Solid computations and update only the computations that read the relevant state.
+
+Solid 2 auto-batches writes: setting table state schedules the reactive graph to settle on the next microtask, so effects and the DOM update on that microtask rather than during the write. Imperative reads outside a reactive scope settle pending updates first, so a state write is still visible to the next read in the same event handler.
 
 ### Feature-based State
 
@@ -244,11 +246,11 @@ If you need easy access to table state in other parts of your application, you c
 
 #### External Atoms
 
-Use external atoms when the app should own one or more table state slices as TanStack Store atoms. Create stable writable atoms with `createAtom`, pass them to `atoms`, and subscribe to them with `useSelector` anywhere else in your app. `@tanstack/solid-store` is only needed by your app if you choose this pattern; the Solid table adapter itself uses Solid-native reactivity.
+Use external atoms when the app should own one or more table state slices as TanStack Store atoms. Create stable writable atoms with `createAtom` from `@tanstack/solid-table`, pass them to `atoms`, and read them with `atom.get()` anywhere else in your app. `createAtom` returns a Solid-native writable atom that satisfies the TanStack Store `Atom` contract, so `.get()` is tracked wherever it is called from a reactive scope; the Solid table adapter itself uses Solid-native reactivity throughout.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
 import {
+  createAtom,
   createTable,
   rowPaginationFeature,
   tableFeatures,
@@ -264,7 +266,7 @@ const paginationAtom = createAtom<PaginationState>({
   pageSize: 10,
 })
 
-const pagination = useSelector(paginationAtom)
+const pagination = () => paginationAtom.get()
 
 const dataQuery = useQuery(() => ({
   queryKey: ['data', pagination()],

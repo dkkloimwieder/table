@@ -122,8 +122,7 @@ How you apply these size styles to your markup is up to you, but it is pretty co
 
 ```tsx
 <th
-  key={header.id}
-  colSpan={header.colSpan}
+  colspan={header.colSpan}
   style={{ width: `${header.getSize()}px` }}
 >
 ```
@@ -173,7 +172,7 @@ type columnResizingState = {
 You rarely need to manage this transient drag state yourself, but if you do, the recommended v9 approach is an external atom passed to the table's `atoms` option. External atoms give you fine-grained subscriptions anywhere in your app, and other code can observe the resize state without going through the component that owns the table.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 import type { columnResizingState } from '@tanstack/solid-table'
 
 const columnResizingAtom = createAtom<columnResizingState>({
@@ -185,7 +184,7 @@ const columnResizingAtom = createAtom<columnResizingState>({
   startSize: null,
 })
 
-const columnResizing = useSelector(columnResizingAtom) // subscribe wherever it is needed
+const columnResizing = () => columnResizingAtom.get() // read wherever it is needed
 
 const table = createTable({
   features,

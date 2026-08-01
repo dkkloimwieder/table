@@ -9,5 +9,5 @@
 > support.
 
 To run it in the meantime, copy the directory out of the repo and install
-its dependencies standalone with the last Solid-1 adapter release
-(`@tanstack/solid-table@npm:solid1` dist-tag).
+its dependencies standalone with the last Solid-1 adapter release from the
+`solid1` dist-tag (`npm install @tanstack/solid-table@solid1`).

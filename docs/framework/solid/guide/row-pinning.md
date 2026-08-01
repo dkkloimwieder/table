@@ -91,7 +91,7 @@ const table = createTable({
 If you need to manage row pinning outside of the table instance, the recommended v9 approach is an external atom passed to the table's `atoms` option. External atoms give you fine-grained subscriptions anywhere in your app, and other code can read or write the pinning state without going through the component that owns the table.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 import type { RowPinningState } from '@tanstack/solid-table'
 
 const rowPinningAtom = createAtom<RowPinningState>({
@@ -99,7 +99,7 @@ const rowPinningAtom = createAtom<RowPinningState>({
   bottom: [],
 })
 
-const rowPinning = useSelector(rowPinningAtom) // subscribe wherever it is needed
+const rowPinning = () => rowPinningAtom.get() // read wherever it is needed
 
 const table = createTable({
   features,

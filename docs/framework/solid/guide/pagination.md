@@ -131,8 +131,8 @@ In Solid, the table's state atoms are backed by Solid signals, so `table.atoms.p
 If you need access to the `pagination` state outside of the table (a server-side query key is the most common case), you can own the slice yourself. The recommended way in v9 is an external atom passed through the `atoms` table option. Atoms preserve fine-grained subscriptions, and the pagination value can be used in a query key without making the table depend on component-local state.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
 import {
+  createAtom,
   createTable,
   tableFeatures,
   rowPaginationFeature,
@@ -147,8 +147,8 @@ const paginationAtom = createAtom<PaginationState>({
   pageSize: 10, // default page size
 })
 
-// subscribe to the atom wherever you need the value (e.g. for a query key)
-const pagination = useSelector(paginationAtom)
+// read the atom wherever you need the value (e.g. for a query key)
+const pagination = () => paginationAtom.get()
 
 const table = createTable({
   features,

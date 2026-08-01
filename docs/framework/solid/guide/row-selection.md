@@ -61,8 +61,8 @@ In Solid, the table's state atoms are backed by Solid signals, so `table.atoms.r
 If you need easy access to the selected row ids in other parts of your application (for example, to make API calls with them), you can own the row selection state slice yourself. The recommended way in v9 is an external atom passed through the `atoms` table option. Atoms preserve fine-grained subscriptions, and the selection value can be read anywhere in your app without making the table depend on component-local state.
 
 ```ts
-import { createAtom, useSelector } from '@tanstack/solid-store'
 import {
+  createAtom,
   createTable,
   tableFeatures,
   rowSelectionFeature,
@@ -73,8 +73,8 @@ const features = tableFeatures({ rowSelectionFeature })
 
 const rowSelectionAtom = createAtom<RowSelectionState>({})
 
-// subscribe to the atom wherever you need the value
-const rowSelection = useSelector(rowSelectionAtom)
+// read the atom wherever you need the value
+const rowSelection = () => rowSelectionAtom.get()
 
 const table = createTable({
   features,

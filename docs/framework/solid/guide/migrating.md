@@ -25,7 +25,7 @@ TanStack Table V9 is a major release with significant internal architectural imp
 
 - **TanStack Store foundation**: State is backed by TanStack Store atoms with Solid-aware reactivity.
 - **Solid-native reads**: Atom reads participate in Solid tracking when called inside JSX, `createMemo`, `createEffect`, or `table.Subscribe`.
-- **External atoms**: Apps can own individual slices with atoms from `@tanstack/solid-store`.
+- **External atoms**: Apps can own individual slices with atoms created by `createAtom` from `@tanstack/solid-table`.
 
 ### 3. Type-Safety Improvements
 
@@ -61,6 +61,12 @@ The main migration is replacing `createSolidTable` with `createTable`, then movi
 ---
 
 ## Core Breaking Changes
+
+### Solid 2 Requirement
+
+The v9 Solid adapter targets Solid 2. Its peer dependencies are `solid-js` and `@solidjs/web` at `>=2.0.0-beta.29 <3.0.0`, so upgrading the adapter means upgrading Solid alongside it, including Solid 2's own breaking changes (`solid-js/web` moved to `@solidjs/web`, `solid-js/store` is gone, `batch` was replaced by auto-batching, and `on`, `onMount`, `splitProps`, `mergeProps`, and `createComputed` were removed).
+
+If you need to stay on Solid 1 for now, install the last Solid-1 adapter release from the `solid1` dist-tag (`npm install @tanstack/solid-table@solid1`).
 
 ### Entrypoint Rename
 
@@ -393,7 +399,7 @@ const unsubscribe = table.store.subscribe((state) => {
 External atoms are useful when the app should own a table state slice outside one component.
 
 ```tsx
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/solid-table'
 import type { PaginationState, SortingState } from '@tanstack/solid-table'
 
 const sortingAtom = createAtom<SortingState>([])
@@ -403,7 +409,7 @@ const paginationAtom = createAtom<PaginationState>({
 })
 
 function MyTable() {
-  const pagination = useSelector(paginationAtom)
+  const pagination = () => paginationAtom.get()
 
   const table = createTable({
     features,
@@ -784,6 +790,7 @@ type Person = {
 
 ## Migration Checklist
 
+- [ ] Upgrade to Solid 2 (`solid-js` and `@solidjs/web` at `>=2.0.0-beta.29 <3.0.0`), or stay on the `solid1` dist-tag of the adapter.
 - [ ] Replace `createSolidTable` with `createTable`.
 - [ ] Define `features` using `tableFeatures()` (or use `stockFeatures`)
 - [ ] Move every `get*RowModel` factory into `tableFeatures` as a slot (e.g. `sortedRowModel: createSortedRowModel()`).
