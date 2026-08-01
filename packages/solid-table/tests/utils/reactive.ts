@@ -20,16 +20,10 @@ export function settle(): void {
   flush()
 }
 
-/**
- * Settles work that takes an extra microtask turn because it is scheduled
- * through the adapter's `schedule()` binding (e.g. `table_autoResetPageIndex`
- * runs `queueMicrotask`, so its effects land one turn after the flush).
- */
-export async function settleAsync(): Promise<void> {
-  flush()
-  await Promise.resolve()
-  flush()
-}
+// Work scheduled through the adapter's `schedule()` binding takes an extra
+// microtask turn (e.g. `table_autoResetPageIndex` runs `queueMicrotask`, so
+// its effects land one turn after the flush); settle that with
+// `flush(); await Promise.resolve(); flush()` inline when a test needs it.
 
 /**
  * Runs `setup` inside a disposable root and hands back both the root's value

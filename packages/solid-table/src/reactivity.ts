@@ -39,16 +39,21 @@ function observerToCallback<T>(
  * Inside a reactive scope (JSX, memo, effect compute) the read is tracked and
  * left un-settled — computations already observe pending values, and calling
  * `flush()` from inside the graph is either a no-op or an error. Outside any
- * observer the pending queue is flushed first so imperative callers get
- * read-your-writes (`table.setPageSize(50)` then `pagination.get()`), then the
- * value is read untracked.
+ * observer AND any owner the pending queue is flushed first so imperative
+ * callers get read-your-writes (`table.setPageSize(50)` then
+ * `pagination.get()`), then the value is read untracked.
+ *
+ * The owner guard matters: an untracked read during component construction
+ * (e.g. table-core resolving options) must NOT drain the queue — `flush()`
+ * would run pending effect halves synchronously inside the mounting
+ * component's owned scope, where their otherwise-legal plain signal writes
+ * hard-throw `REACTIVE_WRITE_IN_OWNED_SCOPE`. Owned-but-untracked reads see
+ * the committed value instead.
  */
 function readSettled<T>(signal: Accessor<T>): T {
-  if (getObserver() === null) {
-    flush()
-    return untrack(signal)
-  }
-  return signal()
+  if (getObserver() !== null) return signal()
+  if (getOwner() === null) flush()
+  return untrack(signal)
 }
 
 /**

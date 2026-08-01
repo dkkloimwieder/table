@@ -1,11 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
-import {
-  createEffect,
-  createMemo,
-  createRoot,
-  createSignal,
-  getOwner,
-} from 'solid-js'
+import { createEffect, createMemo, createSignal, getOwner } from 'solid-js'
 import { createAtom } from '@tanstack/store'
 import { stockFeatures } from '@tanstack/table-core'
 import { createTable } from '../../src/createTable'
@@ -14,8 +8,13 @@ import { createEffectTestRoot, settle } from '../utils/reactive'
 import type { ColumnDef, RowSelectionState } from '@tanstack/table-core'
 
 describe('solidReactivity', () => {
+  // Reads and writes happen OUTSIDE the root body: settle-on-read (D10-A)
+  // only applies to unowned imperative callers. Inside an owned scope a
+  // .get() deliberately returns the committed value without draining the
+  // queue (65n.10 — flushing there runs pending effect halves inside the
+  // owned scope, where their plain signal writes hard-throw).
   test('readonly atoms update when wrapped external TanStack Store atoms update', () => {
-    createRoot((dispose) => {
+    const { dispose, value } = createEffectTestRoot(() => {
       const owner = getOwner()!
       const reactivity = solidReactivity(owner)
       const external = createAtom(1)
@@ -23,25 +22,30 @@ describe('solidReactivity', () => {
         debugName: 'wrapped',
       })
       reactivity.addSubscription(
-        external.subscribe((value) => {
-          wrapped.set(value)
+        external.subscribe((next) => {
+          wrapped.set(next)
         }),
       )
       const doubled = reactivity.createReadonlyAtom(() => wrapped.get() * 2, {
         debugName: 'doubled',
       })
+      return { doubled, external }
+    })
+    const { doubled, external } = value
 
+    try {
       expect(doubled.get()).toBe(2)
 
       external.set(2)
 
       expect(doubled.get()).toBe(4)
+    } finally {
       dispose()
-    })
+    }
   })
 
   test('readonly atoms preserve TanStack Store dependency tracking through .get()', () => {
-    createRoot((dispose) => {
+    const { dispose, value } = createEffectTestRoot(() => {
       const owner = getOwner()!
       const reactivity = solidReactivity(owner)
       const base = reactivity.createWritableAtom(1)
@@ -54,14 +58,19 @@ describe('solidReactivity', () => {
         }),
         { debugName: 'store' },
       )
+      return { base, store }
+    })
+    const { base, store } = value
 
+    try {
       expect(store.get()).toEqual({ slice: 1 })
 
       base.set(2)
 
       expect(store.get()).toEqual({ slice: 2 })
+    } finally {
       dispose()
-    })
+    }
   })
 })
 

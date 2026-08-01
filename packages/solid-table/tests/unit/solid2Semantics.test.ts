@@ -14,7 +14,14 @@
  *   ("a data change and a setOptions in the same tick are both visible").
  */
 import { describe, expect, test, vi } from 'vitest'
-import { createEffect, createOwner, flush, untrack } from 'solid-js'
+import {
+  createEffect,
+  createOwner,
+  createRoot,
+  createSignal,
+  flush,
+  untrack,
+} from 'solid-js'
 import { createAtom as createStoreAtom } from '@tanstack/store'
 import { stockFeatures } from '@tanstack/table-core'
 import { createTable } from '../../src/createTable'
@@ -211,9 +218,7 @@ describe('D25 Solid 2 semantic contracts', () => {
     const { atom } = value
 
     const seen: Array<string> = []
-    const subscription = atom.subscribe((current: string) =>
-      seen.push(current),
-    )
+    const subscription = atom.subscribe((current: string) => seen.push(current))
 
     // First emission is synchronous (eager), exactly once.
     expect(seen).toEqual(['a'])
@@ -274,6 +279,53 @@ describe('D25 Solid 2 semantic contracts', () => {
       settle()
       expect(externalAtom.get()).toEqual({ 2: true })
       expect(table.atoms.rowSelection.get()).toEqual({ 2: true })
+    } finally {
+      dispose()
+    }
+  })
+
+  test('D10-A owner guard — an owned-but-untracked read does not drain the queue into the owned scope (65n.10)', () => {
+    const { dispose, value } = createEffectTestRoot(() => {
+      const bindings = makeBindings()
+      const atom = bindings.createWritableAtom(0, { debugName: 'd10/owner' })
+      // Deliberately NO ownedWrite — mirrors userland signals written from
+      // effect halves (a legal write site).
+      const [plain, setPlain] = createSignal(0)
+      createEffect(
+        () => atom.get(),
+        (current: number) => {
+          setPlain(current)
+        },
+      )
+      return { atom, plain }
+    })
+    const { atom, plain } = value
+
+    try {
+      settle()
+      atom.set(7)
+
+      // Mimic component construction: an owned scope doing an untracked read
+      // (table-core resolves options this way while mounting). Pre-fix this
+      // flushed the queue, ran the pending effect half inside the owned
+      // scope, and its plain setter hard-threw REACTIVE_WRITE_IN_OWNED_SCOPE.
+      let seen: number | null = null
+      const disposeInner = createRoot((d) => {
+        seen = atom.get()
+        return d
+      })
+      disposeInner()
+
+      // The owned read saw the committed value without draining the queue…
+      expect(seen).toBe(0)
+
+      // …and the pending effect half still runs legally on the next settle.
+      settle()
+      expect(untrack(() => plain())).toBe(7)
+
+      // Unowned imperative reads keep settle-on-read (read-your-writes).
+      atom.set(8)
+      expect(atom.get()).toBe(8)
     } finally {
       dispose()
     }
