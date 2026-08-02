@@ -9,7 +9,7 @@ import {
   sortFns,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { For, createEffect, createSignal } from 'solid-js'
+import { For, Repeat, createEffect, createMemo, createSignal } from 'solid-js'
 import { createVirtualizer } from './createVirtualizer'
 import { makeColumns, makeData } from './makeData'
 import type {
@@ -123,7 +123,12 @@ function TableContainer(props: { table: SolidTable<typeof features, Person> }) {
       get count() {
         return rows().length
       },
-      estimateSize: () => 33, // estimate row height for accurate scrollbar dragging
+      // Estimate row height for accurate scrollbar dragging. Keep this as close
+      // to the real rendered height as possible: virtual-core rebuilds its
+      // measurement array from the first row whose measured size differs from
+      // the estimate all the way to `count`, so an inaccurate estimate costs a
+      // rebuild for every row scrolled into view. These rows render at 29px.
+      estimateSize: () => 29,
       getScrollElement: () => tableContainerRef ?? null,
       // measure dynamic row height, except in firefox because it measures table border height incorrectly
       measureElement:
@@ -159,7 +164,18 @@ function TableContainer(props: { table: SolidTable<typeof features, Person> }) {
       }}
     >
       {/* Even though we're still using semantic table tags, we must use CSS grid and flexbox for dynamic row heights */}
-      <table style={{ display: 'grid' }}>
+      <table
+        style={{
+          display: 'grid',
+          // The scroll range lives here rather than on <tbody>, because <tbody>
+          // is the element that gets translated (see the note there).
+          height: `${rowVirtualizer.getTotalSize()}px`,
+          // Grid's default align-content stretches auto-sized tracks to fill
+          // the container, which would spread <thead> and <tbody> over half of
+          // this very tall table each.
+          'align-content': 'start',
+        }}
+      >
         <TableHead
           columnVirtualizer={columnVirtualizer}
           table={props.table}
@@ -216,7 +232,13 @@ function TableHeadRow(props: {
   virtualPaddingRight: number | undefined
   table: SolidTable<typeof features, Person>
 }) {
-  const virtualColumns = () => props.columnVirtualizer.getVirtualItems()
+  const virtualColumns = createMemo(() =>
+    props.columnVirtualizer.getVirtualItems(),
+  )
+  const headerAt = (
+    slot: number,
+  ): Header<typeof features, Person, unknown> | undefined =>
+    props.headerGroup.headers[virtualColumns()[slot]?.index ?? -1]
   return (
     <tr style={{ display: 'flex', width: '100%' }}>
       {props.virtualPaddingLeft ? (
@@ -225,16 +247,13 @@ function TableHeadRow(props: {
           style={{ display: 'flex', width: `${props.virtualPaddingLeft}px` }}
         />
       ) : null}
-      <For each={virtualColumns()}>
-        {(virtualColumn) => (
-          // pass an accessor instead of a plain value - For's callback is
-          // non-tracking, so a captured header would go stale when columns change
-          <TableHeadCell
-            header={() => props.headerGroup.headers[virtualColumn.index]}
-            table={props.table}
-          />
+      {/* Slot-based, NOT <For>: horizontal scrolling changes which column each
+          slot shows, not how many slots there are. */}
+      <Repeat count={virtualColumns().length}>
+        {(slot) => (
+          <TableHeadCell header={() => headerAt(slot)} table={props.table} />
         )}
-      </For>
+      </Repeat>
       {props.virtualPaddingRight ? (
         // fake empty column to the right for virtualization scroll padding
         <th
@@ -246,34 +265,37 @@ function TableHeadRow(props: {
 }
 
 function TableHeadCell(props: {
-  header: () => Header<typeof features, Person, unknown>
+  header: () => Header<typeof features, Person, unknown> | undefined
   table: SolidTable<typeof features, Person>
 }) {
+  // Memoized: this component reads its header a dozen times below, and a slot
+  // re-points at a different column on every horizontal scroll update.
+  const header = createMemo(() => props.header())
   return (
     <th
       style={{
         display: 'flex',
         position: 'relative', // needed for absolute positioning of the resizer
-        width: `${props.header().getSize()}px`,
+        width: `${header()?.getSize() ?? 0}px`,
       }}
     >
       <div
-        class={props.header().column.getCanSort() ? 'sortable-header' : ''}
-        onClick={props.header().column.getToggleSortingHandler()}
+        class={header()?.column.getCanSort() ? 'sortable-header' : ''}
+        onClick={(event) => header()?.column.getToggleSortingHandler()?.(event)}
       >
-        <FlexRender header={props.header()} />
+        <FlexRender header={header()!} />
         {(
           {
             asc: ' 🔼',
             desc: ' 🔽',
           } as Record<string, string>
-        )[props.header().column.getIsSorted() as string] ?? null}
+        )[header()?.column.getIsSorted() as string] ?? null}
       </div>
       <div
-        onDblClick={() => props.header().column.resetSize()}
-        onMouseDown={props.header().getResizeHandler()}
-        onTouchStart={props.header().getResizeHandler()}
-        class={`resizer ${props.header().column.getIsResizing() ? 'isResizing' : ''}`}
+        onDblClick={() => header()?.column.resetSize()}
+        onMouseDown={(event) => header()?.getResizeHandler()(event)}
+        onTouchStart={(event) => header()?.getResizeHandler()(event)}
+        class={`resizer ${header()?.column.getIsResizing() ? 'isResizing' : ''}`}
       />
     </th>
   )
@@ -293,67 +315,98 @@ function TableBody(props: {
     <tbody
       style={{
         display: 'grid',
-        height: `${props.rowVirtualizer.getTotalSize()}px`, // tells scrollbar how big the table is
-        position: 'relative', // needed for absolute positioning of rows
+        // ONE transform for the whole window, instead of one per row. Chrome
+        // restyles an element AND its immediate children whenever its style
+        // changes, so translating N rows that hold C cells each restyles
+        // N x (1 + C) elements, while translating their parent restyles 1 + N.
+        // Rows therefore flow normally and only this offset moves.
+        transform: `translateY(${virtualRows()[0]?.start ?? 0}px)`,
       }}
     >
-      <For each={virtualRows()}>
-        {(virtualRow) => (
-          // pass an accessor instead of a plain value - For's callback is
-          // non-tracking, so a captured row would go stale when data changes
+      {/*
+        Slot-based, NOT <For>. A virtual window holds a near-constant number of
+        rows — scrolling changes which data they show, not how many there are.
+        <For> keys by item identity, so a scroll reads as "N items left, N
+        arrived" and it tears down and rebuilds every row and cell component.
+        <Repeat> keeps one component per slot for as long as the count holds.
+      */}
+      <Repeat count={virtualRows().length}>
+        {(slot) => (
           <TableBodyRow
             columnVirtualizer={props.columnVirtualizer}
-            row={() => props.rows()[virtualRow.index]}
+            rows={props.rows}
             rowVirtualizer={props.rowVirtualizer}
             virtualPaddingLeft={props.virtualPaddingLeft}
             virtualPaddingRight={props.virtualPaddingRight}
-            virtualRow={virtualRow}
+            virtualRow={() => virtualRows()[slot]}
             table={props.table}
           />
         )}
-      </For>
+      </Repeat>
     </tbody>
   )
 }
 
+// One instance per visible SLOT, reused for the whole scroll. Every prop is an
+// accessor so the slot re-points at different data without being rebuilt.
 function TableBodyRow(props: {
   columnVirtualizer: Virtualizer<HTMLDivElement, HTMLTableCellElement>
-  row: () => Row<typeof features, Person>
+  rows: () => Array<Row<typeof features, Person>>
   rowVirtualizer: Virtualizer<HTMLDivElement, HTMLTableRowElement>
   virtualPaddingLeft: number | undefined
   virtualPaddingRight: number | undefined
-  virtualRow: VirtualItem
+  virtualRow: () => VirtualItem | undefined
   table: SolidTable<typeof features, Person>
 }) {
-  const visibleCells = () => props.row().getVisibleCells()
-  const virtualColumns = () => props.columnVirtualizer.getVirtualItems()
+  let el: HTMLTableRowElement | undefined
+
+  // Memoized, not plain accessors: each visible cell slot below reads
+  // `visibleCells()`, which walks cells -> row -> rows -> table.getRowModel().
+  // As bare functions that whole chain re-runs once per cell instead of once
+  // per row, and the reads land outside a tracking scope
+  // ([STRICT_READ_UNTRACKED] on every cell, every update).
+  const virtualRow = createMemo(() => props.virtualRow())
+  const row = createMemo<Row<typeof features, Person> | undefined>(
+    () => props.rows()[virtualRow()?.index ?? -1],
+  )
+  const visibleCells = createMemo(() => row()?.getVisibleCells() ?? [])
+  const virtualColumns = createMemo(() =>
+    props.columnVirtualizer.getVirtualItems(),
+  )
+  const cellAt = (slot: number): Cell<typeof features, Person, unknown> | undefined =>
+    visibleCells()[virtualColumns()[slot]?.index ?? -1]
+
+  // The ref fires once per slot, but a slot changes index on every scroll, so
+  // measurement cannot ride on ref creation. Re-measure whenever the index
+  // changes, setting data-index first: virtual-core reads that attribute to
+  // identify the row and silently skips the measurement when it is absent.
+  // Solid compiles a dynamic `data-index={...}` into an effect that runs AFTER
+  // the ref, which is why the attribute form never worked here.
+  createEffect(
+    () => virtualRow()?.index,
+    (index) => {
+      if (el === undefined || index === undefined) return
+      el.setAttribute('data-index', String(index))
+      props.rowVirtualizer.measureElement(el)
+    },
+  )
+
   return (
-    <tr
-      data-index={props.virtualRow.index} // needed for dynamic row height measurement
-      ref={(node) => props.rowVirtualizer.measureElement(node)} // measure dynamic row height
-      style={{
-        display: 'flex',
-        position: 'absolute',
-        transform: `translateY(${props.virtualRow.start}px)`, // this should always be a `style` as it changes on scroll
-        width: '100%',
-      }}
-    >
+    // Rows are in normal flow and carry NO per-row position: the parent
+    // <tbody> is translated once for the whole window.
+    <tr ref={el} style={{ display: 'flex', width: '100%' }}>
       {props.virtualPaddingLeft ? (
         // fake empty column to the left for virtualization scroll padding
         <td
           style={{ display: 'flex', width: `${props.virtualPaddingLeft}px` }}
         />
       ) : null}
-      <For each={virtualColumns()}>
-        {(vc) => (
-          // pass an accessor instead of a plain value - For's callback is
-          // non-tracking, so a captured cell would go stale when data changes
-          <TableBodyCell
-            cell={() => visibleCells()[vc.index]}
-            table={props.table}
-          />
+      {/* Slot-based for the same reason as the rows above. */}
+      <Repeat count={virtualColumns().length}>
+        {(slot) => (
+          <TableBodyCell cell={() => cellAt(slot)} table={props.table} />
         )}
-      </For>
+      </Repeat>
       {props.virtualPaddingRight ? (
         // fake empty column to the right for virtualization scroll padding
         <td
@@ -365,17 +418,20 @@ function TableBodyRow(props: {
 }
 
 function TableBodyCell(props: {
-  cell: () => Cell<typeof features, Person, unknown>
+  cell: () => Cell<typeof features, Person, unknown> | undefined
   table: SolidTable<typeof features, Person>
 }) {
+  const cell = createMemo(() => props.cell())
   return (
     <td
       style={{
         display: 'flex',
-        width: `${props.cell().column.getSize()}px`,
+        width: `${cell()?.column.getSize() ?? 0}px`,
       }}
     >
-      <FlexRender cell={props.cell()} />
+      {/* FlexRender renders nothing when the cell is momentarily undefined
+          (its keyed <Match> sees a falsy `when`), so no guard is needed. */}
+      <FlexRender cell={cell()!} />
     </td>
   )
 }
