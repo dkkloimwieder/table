@@ -87,9 +87,6 @@ allowBuilds:
   core-js-pure: false
 
 cleanupUnusedCatalogs: true
-minimumReleaseAge: 1440
-minimumReleaseAgeExclude:
-  - '@tanstack/octane-store@0.12.1'
 
 linkWorkspacePackages: true
 preferWorkspacePackages: true
