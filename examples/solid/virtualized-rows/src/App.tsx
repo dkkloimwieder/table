@@ -8,7 +8,7 @@ import {
   sortFns,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { For, Repeat, createEffect, createSignal } from 'solid-js'
+import { For, Repeat, createEffect, createMemo, createSignal } from 'solid-js'
 import { createVirtualizer } from './createVirtualizer'
 import { makeData } from './makeData'
 import type { Row, SolidTable } from '@tanstack/solid-table'
@@ -243,15 +243,19 @@ function TableBodyRow(props: {
 }) {
   let el: HTMLTableRowElement | undefined
 
-  const row = () => props.rows()[props.virtualRow()?.index ?? -1]
-  const cells = () => row()?.getAllCells() ?? []
+  // Memoized, not plain accessors: each of the ~9 cell slots below reads
+  // `cells()`, which walks cells -> row -> rows -> table.getRowModel(). As bare
+  // functions that whole chain re-runs once per cell instead of once per row.
+  const virtualRow = createMemo(() => props.virtualRow())
+  const row = createMemo(() => props.rows()[virtualRow()?.index ?? -1])
+  const cells = createMemo(() => row()?.getAllCells() ?? [])
 
   // The ref fires once per slot, but a slot changes index on every scroll, so
   // measurement cannot ride on ref creation. Re-measure whenever the index
   // changes, setting data-index first: virtual-core reads that attribute to
   // identify the row and silently skips the measurement when it is absent.
   createEffect(
-    () => props.virtualRow()?.index,
+    () => virtualRow()?.index,
     (index) => {
       if (el === undefined || index === undefined) return
       el.setAttribute('data-index', String(index))
@@ -265,7 +269,7 @@ function TableBodyRow(props: {
       style={{
         display: 'flex',
         position: 'absolute',
-        transform: `translateY(${props.virtualRow()?.start ?? 0}px)`, // must stay a `style` — it changes on every scroll
+        transform: `translateY(${virtualRow()?.start ?? 0}px)`, // must stay a `style` — it changes on every scroll
         width: '100%',
       }}
     >
