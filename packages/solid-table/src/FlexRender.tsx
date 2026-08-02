@@ -108,6 +108,19 @@ export function FlexRender<
             aggregatedCell?: typeof def.cell
           }
 
+          // Fast path: without the column-grouping feature a cell has no
+          // aggregated/placeholder modes, so both `<Show>`s below would be
+          // built only to take the same branch every time. This child runs
+          // again for every cell instance (see the `keyed` note above), so on a
+          // virtualized table that is two component constructions and a
+          // fallback closure per cell, per scroll update, for nothing.
+          if (
+            groupingCell.getIsAggregated === undefined &&
+            groupingCell.getIsPlaceholder === undefined
+          ) {
+            return flexRender(def.cell, c.getContext())
+          }
+
           return (
             <Show
               when={groupingCell.getIsAggregated?.()}
