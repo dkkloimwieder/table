@@ -156,6 +156,57 @@ const sorting = () => sortingAtom.get()
 
 `createAtom(initialValue, options?)` accepts an optional `compare` equality function and a `name` for dev tooling. See the [Table State](./table-state) guide for the full external-state story.
 
+## Server-Side Rendering
+
+The adapter server-renders under Solid 2. A full table — headers, `FlexRender` cells, and footers — renders to HTML through `@solidjs/web`'s server build, both with the adapter bundled by Vite and with it externalized so Node loads the published `dist` and resolves `@solidjs/web` itself. Both paths produce identical markup, hydration markers included. (Hydrating that markup in a browser is the one part of the path not exercised end to end.)
+
+What does not exist yet is a Solid 2 SSR meta-framework. `@solidjs/start` is Solid 1 only — every published version through `2.0.0-rc.9` depends on `solid-js@^1.9.14` and `vite-plugin-solid@^2.11.13` — so SSR under Solid 2 currently means a hand-rolled Vite app.
+
+### Your app must enable SSR codegen
+
+`vite-plugin-solid` compiles for the DOM by default. In an SSR build that means **your own** components emit `template()` calls, which throw `Client-only API called on the server side` at module scope, before any table code runs. It reads like a crash inside the library; it is not one. Turn on the plugin's `ssr` option:
+
+```ts
+// vite.config.ts
+import { defineConfig } from 'vite'
+import solid from 'vite-plugin-solid'
+
+export default defineConfig({
+  // `ssr: true` enables the SSR transforms and leaves the entries and the
+  // server to you. The object form — even empty, `ssr: {}` — additionally
+  // gives a plain Vite app turnkey streaming SSR.
+  plugins: [solid({ ssr: true })],
+  build: { ssr: true },
+})
+```
+
+```tsx
+// src/entry-server.tsx
+import { renderToString } from '@solidjs/web'
+import { App } from './App'
+
+const html = renderToString(() => <App />)
+```
+
+That option governs how _your_ source is compiled. The plugin only transforms `.jsx`/`.tsx`, so a precompiled dependency's codegen never varies per environment; the adapter is safe on the server because it renders only components and control flow, never DOM elements of its own.
+
+### The server runtime is write-once
+
+A server render has no update cycle, and Solid 2's server build reflects that: `flush()` is a no-op, `createMemo` computes once and never invalidates, and the function form of `createSignal` returns a setter that does nothing. This is upstream Solid behaviour rather than something the adapter adds — a bare `createMemo` behaves the same way there.
+
+So supply server-rendered table state at construction time:
+
+| Supplying state                                          | Server render           |
+| -------------------------------------------------------- | ----------------------- |
+| `initialState`                                           | Applied                 |
+| Controlled `state` getters                               | Applied                 |
+| `data` getters                                           | Applied                 |
+| `createAtom` initial values                              | Applied                 |
+| `table.setColumnOrder(...)` and other imperative setters | No effect on the output |
+| `atom.set(...)` after construction                       | No effect on the output |
+
+The `on[State]Change` handlers still fire for those imperative writes, so a change handler that logs or forwards state is not evidence that the render saw it. Interactivity resumes on the client after hydration, where the [timing contract](#the-adapters-timing-contract) applies in full. On the server that contract is vacuous: `flush()` does nothing there, so settle-on-read has nothing to settle.
+
 ## Companion Library Compatibility
 
 Solid 2 support across the TanStack ecosystem is still rolling out. Status at the time of writing:
