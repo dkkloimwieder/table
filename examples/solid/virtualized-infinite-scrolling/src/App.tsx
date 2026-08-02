@@ -10,11 +10,19 @@ import {
   tableFeatures,
 } from '@tanstack/solid-table'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/solid-query'
-import { For, Show, createMemo, onSettled } from 'solid-js'
+import {
+  For,
+  Repeat,
+  Show,
+  createEffect,
+  createMemo,
+  onSettled,
+} from 'solid-js'
 import { createVirtualizer } from './createVirtualizer'
 import { fetchData } from './makeData'
 import type { Person, PersonApiResponse } from './makeData'
-import type { SortingState } from '@tanstack/solid-table'
+import type { Cell, Row, SortingState } from '@tanstack/solid-table'
+import type { VirtualItem, Virtualizer } from '@tanstack/virtual-core'
 
 const fetchSize = 50
 
@@ -132,7 +140,12 @@ function App() {
       get count() {
         return rows().length
       },
-      estimateSize: () => 33,
+      // Keep this as close to the real rendered height as possible:
+      // virtual-core rebuilds its measurement array from the first row whose
+      // measured size differs from the estimate all the way to `count`, so an
+      // inaccurate estimate costs a rebuild for every row scrolled into view.
+      // These rows render at 29px.
+      estimateSize: () => 29,
       getScrollElement: () => tableContainerRef ?? null,
       measureElement:
         typeof window !== 'undefined' &&
@@ -164,7 +177,18 @@ function App() {
           height: '600px',
         }}
       >
-        <table style={{ display: 'grid' }}>
+        <table
+          style={{
+            display: 'grid',
+            // The scroll range lives here rather than on <tbody>, because
+            // <tbody> is the element that gets translated (see the note there).
+            height: `${rowVirtualizer.getTotalSize()}px`,
+            // Grid's default align-content stretches auto-sized tracks to fill
+            // the container, which would spread <thead> and <tbody> over half
+            // of this tall table each.
+            'align-content': 'start',
+          }}
+        >
           <thead
             style={{
               display: 'grid',
@@ -208,43 +232,30 @@ function App() {
           <tbody
             style={{
               display: 'grid',
-              height: `${rowVirtualizer.getTotalSize()}px`,
-              position: 'relative',
+              // ONE transform for the whole window, instead of one per row.
+              // Chrome restyles an element AND its immediate children whenever
+              // its style changes, so translating N rows that hold C cells
+              // each restyles N x (1 + C) elements, while translating their
+              // parent restyles 1 + N. Rows flow normally; only this moves.
+              transform: `translateY(${rowVirtualizer.getVirtualItems()[0]?.start ?? 0}px)`,
             }}
           >
-            <For each={rowVirtualizer.getVirtualItems()}>
-              {(virtualRow) => {
-                // keep the row lookup an accessor - For's callback is
-                // non-tracking, so a captured row would go stale when
-                // data or sorting changes
-                const row = () => rows()[virtualRow.index]
-                return (
-                  <tr
-                    data-index={virtualRow.index}
-                    ref={(node) => rowVirtualizer.measureElement(node)}
-                    style={{
-                      display: 'flex',
-                      position: 'absolute',
-                      transform: `translateY(${virtualRow.start}px)`,
-                      width: '100%',
-                    }}
-                  >
-                    <For each={row().getAllCells()}>
-                      {(cell) => (
-                        <td
-                          style={{
-                            display: 'flex',
-                            width: `${cell.column.getSize()}px`,
-                          }}
-                        >
-                          <FlexRender cell={cell} />
-                        </td>
-                      )}
-                    </For>
-                  </tr>
-                )
-              }}
-            </For>
+            {/*
+              Slot-based, NOT <For>. A virtual window holds a near-constant
+              number of rows — scrolling changes which data they show, not how
+              many there are. <For> keys by item identity, so a scroll reads as
+              "N items left, N arrived" and rebuilds every row and cell
+              component. <Repeat> keeps one component per slot.
+            */}
+            <Repeat count={rowVirtualizer.getVirtualItems().length}>
+              {(slot) => (
+                <TableBodyRow
+                  virtualRow={() => rowVirtualizer.getVirtualItems()[slot]}
+                  rows={rows}
+                  rowVirtualizer={rowVirtualizer}
+                />
+              )}
+            </Repeat>
           </tbody>
         </table>
       </div>
@@ -252,6 +263,64 @@ function App() {
         <div>Fetching More...</div>
       </Show>
     </div>
+  )
+}
+
+// One instance per visible SLOT, reused for the whole scroll. Every prop is an
+// accessor so the slot re-points at different data without being rebuilt.
+function TableBodyRow(props: {
+  virtualRow: () => VirtualItem | undefined
+  rows: () => Array<Row<typeof features, Person>>
+  rowVirtualizer: Virtualizer<HTMLDivElement, HTMLTableRowElement>
+}) {
+  let el: HTMLTableRowElement | undefined
+
+  // Memoized, not plain accessors: each cell slot below reads `cells()`, which
+  // walks cells -> row -> rows -> table.getRowModel(). As bare functions that
+  // whole chain re-runs once per cell instead of once per row.
+  const virtualRow = createMemo(() => props.virtualRow())
+  const row = createMemo<Row<typeof features, Person> | undefined>(
+    () => props.rows()[virtualRow()?.index ?? -1],
+  )
+  const cells = createMemo(() => row()?.getAllCells() ?? [])
+  // Explicit `| undefined` so the guards below are honest: a slot can briefly
+  // outlive its data while the window is being resized.
+  const cellAt = (
+    slot: number,
+  ): Cell<typeof features, Person, unknown> | undefined => cells()[slot]
+
+  // The ref fires once per slot, but a slot changes index on every scroll, so
+  // measurement cannot ride on ref creation. Re-measure whenever the index
+  // changes, setting data-index first: virtual-core reads that attribute to
+  // identify the row and silently skips the measurement when it is absent.
+  // Solid compiles a dynamic `data-index={...}` into an effect that runs AFTER
+  // the ref, which is why the attribute form never worked here.
+  createEffect(
+    () => virtualRow()?.index,
+    (index) => {
+      if (el === undefined || index === undefined) return
+      el.setAttribute('data-index', String(index))
+      props.rowVirtualizer.measureElement(el)
+    },
+  )
+
+  return (
+    // Rows are in normal flow and carry NO per-row position: the parent
+    // <tbody> is translated once for the whole window.
+    <tr ref={el} style={{ display: 'flex', width: '100%' }}>
+      <Repeat count={cells().length}>
+        {(slot) => (
+          <td
+            style={{
+              display: 'flex',
+              width: `${cellAt(slot)?.column.getSize() ?? 0}px`,
+            }}
+          >
+            <FlexRender cell={cellAt(slot)!} />
+          </td>
+        )}
+      </Repeat>
+    </tr>
   )
 }
 
