@@ -8,7 +8,7 @@ import {
   sortFns,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { For, createEffect, createSignal } from 'solid-js'
+import { For, Repeat, createEffect, createSignal } from 'solid-js'
 import { createVirtualizer } from './createVirtualizer'
 import { makeData } from './makeData'
 import type { Row, SolidTable } from '@tanstack/solid-table'
@@ -208,53 +208,81 @@ function VirtualizedTable(props: {
             position: 'relative', // needed for absolute positioning of rows
           }}
         >
-          <For each={rowVirtualizer.getVirtualItems()}>
-            {(virtualRow) => {
-              return (
-                <TableBodyRow
-                  row={() => rows()[virtualRow.index]}
-                  virtualRow={virtualRow}
-                  rowVirtualizer={rowVirtualizer}
-                  table={props.table}
-                />
-              )
-            }}
-          </For>
+          {/*
+            Slot-based, NOT <For>. A virtual window holds a near-constant number
+            of rows (~30 here) — scrolling changes which data they show, not how
+            many there are. <For> keys by item identity, so a scroll reads as
+            "30 items left, 30 arrived" and it tears down and rebuilds 30 row
+            components plus ~270 cell components per batch. <Repeat> keeps one
+            component per slot for as long as the count holds, so scrolling
+            updates content in place and constructs nothing.
+          */}
+          <Repeat count={rowVirtualizer.getVirtualItems().length}>
+            {(slot) => (
+              <TableBodyRow
+                virtualRow={() => rowVirtualizer.getVirtualItems()[slot]}
+                rows={rows}
+                rowVirtualizer={rowVirtualizer}
+                table={props.table}
+              />
+            )}
+          </Repeat>
         </tbody>
       </table>
     </div>
   )
 }
 
+// One instance per visible SLOT, reused for the whole scroll. Every prop is an
+// accessor so the slot re-points at different data without being rebuilt.
 function TableBodyRow(props: {
-  row: () => Row<typeof features, Person>
-  virtualRow: VirtualItem
+  virtualRow: () => VirtualItem | undefined
+  rows: () => Array<Row<typeof features, Person>>
   rowVirtualizer: Virtualizer<HTMLDivElement, HTMLTableRowElement>
   table: SolidTable<typeof features, Person>
 }) {
+  let el: HTMLTableRowElement | undefined
+
+  const row = () => props.rows()[props.virtualRow()?.index ?? -1]
+  const cells = () => row()?.getAllCells() ?? []
+
+  // The ref fires once per slot, but a slot changes index on every scroll, so
+  // measurement cannot ride on ref creation. Re-measure whenever the index
+  // changes, setting data-index first: virtual-core reads that attribute to
+  // identify the row and silently skips the measurement when it is absent.
+  createEffect(
+    () => props.virtualRow()?.index,
+    (index) => {
+      if (el === undefined || index === undefined) return
+      el.setAttribute('data-index', String(index))
+      props.rowVirtualizer.measureElement(el)
+    },
+  )
+
   return (
     <tr
-      data-index={props.virtualRow.index} // needed for dynamic row height measurement
-      ref={(node) => props.rowVirtualizer.measureElement(node)} // measure dynamic row height
+      ref={el}
       style={{
         display: 'flex',
         position: 'absolute',
-        transform: `translateY(${props.virtualRow.start}px)`, // this should always be a `style` as it changes on scroll
+        transform: `translateY(${props.virtualRow()?.start ?? 0}px)`, // must stay a `style` — it changes on every scroll
         width: '100%',
       }}
     >
-      <For each={props.row().getAllCells()}>
-        {(cell) => (
+      {/* Slot-based for the same reason as the rows: the column count is fixed,
+          so these cell components are built once and then only update. */}
+      <Repeat count={cells().length}>
+        {(slot) => (
           <td
             style={{
               display: 'flex',
-              width: `${cell.column.getSize()}px`,
+              width: `${cells()[slot]?.column.getSize() ?? 0}px`,
             }}
           >
-            <FlexRender cell={cell} />
+            <FlexRender cell={cells()[slot]} />
           </td>
         )}
-      </For>
+      </Repeat>
     </tr>
   )
 }
