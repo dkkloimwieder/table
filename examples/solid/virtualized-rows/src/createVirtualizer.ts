@@ -4,26 +4,47 @@
  * exists because solid-virtual currently supports Solid 1 only; swap the
  * import back once a Solid 2 release line exists.
  *
- * Reactivity model: one version signal is bumped by the core's onChange
- * callback (and whenever reactive options re-resolve), and the two
- * render-time reads — getVirtualItems() and getTotalSize() — subscribe to
- * it. Unlike solid-virtual there is no store/reconcile layer, so each change
- * hands fresh VirtualItem objects to <For>, which recreates the visible
- * items' DOM. That is fine here: the cells are plain text and the core's
- * measureElement is idempotent.
+ * Reactivity model: virtual-core returns a brand-new array of brand-new
+ * VirtualItem objects on every recompute. `<For>` keys by object reference, so
+ * handing it that raw array disposes and reconstructs every visible row on
+ * every scroll update — profiling a scroll charged ~624ms to `<For>`'s children
+ * alone, plus ~711ms of style and layout as a consequence. The items therefore
+ * go through a store and `reconcile` keyed on `index` (the same shape
+ * @tanstack/solid-virtual uses), so rows that stay in the window keep their
+ * identity and their DOM node and only entering/leaving rows are built.
+ * `getTotalSize()` is not identity-sensitive and still rides the version signal.
  *
- * Solid 2 note: effects are split into a tracked, pure compute half and an
- * untracked effect half that may write signals, so option resolution happens
- * in the compute half and the core is mutated in the effect half.
+ * Solid 2 notes:
+ * - `createStore`/`reconcile` now come from `solid-js` itself; the
+ *   `solid-js/store` entrypoint no longer exists.
+ * - `reconcile(value, key)` takes the key positionally and defaults it to
+ *   `"id"`. VirtualItem has no `id`, so the key must be passed explicitly or it
+ *   silently degrades to positional matching.
+ * - Effects split into a tracked, pure compute half and an untracked effect
+ *   half that may write, so options resolve in the compute half and the core is
+ *   mutated in the effect half.
+ * - Because items are now store proxies, any read of a VirtualItem outside a
+ *   tracking scope (a `ref` callback, for instance) must be wrapped in
+ *   `untrack` or Solid 2 logs STRICT_READ_UNTRACKED.
  */
-import { createRenderEffect, createSignal, onSettled } from 'solid-js'
+import {
+  createRenderEffect,
+  createSignal,
+  createStore,
+  onSettled,
+  reconcile,
+} from 'solid-js'
 import {
   Virtualizer,
   elementScroll,
   observeElementOffset,
   observeElementRect,
 } from '@tanstack/virtual-core'
-import type { PartialKeys, VirtualizerOptions } from '@tanstack/virtual-core'
+import type {
+  PartialKeys,
+  VirtualItem,
+  VirtualizerOptions,
+} from '@tanstack/virtual-core'
 
 export function createVirtualizer<
   TScrollElement extends Element,
@@ -39,6 +60,11 @@ export function createVirtualizer<
   // half bumps this signal — an intentional owned-scope write.
   const [version, setVersion] = createSignal(0, { ownedWrite: true })
 
+  // Assigned once the store exists. The Virtualizer constructor can invoke
+  // onChange before that line runs, so this must not sit in a temporal dead
+  // zone — it is a no-op until the store is ready.
+  let syncItems: () => void = () => {}
+
   const resolveOptions = (): VirtualizerOptions<
     TScrollElement,
     TItemElement
@@ -50,6 +76,7 @@ export function createVirtualizer<
     onChange: (target, sync) => {
       target._willUpdate()
       setVersion((current) => current + 1)
+      syncItems()
       options.onChange?.(target, sync)
     },
   })
@@ -57,6 +84,13 @@ export function createVirtualizer<
   const instance = new Virtualizer<TScrollElement, TItemElement>(
     resolveOptions(),
   )
+
+  const [items, setItems] = createStore<Array<VirtualItem>>(
+    instance.getVirtualItems(),
+  )
+  syncItems = () => {
+    setItems(reconcile(instance.getVirtualItems(), 'index'))
+  }
 
   // The examples pass live option getters (e.g. a `count` that grows as rows
   // load); spreading `options` inside the tracked compute half subscribes to
@@ -67,21 +101,26 @@ export function createVirtualizer<
       instance.setOptions(resolvedOptions)
       instance._willUpdate()
       setVersion((current) => current + 1)
+      syncItems()
     },
   )
 
   onSettled(() => {
     const cleanup = instance._didMount()
     instance._willUpdate()
+    syncItems()
     return cleanup
   })
 
   return new Proxy(instance, {
     get(target, property, receiver) {
-      if (property === 'getVirtualItems' || property === 'getTotalSize') {
+      if (property === 'getVirtualItems') {
+        return () => items
+      }
+      if (property === 'getTotalSize') {
         return () => {
           version()
-          return target[property]()
+          return target.getTotalSize()
         }
       }
       return Reflect.get(target, property, receiver)
