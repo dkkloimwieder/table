@@ -137,7 +137,13 @@ function VirtualizedTable(props: {
       get count() {
         return rows().length
       },
-      estimateSize: () => 33, // estimate row height for accurate scrollbar dragging
+      // Estimate row height for accurate scrollbar dragging. Keep this as close
+      // to the real rendered height as possible: virtual-core rebuilds its
+      // measurement array from the first row whose measured size differs from
+      // the estimate all the way to `count`, so on a 200k-row table a 1px
+      // error costs a ~170,000-iteration rebuild for every row scrolled into
+      // view. These rows render at exactly 32px.
+      estimateSize: () => 32,
       getScrollElement: () => tableContainerRef ?? null,
       // measure dynamic row height, except in firefox because it measures table border height incorrectly
       measureElement:
