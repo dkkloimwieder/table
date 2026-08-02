@@ -10,6 +10,20 @@ overrides:
   # regular dependency; two copies would mean two template caches and two
   # event-delegation roots
   '@solidjs/web': 2.0.0-beta.29
+  # The TanStack devtools UI stack is built on Solid 1 (it imports
+  # `solid-js/web`, which solid-js@2 no longer exports). Once the solid
+  # examples moved to solid-js@2, pnpm's peer dedupe re-resolved this family
+  # against the workspace's solid-js 2 and broke the react/preact/vue/angular
+  # example builds. Pin the family's nested solid-js to the 1.x line.
+  # Remove when @tanstack/devtools ships a Solid 2 line (bead table-v3p.2).
+  '@tanstack/devtools>solid-js': ^1.9.14
+  '@tanstack/devtools-ui>solid-js': ^1.9.14
+  '@tanstack/devtools-utils>solid-js': ^1.9.14
+  '@tanstack/react-devtools>solid-js': ^1.9.14
+  '@tanstack/preact-devtools>solid-js': ^1.9.14
+  '@tanstack/vue-devtools>solid-js': ^1.9.14
+  '@tanstack/angular-devtools>solid-js': ^1.9.14
+  '@tanstack/form-devtools>solid-js': ^1.9.14
   '@types/react': 19.2.16
   '@tanstack/alpine-table': 'workspace:*'
   '@tanstack/angular-table-devtools': 'workspace:*'
@@ -47,6 +61,15 @@ packageExtensions:
     peerDependenciesMeta:
       '@angular/compiler':
         optional: true
+  # solid-query 6.0.0-beta.6's build output imports @solidjs/web but its
+  # manifest declares only the solid-js peer — a phantom dependency that
+  # resolves through pnpm's hoisted fallback. With two @solidjs/web peer
+  # variants in the workspace (the devtools family nests a solid-js@1 one),
+  # the fallback is ambiguous and broke the solid-query example builds.
+  # Declare the peer so pnpm links the variant matching each importer.
+  '@tanstack/solid-query':
+    peerDependencies:
+      '@solidjs/web': '>=2.0.0-0 <3.0.0'
 
 allowBuilds:
   # root dependency
