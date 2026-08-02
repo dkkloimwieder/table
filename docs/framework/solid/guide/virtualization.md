@@ -45,14 +45,16 @@ For small tables, normal rendering is simpler and usually preferable.
 npm install @tanstack/virtual-core
 ```
 
-The Solid examples pair it with a small local `createVirtualizer` wrapper (copy `src/createVirtualizer.ts` from any of the three virtualized examples — the file is identical in all of them). The wrapper exposes the same `Virtualizer` instance API as solid-virtual's `createVirtualizer`, so everything below — and the option patterns in TanStack Virtual's own docs — applies unchanged. One behavioral difference: there is no store/reconcile layer, so each change hands fresh `VirtualItem` objects to `<For>`, which recreates the visible items' DOM — fine for plain cells, but rows with local state or expensive renderers may need keying or memoization. Once `@tanstack/solid-virtual` supports Solid 2, swapping the import back is the whole migration.
+The Solid examples pair it with a small local `createVirtualizer` wrapper (copy `src/createVirtualizer.ts` from any of the three virtualized examples — the file is identical in all of them). The wrapper exposes the same `Virtualizer` instance API as solid-virtual's `createVirtualizer`, so everything below — and the option patterns in TanStack Virtual's own docs — applies unchanged. Once `@tanstack/solid-virtual` supports Solid 2, swapping the import back is the whole migration.
 
 How the wrapper works, in brief:
 
 - It creates a `virtual-core` `Virtualizer` and re-resolves the options object in the tracked half of a `createRenderEffect`, so live option getters (like a reactive `get count()`) re-subscribe automatically; the untracked effect half pushes the resolved options into the core and bumps the version signal.
-- A single version signal is bumped by the core's `onChange` callback (and whenever the resolved options are re-pushed), and the two render-time reads — `getVirtualItems()` and `getTotalSize()` — subscribe to it through a `Proxy`, which is what makes scrolling reactive.
+- Virtual items go through a store and `reconcile(items, 'index')` — the same shape solid-virtual uses. This matters: `virtual-core` returns a brand-new array of brand-new `VirtualItem` objects on every recompute, so handing that raw array to a keyed renderer disposes and rebuilds every visible row on every scroll update. Reconciling on `index` lets rows that stay in the window keep their identity and their DOM nodes. Note that `reconcile` takes its key positionally and defaults to `"id"`; `VirtualItem` has no `id`, so passing `'index'` explicitly is required or it silently degrades to positional matching.
+- A version signal is bumped by the core's `onChange` callback (and whenever the resolved options are re-pushed). `getTotalSize()` rides that signal and `getVirtualItems()` returns the store, both through a `Proxy`, which is what makes scrolling reactive.
 - The version signal is created with `{ ownedWrite: true }` because the render effect's first run executes synchronously inside the creating component's owned scope (a Solid 2 constraint — see [Writes during component setup](./solid-2#writes-during-component-setup)).
 - `onSettled` mounts the core (`_didMount()`) once the DOM exists and returns its cleanup.
+- Because items are store proxies, reading a `VirtualItem` outside a tracking scope (in a `ref` callback, say) needs `untrack` or Solid 2 logs `STRICT_READ_UNTRACKED`.
 
 TanStack Table still owns rows, columns, headers, cells, sizing, sorting, filtering, and other table state; TanStack Virtual decides which item indexes should render for the current scroll position.
 
@@ -111,35 +113,80 @@ const rowVirtualizer = createVirtualizer({
     return rows().length
   },
   getScrollElement: () => tableContainerRef ?? null,
-  estimateSize: () => 33,
+  // Measure this against your own rendering rather than copying a number —
+  // see Dynamic Row Heights below for why an inaccurate estimate is costly.
+  estimateSize: () => 32,
   overscan: 5,
 })
 
-<tbody
+<table
   style={{
+    display: 'grid',
+    // The scroll range lives on the table, because <tbody> is the element
+    // that gets translated.
     height: `${rowVirtualizer.getTotalSize()}px`,
-    position: 'relative',
+    // Grid's default align-content stretches auto-sized tracks to fill the
+    // container, which on a very tall table would spread <thead> and <tbody>
+    // over half of it each.
+    'align-content': 'start',
   }}
 >
-  <For each={rowVirtualizer.getVirtualItems()}>
-    {(virtualRow) => {
-      const row = rows()[virtualRow.index]
-      return (
-        <tr
-          style={{
-            position: 'absolute',
-            transform: `translateY(${virtualRow.start}px)`,
-            width: '100%',
-          }}
-        >
-          <For each={row.getVisibleCells()}>
-            {(cell) => <td><table.FlexRender cell={cell} /></td>}
-          </For>
-        </tr>
-      )
+  <thead style={{ display: 'grid', position: 'sticky', top: '0px' }}>
+    {/* header groups render normally */}
+  </thead>
+  <tbody
+    style={{
+      display: 'grid',
+      // ONE transform for the whole window, not one per row.
+      transform: `translateY(${rowVirtualizer.getVirtualItems()[0]?.start ?? 0}px)`,
     }}
-  </For>
-</tbody>
+  >
+    <Repeat count={rowVirtualizer.getVirtualItems().length}>
+      {(slot) => (
+        <TableBodyRow
+          virtualRow={() => rowVirtualizer.getVirtualItems()[slot]}
+          rows={rows}
+        />
+      )}
+    </Repeat>
+  </tbody>
+</table>
+```
+
+Two choices there are load-bearing, and both are covered under [Performance Tips](#performance-tips):
+
+`<Repeat>` (from `solid-js`), not `<For>`. A virtual window holds a near-constant number of rows — scrolling changes which data they show, not how many there are. `<For>` keys by item identity, so a scroll reads as "N items left, N arrived" and it tears down and rebuilds every row component and every cell inside it. `<Repeat>` keeps one component per slot for as long as the count holds, so scrolling updates content in place. That is why each row takes accessors (`virtualRow`, `rows`) instead of resolved values: the slot re-points at different data without being rebuilt.
+
+One transform on `<tbody>`, not one per row. Rows stay in normal flow; only the window offset moves.
+
+Each row component resolves its own row and cells through memos, so the walk from cell to row to row model runs once per row rather than once per cell:
+
+```tsx
+function TableBodyRow(props: {
+  virtualRow: () => VirtualItem | undefined
+  rows: () => Array<Row<typeof features, Person>>
+}) {
+  const virtualRow = createMemo(() => props.virtualRow())
+  const row = createMemo(() => props.rows()[virtualRow()?.index ?? -1])
+  const cells = createMemo(() => row()?.getAllCells() ?? [])
+
+  return (
+    <tr style={{ display: 'flex', width: '100%' }}>
+      <Repeat count={cells().length}>
+        {(slot) => (
+          <td
+            style={{
+              display: 'flex',
+              width: `${cells()[slot]?.column.getSize() ?? 0}px`,
+            }}
+          >
+            <FlexRender cell={cells()[slot]} />
+          </td>
+        )}
+      </Repeat>
+    </tr>
+  )
+}
 ```
 
 ### Virtualized Rows
@@ -152,7 +199,7 @@ The core idea is that sorting, filtering, grouping, and other row-model work sti
 const rows = () => table.getRowModel().rows
 ```
 
-The row virtualizer is configured with a reactive `get count()` getter over `rows().length`, a row height estimate, the scroll container, and an overscan value. The `tbody` is given the full virtual height with `rowVirtualizer.getTotalSize()`, while each rendered row is absolutely positioned with `transform: translateY(...)`.
+The row virtualizer is configured with a reactive `get count()` getter over `rows().length`, a row height estimate, the scroll container, and an overscan value. The `table` element carries the full virtual height from `rowVirtualizer.getTotalSize()`, and the `tbody` carries a single `transform: translateY(...)` taken from the first virtual item's `start`. Rows themselves are in normal flow with no per-row positioning.
 
 The examples render cells from the current row with APIs like `row.getVisibleCells()` or `row.getAllCells()`, depending on whether the example needs visibility-aware cells or all cells.
 
@@ -182,7 +229,7 @@ const columnVirtualizer = createVirtualizer({
 })
 ```
 
-Column virtualization uses a different rendering strategy than row virtualization. Instead of absolutely positioning columns, the examples add fake spacer cells to the left and right:
+Column virtualization uses a different rendering strategy than row virtualization. Rather than offsetting the rendered columns, the examples add fake spacer cells to the left and right:
 
 ```tsx
 const virtualPaddingLeft = () => {
@@ -238,22 +285,40 @@ If sorting is handled by the server, use manual sorting so the fetched data refl
 
 Dynamic row heights are useful when content can wrap or expand. They are also more complex than fixed-height rows.
 
-Use `estimateSize` as the virtualizer's initial guess:
+`estimateSize` is the virtualizer's initial guess, and its accuracy is load-bearing at large row counts — this is worth more attention than it looks:
 
 ```tsx
-estimateSize: () => 33
+estimateSize: () => 32
 ```
 
-Then use `measureElement` to refine the actual row height after rendering:
+`virtual-core` rebuilds its measurement array from the first row whose measured size differs from its cached or estimated size, all the way to `count`. A 1px error on a 200,000-row table therefore costs a ~170,000-iteration rebuild for _every_ row scrolled into view. Profiling the Solid example with a 33px estimate against rows that actually rendered at 32px put 70% of all script time in `getMeasurements`; correcting the single digit removed it.
+
+So measure the value, do not copy one. The right number depends on your font rendering, so read it from the page you are actually shipping:
+
+```js
+document.querySelector('tbody tr').getBoundingClientRect().height
+```
+
+Then use `measureElement` to refine the real row height after rendering. A slot-based renderer needs this in an effect rather than on the ref, because a slot outlives any single row:
 
 ```tsx
-<tr
-  data-index={virtualRow.index}
-  ref={node => rowVirtualizer.measureElement(node)}
->
+let el: HTMLTableRowElement | undefined
+
+createEffect(
+  () => virtualRow()?.index,
+  (index) => {
+    if (el === undefined || index === undefined) return
+    el.setAttribute('data-index', String(index))
+    rowVirtualizer.measureElement(el)
+  },
+)
+
+<tr ref={el} style={{ display: 'flex', width: '100%' }}>
 ```
 
-Set `data-index` on each row so the virtualizer can associate measurements with the correct item. In Solid, pass `measureElement` through a ref callback exactly as shown above; this is what the [Virtualized Rows example](../examples/virtualized-rows) does. The example also skips dynamic measurement in Firefox (passing `measureElement: undefined`) because Firefox measures table border heights differently.
+Two things there are easy to get wrong. The ref fires once per slot, but a slot changes index on every scroll, so measurement cannot ride on ref creation. And `data-index` must be set _before_ `measureElement` runs: the virtualizer reads that attribute to identify the row and silently skips the measurement when it is absent. Writing it as a dynamic JSX attribute does not work — Solid compiles `data-index={...}` into an effect that runs _after_ the ref, so the virtualizer sees a node with no index, warns, and never measures. That warning is not dev-gated, so it ships to production.
+
+The [Virtualized Rows example](../examples/virtualized-rows) also skips dynamic measurement in Firefox (passing `measureElement: undefined`) because Firefox measures table border heights differently.
 
 Overscan helps avoid blank regions while measurements settle. If every row has a known fixed height, skip dynamic measurement and use the fixed height estimate instead.
 
@@ -286,15 +351,25 @@ td {
 
 The `box-sizing` rule is not cosmetic. Once cells are laid out with flexbox, the width you set from `column.getSize()` lands on the element directly, and under the default `content-box` any padding and borders are added on top of it. Header and body cells rarely carry identical padding — a `th` with `padding: 2px 4px` and a `1px` right border renders 9px wider than its column while a `td` with `padding: 6px` renders 12px wider — so each column shifts its neighbour a little further and header labels drift off the data they label. `border-box` makes the declared width the rendered width for both.
 
-Rows are absolutely positioned inside a relatively positioned `tbody`, and cells use flex sizing so they can match `column.getSize()` or `cell.column.getSize()`. This is intentional. Native table layout does not work well with dynamic-height virtual rows that are positioned independently.
+Cells use flex sizing so they can match `column.getSize()` or `cell.column.getSize()`. This is intentional: native table layout does not work well with dynamic-height virtual rows. The scroll range goes on the `table` element and the window offset on the `tbody`, so rows themselves need no positioning at all — see [Performance Tips](#performance-tips) for why that is not just a stylistic choice.
 
 ### Performance Tips
 
+Two of these came out of profiling the Solid examples and are worth more than the rest combined, because each one was individually responsible for most of the cost of a scroll.
+
+**Translate the window once, never one transform per row.** Chrome restyles an element _and its immediate children_ whenever its style changes, so the elements restyled per update are `writes × (1 + immediate child count)`. Moving 36 rows that hold 9 cells each restyles 36 × 10 = 360 elements; moving their shared parent restyles 1 + 36 = 37. Measured on the virtualized-rows example, that difference was 1,262 ms of style recalculation over a scripted scroll versus 27 ms. Reaching for layer promotion instead is the wrong instinct and measured _worse_ — `will-change: transform` cost 30% more and `contain: layout` 16% more, because the cost is child restyling, not compositing.
+
+**Keep `estimateSize` accurate.** See [Dynamic Row Heights](#dynamic-row-heights): an estimate that is 1px off costs an O(count) measurement rebuild for every row scrolled into view.
+
+The rest:
+
 - Keep virtualizers near the components that render the virtualized items.
-- Avoid re-rendering the full table body on every scroll.
+- Render slots, not items. `<Repeat count={...}>` over a near-constant window keeps one component per slot and updates it in place; `<For>` keys by identity and rebuilds the whole window on every scroll.
+- Memoize the row and cell chain once per row. Reading `row.getAllCells()` from a bare accessor inside each cell re-walks cells → row → row model once per _cell_, and those reads land outside a tracking scope.
 - Keep row, column, and data references stable where possible.
 - Use `overscan` deliberately. More overscan reduces visible blanking, while less overscan reduces DOM nodes.
 - Avoid expensive cell renderers in very large virtualized tables.
-- Test production builds. Framework development builds can be slower than production builds; profile production bundles before optimizing.
+- Test production builds. Framework development builds can be slower than production builds; profile production bundles before optimizing. In particular, Solid's `STRICT_READ_UNTRACKED` diagnostic exists only in the dev build and can dominate a dev-mode scroll profile.
 - Prefer fixed row sizes when the UI allows it.
 - For column virtualization, use `column.getSize()`, `header.getSize()`, and `cell.column.getSize()` consistently.
+- Measure with a scripted gesture, not by hand. Identical start offset, frame count and per-frame delta, several runs, compare medians — hand-performed scrolls of different speed and distance are not comparable, and neither are runs taken while other dev servers are competing for the machine.
