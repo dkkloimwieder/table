@@ -6,9 +6,11 @@ packages:
   - packages/*
 
 overrides:
-  # single @solidjs/web copy: solid-router 2.0.0-beta.28 pins 2.0.0-beta.27 as a
-  # regular dependency; two copies would mean two template caches and two
-  # event-delegation roots
+  # single @solidjs/web copy: solid-router declares @solidjs/web as a peer AND
+  # pins it as a regular dependency (2.0.0-beta.29 pins 2.0.0-beta.29, so it
+  # currently agrees with this override). Kept as a drift guard: the moment the
+  # two diverge, two copies would mean two template caches and two
+  # event-delegation roots.
   '@solidjs/web': 2.0.0-beta.29
   # The TanStack devtools UI stack is built on Solid 1 (it imports
   # `solid-js/web`, which solid-js@2 no longer exports). Once the solid
