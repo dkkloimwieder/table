@@ -25,7 +25,5 @@ const features = tableFeatures({
   sortedRowModel: createSortedRowModel(),
 })
 const helper = createColumnHelper<typeof features, Person>()
-const columns = helper.columns([
-  helper.accessor('name', { header: 'Name' }),
-])
+const columns = helper.columns([helper.accessor('name', { header: 'Name' })])
 const [data, setData] = createSignal<Array<Person>>([{ name: 'Ada' }])
