@@ -8,6 +8,5 @@
 > source stays in-tree and will be un-parked once solid-form ships Solid 2
 > support.
 
-To run it in the meantime, copy the directory out of the repo and install
-its dependencies standalone with the last Solid-1 adapter release from the
-`solid1` dist-tag (`npm install @tanstack/solid-table@solid1`).
+To run it in the meantime, copy the directory out of the repo and install its
+dependencies standalone.

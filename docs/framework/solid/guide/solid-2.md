@@ -6,16 +6,6 @@ TanStack Table v9's Solid adapter targets **Solid 2**. Its peer dependencies are
 
 This guide covers the app-side upgrade steps, the adapter's new timing contract, and the current compatibility status of companion TanStack libraries. For the v8 → v9 table API changes themselves (entrypoint rename, the `features` option, and so on), see the [Migrating to V9](./migrating) guide — the two migrations are independent concerns.
 
-## Staying on Solid 1
-
-If you cannot upgrade to Solid 2 yet, install the last Solid-1 adapter release from the `solid1` dist-tag:
-
-```bash
-npm install @tanstack/solid-table@solid1
-```
-
-The `solid1` line receives no new features; it exists as an escape hatch while you migrate.
-
 ## Upgrade Steps
 
 These are the changes the migration of this repo's 35 Solid examples actually required, plus the removed APIs you are most likely to hit even though the examples happened not to use them (`batch`, `createComputed`, `mergeProps`). It is not an exhaustive Solid 2 changelog — consult Solid's own release notes for changes outside the table-adapter surface.

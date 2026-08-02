@@ -66,8 +66,6 @@ The main migration is replacing `createSolidTable` with `createTable`, then movi
 
 The v9 Solid adapter targets Solid 2. Its peer dependencies are `solid-js` and `@solidjs/web` at `>=2.0.0-beta.29 <3.0.0`, so upgrading the adapter means upgrading Solid alongside it, including Solid 2's own breaking changes (`solid-js/web` moved to `@solidjs/web`, `solid-js/store` is gone, `batch` was replaced by auto-batching, and `on`, `onMount`, `splitProps`, `mergeProps`, and `createComputed` were removed).
 
-If you need to stay on Solid 1 for now, install the last Solid-1 adapter release from the `solid1` dist-tag (`npm install @tanstack/solid-table@solid1`).
-
 ### Entrypoint Rename
 
 ```tsx
@@ -790,7 +788,7 @@ type Person = {
 
 ## Migration Checklist
 
-- [ ] Upgrade to Solid 2 (`solid-js` and `@solidjs/web` at `>=2.0.0-beta.29 <3.0.0`), or stay on the `solid1` dist-tag of the adapter.
+- [ ] Upgrade to Solid 2 (`solid-js` and `@solidjs/web` at `>=2.0.0-beta.29 <3.0.0`).
 - [ ] Replace `createSolidTable` with `createTable`.
 - [ ] Define `features` using `tableFeatures()` (or use `stockFeatures`)
 - [ ] Move every `get*RowModel` factory into `tableFeatures` as a slot (e.g. `sortedRowModel: createSortedRowModel()`).

@@ -18,7 +18,7 @@ sources:
 
 This skill builds on @tanstack/table-core#core and @tanstack/table-devtools#devtools.
 
-The Solid devtools stack currently supports Solid 1 only (`@tanstack/solid-table-devtools` peers `solid-js <2.0.0`) — pair it with the `solid1` dist-tag adapter releases. In a Solid 2 app, keep the `key` table option but leave devtools unwired until the devtools packages ship Solid 2 support.
+The Solid devtools stack currently supports Solid 1 only (`@tanstack/solid-table-devtools` peers `solid-js <2.0.0`). In a Solid 2 app, keep the `key` table option but leave devtools unwired until the devtools packages ship Solid 2 support.
 
 ## Setup
 

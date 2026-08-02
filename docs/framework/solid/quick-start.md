@@ -12,7 +12,7 @@ TanStack Table v9 is currently published under the `beta` tag:
 npm install @tanstack/solid-table@beta
 ```
 
-The v9 adapter targets **Solid 2**: it peer-depends on `solid-js` and `@solidjs/web`, both at `>=2.0.0-beta.29 <3.0.0`. If your app is still on Solid 1, install the last Solid-1 adapter release from the `solid1` dist-tag instead (`npm install @tanstack/solid-table@solid1`), and see the [Solid 2 Upgrade guide](./guide/solid-2.md) when you are ready to move.
+The v9 adapter targets **Solid 2**: it peer-depends on `solid-js` and `@solidjs/web`, both at `>=2.0.0-beta.29 <3.0.0`. If your app is still on Solid 1, see the [Solid 2 Upgrade guide](./guide/solid-2.md) for the upgrade.
 
 ## Your First Table
 
