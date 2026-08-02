@@ -119,6 +119,95 @@ const onClick = () => {
 
 There is no `batch()` anymore and the adapter needs no replacement for it: consecutive writes coalesce automatically, and table-core's internal multi-atom updates commit atomically at the next settle.
 
+## `[STRICT_READ_UNTRACKED]` Warnings
+
+Solid 2's **development build** warns when a reactive value is read inside a component body with no nested tracking scope:
+
+```
+[STRICT_READ_UNTRACKED] Reactive value read directly in <cell> will not update.
+Move it into a tracking scope (JSX, a memo, or an effect's compute function).
+```
+
+A table triggers this readily, and on a virtualized table it can appear thousands of times per scroll. Two things combine to produce it: `createComponent` runs every component body inside `untrack()`, and table-core resolves values _lazily inside render functions_ — `cell.getValue()` walks `table.options` and reads `row.original` at render time, not when the cell was built. Any of those reads that lands on one of your option getters, a signal, or a store therefore happens inside that `untrack`. The label says `<cell>` because the owner is table-core's default cell renderer, a function literal on a `cell:` property.
+
+You will also see it named after **your own component**, once per reactive option, at `createTable()` itself — `constructTable` seeds its options store with an object spread, which evaluates your getters right there in the untracked component body.
+
+None of this exists in a production build. It is a developer-experience and dev-profiling cost, not a runtime one.
+
+### Why the table's own reads are harmless
+
+The warning is accurate: those reads genuinely subscribe to nothing. They are still harmless, because something else in the tree is already tracking the same value.
+
+- The construction-time spread is immediately re-layered by the adapter's options store, which keeps your getters alive. Every later read of `table.options.data` goes through the getter in whatever scope asks for it, so a reactive `data` or `columns` option stays reactive.
+- Reads inside a cell renderer are redundant: your JSX reads the row/cell chain in a tracked scope, so when an option changes, the row model rebuilds, `FlexRender`'s keyed `<Match>` sees a new cell instance, and the renderer is invoked again — with current values.
+
+So a table whose reactive values arrive **through table options** updates correctly, warnings notwithstanding.
+
+### The case that really is stale
+
+The exception is a renderer that reads a reactive value _directly_ and returns a plain value. Nothing else observes that signal, and the cell instance never changes, so the renderer never runs again:
+
+```tsx
+const [highlight, setHighlight] = createSignal(false)
+
+// STALE: `highlight` is read in the untracked renderer body, and the plain
+// string result is inserted once.
+const columns = [
+  {
+    id: 'name',
+    accessorKey: 'name',
+    cell: (c) => `${c.getValue()}${highlight() ? ' ★' : ''}`,
+  },
+]
+```
+
+The fix is the one the warning names — put the read in a tracking scope. Returning JSX is enough, because the expression compiles to an insert effect:
+
+```tsx
+cell: (c) => (
+  <span>
+    {c.getValue()}
+    {highlight() ? ' ★' : ''}
+  </span>
+)
+```
+
+That version updates, and stops warning. Use the warning this way: ignore the ones that come from the table resolving its own options, and treat one that points at your own reactive value as a real bug.
+
+### Don't pass a Solid store as `data`
+
+A store as `data` never updates the table, and no amount of tracking fixes it:
+
+```tsx
+const [rows, setRows] = createStore([{ id: '1', name: 'Ada' }])
+
+const table = createTable({
+  get data() {
+    return rows // ← the row model is built once and never again
+  },
+  columns,
+  features,
+})
+```
+
+table-core rebuilds its row model when `table.options.data` changes **identity**, and a store proxy's identity never changes — not even when the setter replaces the whole array, since it merges into the same proxy. Row values are cached per row instance as well, so even a tracked read returns the old value.
+
+Project the store into a plain array first, and let that array's identity change:
+
+```tsx
+const data = createMemo(() => rows.map((row) => ({ ...row })))
+
+const table = createTable({
+  get data() {
+    return data()
+  },
+  columns,
+  features,
+})
+```
+
+This is why the TanStack Query example passes `query.data.pages.flatMap(...)` through a `createMemo` rather than handing the query's store to the table directly.
+
 ## `createAtom` (External State Atoms)
 
 The adapter exports `createAtom` for external table state. It is a Solid signal carrying the TanStack Store `Atom` contract, so it plugs directly into table options that accept atoms — no separate store library needed:
