@@ -57,15 +57,15 @@ The `solid-js/store` entrypoint is also gone in Solid 2.
 
 ### Removed APIs and their replacements
 
-| Solid 1 | Solid 2 |
-| --- | --- |
-| `batch(fn)` | Removed — every write auto-batches to a microtask; `flush()` settles synchronously |
-| `createComputed(fn)` | Removed — use a two-arg `createEffect(compute, effectFn)`, or a writable memo (`createSignal(fn)`) when the goal was pushing into derived state |
-| One-arg `createEffect(fn)` | Two-arg `createEffect(compute, effectFn)` |
-| `on(deps, fn, { defer })` | Removed — deps go in the compute half; pass `{ defer: true }` as the third argument |
-| `onMount(fn)` | `onSettled(fn)` — `fn` may return a cleanup function |
-| `splitProps(props, keys)` | `omit(props, ...keys)` (variadic keys, returns the rest) |
-| `mergeProps(...sources)` | `merge(...sources)` — **`undefined` values now override**; drop keys instead of passing `undefined` |
+| Solid 1                    | Solid 2                                                                                                                                         |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `batch(fn)`                | Removed — every write auto-batches to a microtask; `flush()` settles synchronously                                                              |
+| `createComputed(fn)`       | Removed — use a two-arg `createEffect(compute, effectFn)`, or a writable memo (`createSignal(fn)`) when the goal was pushing into derived state |
+| One-arg `createEffect(fn)` | Two-arg `createEffect(compute, effectFn)`                                                                                                       |
+| `on(deps, fn, { defer })`  | Removed — deps go in the compute half; pass `{ defer: true }` as the third argument                                                             |
+| `onMount(fn)`              | `onSettled(fn)` — `fn` may return a cleanup function                                                                                            |
+| `splitProps(props, keys)`  | `omit(props, ...keys)` (variadic keys, returns the rest)                                                                                        |
+| `mergeProps(...sources)`   | `merge(...sources)` — **`undefined` values now override**; drop keys instead of passing `undefined`                                             |
 
 The two-arg effect form separates tracking from side effects: the first function is the tracked compute, the second receives its result and runs untracked after the queue flushes.
 
@@ -102,20 +102,20 @@ The effect half must return either `undefined` or a **cleanup function**. Return
 
 ### Writes during component setup
 
-Solid 2's dev runtime throws `REACTIVE_WRITE_IN_OWNED_SCOPE` when a plain signal is written inside an owned scope — a component body, a `createRoot` callback, or a render effect's synchronous initial run. Signals that are *intentionally* written from such scopes must opt in with `ownedWrite`:
+Solid 2's dev runtime throws `REACTIVE_WRITE_IN_OWNED_SCOPE` when a plain signal is written inside an owned scope — a component body, a `createRoot` callback, or a render effect's synchronous initial run. Signals that are _intentionally_ written from such scopes must opt in with `ownedWrite`:
 
 ```tsx
 const [version, setVersion] = createSignal(0, { ownedWrite: true })
 ```
 
-All of the adapter's own writable atoms (including those from [`createAtom`](#createatom-external-state-atoms)) already set this — you only need it for your own signals. Plain writes are legal in event handlers and in effect halves; neither is an owned scope. For write-*then-read* sequences, use an event handler: inside an effect half the queue is already mid-drain, so a read after a write still returns the committed value.
+All of the adapter's own writable atoms (including those from [`createAtom`](#createatom-external-state-atoms)) already set this — you only need it for your own signals. Plain writes are legal in event handlers and in effect halves; neither is an owned scope. For write-_then-read_ sequences, use an event handler: inside an effect half the queue is already mid-drain, so a read after a write still returns the committed value.
 
 ## The Adapter's Timing Contract
 
 Solid 2 defers every write to a microtask, and the adapter leans into that instead of fighting it:
 
 - **Reactive reads need nothing.** Inside JSX, memos, and effect computes, table state reads (`table.getRowModel()`, `atom.get()`, `table.options`) are tracked like ordinary Solid reads. Your UI updates when the queue settles — one render per batch of writes, however many state changes it contained.
-- **Imperative reads settle first.** When you read table state *outside* any reactive scope — an event handler, a test, module-level code — the adapter calls `flush()` before reading, so you get read-your-writes:
+- **Imperative reads settle first.** When you read table state _outside_ any reactive scope — an event handler, a test, module-level code — the adapter calls `flush()` before reading, so you get read-your-writes:
 
 ```tsx
 const onClick = () => {
@@ -124,7 +124,7 @@ const onClick = () => {
 }
 ```
 
-- **The precise rule: the adapter flushes only when the read happens with no tracking observer AND no owner.** The common case of a suppressed flush is component setup: while a component (or `createRoot`) is being constructed, imperative reads do *not* flush — draining the queue there would run pending effects inside the mounting component's scope. The same applies to any other owned scope, such as an `onSettled` callback or code re-entered through `runWithOwner`. Reads in those scopes return the last committed value; writes made there become visible after the current microtask. Don't rely on write-then-read inside component bodies.
+- **The precise rule: the adapter flushes only when the read happens with no tracking observer AND no owner.** The common case of a suppressed flush is component setup: while a component (or `createRoot`) is being constructed, imperative reads do _not_ flush — draining the queue there would run pending effects inside the mounting component's scope. The same applies to any other owned scope, such as an `onSettled` callback or code re-entered through `runWithOwner`. Reads in those scopes return the last committed value; writes made there become visible after the current microtask. Don't rely on write-then-read inside component bodies.
 - **`flush()` is available** from `solid-js` when you need to settle explicitly (typically in tests). Never call it from inside `onSettled` or a `createTrackedEffect` callback — the queue is mid-drain there and `flush()` throws. From an ordinary effect callback it does not throw, but it is a silent no-op, so it cannot be used to settle reads there either.
 
 There is no `batch()` anymore and the adapter needs no replacement for it: consecutive writes coalesce automatically, and table-core's internal multi-atom updates commit atomically at the next settle.
@@ -160,16 +160,16 @@ const sorting = () => sortingAtom.get()
 
 Solid 2 support across the TanStack ecosystem is still rolling out. Status at the time of writing:
 
-| Package | Solid 2 status | What to do |
-| --- | --- | --- |
-| `@tanstack/solid-query` | ✅ Ready (`6.0.0-beta.6+`) | Works as-is |
-| `@tanstack/solid-router` | ✅ Ready (`2.0.0-beta.28+`) | Works, but force a single `@solidjs/web` copy: router `2.0.0-beta.28` hard-pins `@solidjs/web@2.0.0-beta.27` as a regular dependency, so add a package-manager override (pnpm `overrides` / npm `overrides` / yarn `resolutions`) to your app's version — two copies mean two template caches and two event-delegation roots |
-| `@tanstack/solid-virtual` | ❌ Solid 1 only | Use `@tanstack/virtual-core` with a small local wrapper — see the [Virtualization](./virtualization) guide |
-| `@tanstack/solid-pacer` | ❌ Solid 1 only | Use the framework-agnostic `@tanstack/pacer` classes (`Debouncer`, etc.) directly |
-| `@tanstack/solid-store` | ❌ Solid 1 only | Use the adapter's own [`createAtom`](#createatom-external-state-atoms) |
-| `@tanstack/solid-form` | ❌ Solid 1 only | No replacement yet — the `with-tanstack-form` example is parked until solid-form ships Solid 2 support |
-| `@tanstack/solid-hotkeys` | ❌ Solid 1 only | Plain `keydown` handlers |
-| `@tanstack/solid-devtools` / `@tanstack/solid-table-devtools` | ❌ Solid 1 only | See below |
+| Package                                                       | Solid 2 status              | What to do                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@tanstack/solid-query`                                       | ✅ Ready (`6.0.0-beta.6+`)  | Works as-is                                                                                                                                                                                                                                                                                                                  |
+| `@tanstack/solid-router`                                      | ✅ Ready (`2.0.0-beta.28+`) | Works, but force a single `@solidjs/web` copy: router `2.0.0-beta.28` hard-pins `@solidjs/web@2.0.0-beta.27` as a regular dependency, so add a package-manager override (pnpm `overrides` / npm `overrides` / yarn `resolutions`) to your app's version — two copies mean two template caches and two event-delegation roots |
+| `@tanstack/solid-virtual`                                     | ❌ Solid 1 only             | Use `@tanstack/virtual-core` with a small local wrapper — see the [Virtualization](./virtualization) guide                                                                                                                                                                                                                   |
+| `@tanstack/solid-pacer`                                       | ❌ Solid 1 only             | Use the framework-agnostic `@tanstack/pacer` classes (`Debouncer`, etc.) directly                                                                                                                                                                                                                                            |
+| `@tanstack/solid-store`                                       | ❌ Solid 1 only             | Use the adapter's own [`createAtom`](#createatom-external-state-atoms)                                                                                                                                                                                                                                                       |
+| `@tanstack/solid-form`                                        | ❌ Solid 1 only             | No replacement yet — the `with-tanstack-form` example is parked until solid-form ships Solid 2 support                                                                                                                                                                                                                       |
+| `@tanstack/solid-hotkeys`                                     | ❌ Solid 1 only             | Plain `keydown` handlers                                                                                                                                                                                                                                                                                                     |
+| `@tanstack/solid-devtools` / `@tanstack/solid-table-devtools` | ❌ Solid 1 only             | See below                                                                                                                                                                                                                                                                                                                    |
 
 ## Devtools
 
