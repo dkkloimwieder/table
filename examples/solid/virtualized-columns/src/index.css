@@ -18,6 +18,18 @@ tr {
   border-bottom: 1px solid lightgray;
 }
 
+/* This example lays the table out with grid and flexbox rather than table
+   layout, so each cell's width is the column size applied directly to the
+   element. Under the default content-box, padding and borders are added on
+   top of that width: a th (padding 2px 4px plus a 1px right border) renders
+   9px wider than its column, a td (padding 6px) renders 12px wider, and the
+   3px difference accumulates so header cells drift left of the data they
+   label. border-box makes the declared width the rendered width for both. */
+th,
+td {
+  box-sizing: border-box;
+}
+
 th {
   border-bottom: 1px solid lightgray;
   border-right: 1px solid lightgray;

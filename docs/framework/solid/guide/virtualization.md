@@ -277,7 +277,14 @@ thead {
 tr {
   display: flex;
 }
+
+th,
+td {
+  box-sizing: border-box;
+}
 ```
+
+The `box-sizing` rule is not cosmetic. Once cells are laid out with flexbox, the width you set from `column.getSize()` lands on the element directly, and under the default `content-box` any padding and borders are added on top of it. Header and body cells rarely carry identical padding — a `th` with `padding: 2px 4px` and a `1px` right border renders 9px wider than its column while a `td` with `padding: 6px` renders 12px wider — so each column shifts its neighbour a little further and header labels drift off the data they label. `border-box` makes the declared width the rendered width for both.
 
 Rows are absolutely positioned inside a relatively positioned `tbody`, and cells use flex sizing so they can match `column.getSize()` or `cell.column.getSize()`. This is intentional. Native table layout does not work well with dynamic-height virtual rows that are positioned independently.
 
