@@ -7,11 +7,13 @@ packages:
 
 overrides:
   # single @solidjs/web copy: solid-router declares @solidjs/web as a peer AND
-  # pins it as a regular dependency (2.0.0-beta.29 pins 2.0.0-beta.29, so it
-  # currently agrees with this override). Kept as a drift guard: the moment the
-  # two diverge, two copies would mean two template caches and two
+  # pins it as a regular dependency. As of solid-router 2.0.0-beta.29 that dep
+  # is pinned to @solidjs/web 2.0.0-beta.29, so this override is now actively
+  # lifting router onto beta.30 rather than merely agreeing with it — which is
+  # the point. Router's PEER range is >=2.0.0-0 <3.0.0, so beta.30 satisfies it.
+  # Without this, two copies would mean two template caches and two
   # event-delegation roots.
-  '@solidjs/web': 2.0.0-beta.29
+  '@solidjs/web': 2.0.0-beta.30
   # The TanStack devtools UI stack is built on Solid 1 (it imports
   # `solid-js/web`, which solid-js@2 no longer exports). Once the solid
   # examples moved to solid-js@2, pnpm's peer dedupe re-resolved this family
@@ -101,3 +103,6 @@ trustPolicyExclude:
 minimumReleaseAgeExclude:
   - '@tanstack/solid-query@6.0.0-beta.7'
   - '@tanstack/solid-router@2.0.0-beta.29'
+  - '@solidjs/signals@2.0.0-beta.30'
+  - '@solidjs/web@2.0.0-beta.30'
+  - solid-js@2.0.0-beta.30
