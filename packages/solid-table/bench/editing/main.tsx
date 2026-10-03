@@ -75,6 +75,10 @@ function start(size = 8, saveMode: SaveMode = 'row') {
 }
 function readModel(model: EditingModel) {
   return {
+    locked: model.locked(),
+    sorting: snapshot(model.table.state.sorting),
+    columnVisibility: snapshot(model.table.state.columnVisibility),
+    saveMode: model.saveMode(),
     ids: model.table.getRowIds(),
     filters: snapshot(model.table.state.columnFilters),
     search: model.table.state.globalFilter,
@@ -144,6 +148,24 @@ const api = {
     traceRuns.length = 0
   },
   read: () => readModel(model!),
+  draft: (id: string, value: string) => {
+    model!.editing.begin(id)
+    flush()
+    model!.editing.change(id, 'name', value)
+    flush()
+  },
+  cancelDraft: (id: string) => {
+    model!.editing.cancel(id)
+    flush()
+  },
+  childPatch: (
+    parent: string,
+    id: string,
+    value: Parameters<EditingModel['patch']>[1],
+  ) => {
+    childModel(parent).patch(id, value)
+    flush()
+  },
   childStatus: (id: string) => children!.get(id)?.state().status,
   childRead: (id: string) => {
     const entry = children!.get(id)

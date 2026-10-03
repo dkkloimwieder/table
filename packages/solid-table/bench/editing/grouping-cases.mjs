@@ -187,30 +187,32 @@ export async function groupingCases({
     },
   )
   await record(
-    'grouping removes edit bindings and preserves drafts until grouping clears',
+    'grouping waits for edits then removes edit bindings from grouped records',
     async () => {
       await seed('table')
       await call('grouping', [])
       await edit('R0001', 'note').click()
-      await input('R0001', 'note').fill('Draft before grouping')
+      await input('R0001', 'note').fill('Saved before grouping')
+      await call('grouping', ['priority', 'name'])
+      assert.deepEqual((await read()).grouping, [])
+      assert.equal((await read()).drafts.R0001.note, 'Saved before grouping')
+      await button('Save all').click()
+      await idle()
       await call('grouping', ['priority', 'name'])
       await button('Expand all groups').click()
       assert.equal(await page.locator('[data-edit], [data-editor]').count(), 0)
       assert.equal(await button('Save all').count(), 0)
-      assert.equal((await read()).drafts.R0001.note, 'Draft before grouping')
+      assert.deepEqual((await read()).drafts, {})
       assert.match(
         await page.locator('[data-row="R0001"]').textContent(),
-        /Shared note/,
+        /Saved before grouping/,
       )
       await call('grouping', [])
       await edit('R0001', 'note').click()
       assert.equal(
         await input('R0001', 'note').inputValue(),
-        'Draft before grouping',
+        'Saved before grouping',
       )
-      await button('Save all').click()
-      await idle()
-      assert.equal((await read()).sample[0].note, 'Draft before grouping')
     },
   )
   await record(
@@ -276,7 +278,7 @@ export async function groupingCases({
     },
   )
   await record(
-    'a save started before grouping finishes without moving focus',
+    'pending saves block grouping and do not reclaim later focus',
     async () => {
       await seed()
       await call('grouping', [])
@@ -284,14 +286,17 @@ export async function groupingCases({
       await input('R0001', 'note').fill('Held before grouping')
       await call('fault', 'hold')
       await save().click()
-      await add().selectOption('priority')
-      await button('Collapse all groups').click()
+      assert.equal(await add().isDisabled(), true)
+      await call('grouping', ['priority'])
+      assert.deepEqual((await read()).grouping, [])
+      await button('After table').click()
       await call('release')
       await idle()
       assert.deepEqual((await read()).drafts, {})
       assert.equal((await read()).sample[0].note, 'Held before grouping')
+      assert.ok(await focused(button('After table')))
+      await add().selectOption('priority')
       assert.equal(await page.locator('[data-row]').count(), 0)
-      assert.ok(await focused(button('Collapse all groups')))
     },
   )
   await record(

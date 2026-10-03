@@ -1,4 +1,4 @@
-import { createSignal, createStore, onCleanup } from 'solid-js'
+import { createMemo, createSignal, createStore, onCleanup } from 'solid-js'
 
 export type RecordData = {
   id: string
@@ -316,7 +316,9 @@ export function createEditing(options: {
       if (!isDisposed()) setSavingAll(false)
     }
   }
+  const active = createMemo(() => Object.keys(drafts).length > 0 || savingAll())
   return {
+    active,
     drafts,
     begin,
     collapse,

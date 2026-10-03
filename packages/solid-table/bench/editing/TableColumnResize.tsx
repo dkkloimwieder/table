@@ -3,6 +3,7 @@ import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/na
 
 /** Controlled width input. Pointer movement updates the rendered column. */
 export function TableColumnResize(props: {
+  disabled?: boolean
   label: string
   size: number
   min: number
@@ -67,6 +68,10 @@ export function TableColumnResize(props: {
   }
   function update(x: number) {
     if (!drag) return
+    if (props.disabled) {
+      cancel()
+      return
+    }
     if (
       props.size !== drag.next ||
       props.min !== drag.min ||
@@ -90,7 +95,14 @@ export function TableColumnResize(props: {
     if (drag) update(drag.lastX)
   }
   function start(event: PointerEvent) {
-    if (disposed || drag || event.button !== 0 || !event.isPrimary) return
+    if (
+      props.disabled ||
+      disposed ||
+      drag ||
+      event.button !== 0 ||
+      !event.isPrimary
+    )
+      return
     event.preventDefault()
     event.stopPropagation()
     handle.focus({ preventScroll: true })
@@ -114,6 +126,7 @@ export function TableColumnResize(props: {
     props.onActivity?.('start', 3 + Number(Boolean(scroller)))
   }
   function change(size: number) {
+    if (props.disabled) return
     const next = clamp(size)
     if (next === props.size) return
     props.onSizeChange(next)
@@ -134,6 +147,12 @@ export function TableColumnResize(props: {
       props.onActivity?.('cancel', -(3 + Number(Boolean(current.scroll))))
     }
   })
+  createEffect(
+    () => Boolean(props.disabled),
+    (disabled) => {
+      if (disabled) cancel()
+    },
+  )
   onSettled(() => () => {
     disposed = true
     cancel()
@@ -143,7 +162,8 @@ export function TableColumnResize(props: {
       <div
         class="column-resize"
         role="separator"
-        tabindex="0"
+        tabindex={props.disabled ? -1 : 0}
+        aria-disabled={props.disabled ? 'true' : undefined}
         aria-orientation="vertical"
         aria-label={`Resize ${props.label} column`}
         aria-describedby={helpId}
@@ -171,7 +191,7 @@ export function TableColumnResize(props: {
             },
             click: (event) => event.stopPropagation(),
             keydown: (event) => {
-              if (drag || event.isComposing) return
+              if (props.disabled || drag || event.isComposing) return
               const step = event.shiftKey ? 50 : 10
               const value =
                 event.key === 'ArrowLeft'

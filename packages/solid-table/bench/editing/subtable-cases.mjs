@@ -77,20 +77,13 @@ export async function subtableCases({
     'group summaries have no child controls while expanded records can open independent sub-tables',
     async () => {
       await start(8, 'table')
-      await open()
-      await draft('Child draft before grouping')
       await call('grouping', ['priority'])
-      assert.equal(await page.locator('[data-subtable]').count(), 0)
+      await call('expandGroups', true)
+      await open()
+      await draft('Grouped child edit')
       assert.equal(
         await page.locator('[data-group] [data-subtable-toggle]').count(),
         0,
-      )
-      assert.equal((await call('childCounts')).loads, 1)
-      await call('expandGroups', true)
-      assert.equal(await child().count(), 1)
-      assert.equal(
-        (await childRead()).drafts.R0001.name,
-        'Child draft before grouping',
       )
       assert.equal(
         await page
@@ -104,10 +97,7 @@ export async function subtableCases({
         .getByRole('button', { name: 'Save all', exact: true })
         .click()
       await saved()
-      assert.equal(
-        (await childRead()).sample[0].name,
-        'Child draft before grouping',
-      )
+      assert.equal((await childRead()).sample[0].name, 'Grouped child edit')
       assert.equal((await read()).counts.requests, 0)
       await toggle().click()
       await open('R0002')
@@ -134,11 +124,16 @@ export async function subtableCases({
       await open()
       assert.equal((await childRead()).counts.views, 5)
       await draft('Child draft')
+      assert.equal(await toggle().isDisabled(), true)
+      await child()
+        .getByRole('button', { name: 'Save all', exact: true })
+        .click()
+      await saved()
       await toggle().click()
       const closed = await childRead()
       assert.equal(closed.counts.views, closed.counts.unmounted)
-      assert.equal(closed.drafts.R0001.expanded, false)
-      assert.equal(closed.drafts.R0001.name, 'Child draft')
+      assert.deepEqual(closed.drafts, {})
+      assert.equal(closed.sample[0].name, 'Child draft')
       assert.equal(
         await toggle().evaluate((node) => node === document.activeElement),
         true,
@@ -152,14 +147,20 @@ export async function subtableCases({
     'parent and sibling sub-table saves are independent even with identical row IDs',
     async () => {
       await start(8, 'table')
+      await open()
+      await open('R0002')
       await page
+        .locator(
+          '[data-table-scope="root"] > .table-scroll > table > tbody > [data-row="R0001"]',
+        )
         .getByRole('button', { name: 'Edit name R0001', exact: true })
         .click()
       await page
+        .locator(
+          '[data-table-scope="root"] > .table-scroll > table > tbody > [data-row="R0001"]',
+        )
         .getByRole('textbox', { name: 'Name R0001', exact: true })
         .fill('Parent draft')
-      await open()
-      await open('R0002')
       await draft('First child draft')
       await draft('Second child draft', 'R0002')
       await rootButton('Save all').click()
@@ -256,32 +257,36 @@ export async function subtableCases({
     },
   )
   await record(
-    'parent filtering and sorting preserve child drafts and focus has a live destination',
+    'parent filters and sorting wait for child edits to resolve',
     async () => {
       await start(8, 'table')
       await open()
-      await draft('Preserved through parent filter')
+      await draft('Preserved until save')
       await row()
         .getByRole('button', { name: 'Edit name R0001', exact: true })
         .click()
       await call('filter', 'id', 'R0002')
-      assert.equal(await child().count(), 0)
+      await call('sorting', [{ id: 'name', desc: true }])
+      assert.deepEqual((await read()).filters, [])
+      assert.deepEqual((await read()).sorting, [])
+      assert.equal(await child().count(), 1)
       assert.equal(
         (await childRead()).drafts.R0001.name,
-        'Preserved through parent filter',
+        'Preserved until save',
       )
       assert.equal(
-        await page.evaluate(
-          () =>
-            document.activeElement !== document.body &&
-            document.activeElement.isConnected,
-        ),
+        await row()
+          .getByRole('textbox', { name: 'Name R0001', exact: true })
+          .evaluate((n) => n === document.activeElement),
         true,
       )
-      await page
-        .getByRole('button', { name: 'Show sub-table R0001', exact: true })
+      await child()
+        .getByRole('button', { name: 'Save all', exact: true })
         .click()
-      await call('sorting', [{ id: 'name', desc: true }])
+      await saved()
+      await call('filter', 'id', 'R0002')
+      assert.equal(await child().count(), 0)
+      await call('filter', 'id', '')
       assert.equal(await child().count(), 1)
       assert.equal((await call('childCounts')).loads, 1)
     },
@@ -333,19 +338,24 @@ export async function subtableCases({
       assert.equal(await call('childScope', 'current'), false)
       assert.match(
         await page.locator('main').innerText(),
-        /Save or cancel the sub-table drafts/,
+        /Save or cancel edits/,
       )
       assert.equal(
         (await childRead()).drafts.R0001.name,
         'Do not lose this draft',
       )
-      await call('childScope', 'current', true)
+      assert.equal(await call('childScope', 'current', true), false)
+      assert.equal(
+        (await childRead()).drafts.R0001.name,
+        'Do not lose this draft',
+      )
+      await child()
+        .getByRole('button', { name: 'Save all', exact: true })
+        .click()
+      await saved()
+      assert.equal(await call('childScope', 'current'), true)
       await settle()
       assert.equal(await call('childRead', 'R0001'), undefined)
-      assert.match(
-        await page.locator('main').innerText(),
-        /1 sub-table draft discarded/,
-      )
       assert.equal(
         (await call('childCounts')).created,
         (await call('childCounts')).disposed,
@@ -353,23 +363,30 @@ export async function subtableCases({
     },
   )
   await record(
-    'a held child save survives collapse without moving focus',
+    'a held child save prevents collapse and respects later focus',
     async () => {
       await start()
       await open()
-      await draft('Save while collapsed')
+      await draft('Save before collapse')
       await call('childFault', 'R0001', 'hold')
       await child()
         .getByRole('button', { name: 'Save all', exact: true })
         .click()
-      await toggle().click()
+      await settle()
+      assert.equal(await toggle().isDisabled(), true)
+      await call('childToggle', 'R0001')
+      assert.equal(await child().count(), 1)
+      await page.locator('[data-table-scope="root"] > .after-table').click()
       await call('childRelease', 'R0001')
       await saved()
-      assert.equal((await childRead()).sample[0].name, 'Save while collapsed')
+      assert.equal((await childRead()).sample[0].name, 'Save before collapse')
       assert.equal(
-        await toggle().evaluate((node) => node === document.activeElement),
+        await page
+          .locator('[data-table-scope="root"] > .after-table')
+          .evaluate((n) => n === document.activeElement),
         true,
       )
+      await toggle().click()
       assert.equal(
         (await childRead()).counts.views,
         (await childRead()).counts.unmounted,
@@ -377,29 +394,29 @@ export async function subtableCases({
     },
   )
   await record(
-    'parent removal aborts loads and releases child scopes with a draft-loss notice',
+    'parent removal waits for child saves then aborts remaining loads and releases scopes',
     async () => {
       await start()
       await open()
-      await draft('Draft on removed parent')
+      await call('childLoadFault', 'hold')
+      await toggle('R0002').click()
+      await draft('Save before parent removal')
       await call('childFault', 'R0001', 'hold')
       await child()
         .getByRole('button', { name: 'Save all', exact: true })
         .click()
-      await call('childLoadFault', 'hold')
-      await toggle('R0002').click()
-      await call('grouping', ['priority'])
       await call('remove', 'R0001')
       await call('remove', 'R0002')
       await settle()
+      assert.equal((await call('childCounts')).entries, 2)
+      assert.equal((await call('childCounts')).aborted, 0)
+      await call('childRelease', 'R0001')
+      await page.waitForFunction(
+        () => window.editingFixture.childCounts().entries === 0,
+      )
       const counts = await call('childCounts')
-      assert.equal(counts.entries, 0)
       assert.equal(counts.created, counts.disposed)
       assert.equal(counts.aborted, 1)
-      assert.match(
-        await page.locator('main').innerText(),
-        /1 sub-table draft discarded/,
-      )
       await call('childLoadRelease')
       assert.equal(await child().count(), 0)
     },

@@ -41,7 +41,7 @@ export function TableGrouping(props: { model: EditingModel }) {
   return (
     <fieldset
       class="grouping-controls"
-      disabled={!props.model.localProcessing()}
+      disabled={!props.model.localProcessing() || props.model.locked()}
     >
       <legend>Group records</legend>
       <div class="grouping-toolbar">

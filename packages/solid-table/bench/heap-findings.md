@@ -1059,3 +1059,43 @@ Interaction reports are `/tmp/table-subtables-{source,distribution,development,l
 The final reports are `/tmp/table-subtables-distribution-final.json` and `/tmp/table-subtables-live-final.json`.
 Screenshots are `/tmp/table-subtables-grouped.png`, `/tmp/table-subtables-desktop.png`, and `/tmp/table-subtables-mobile.png`.
 The 390-pixel layout keeps child controls inside the parent viewport and table content inside its own scroll area.
+
+## Stable table structure during editing
+
+Open editors, drafts, and pending saves now lock table configuration and row structure.
+The model guards controlled setters as well as disabling controls. Child edits prevent parent transitions that can hide the child.
+Collapse and dataset changes wait for affected edits to resolve. Each table retains its own save scope.
+
+The published `rowProcessingPaused` option retains evaluated ID arrays, group membership, and group order while cell values remain live.
+It does not create a second record store or copy record fields. Source removal waits until editing ends.
+The save controller rejects a stale response for a record awaiting removal.
+The sorted-ID memo compares IDs before notifying its consumers, so an unchanged result retains the rendered rows.
+
+All 138 package tests pass. Types, scoped lint, builds, package audits, and server rendering pass.
+All 111 browser scenarios pass against source, built-package, development, and live entries.
+Source and built workloads pass at 25, 250, and 999 records. The live workload passes at 25 records.
+Text and dropdown saves each read three cells. Closing an edited row reads six cells.
+Saving three collapsed drafts reads 18 cells. These operations create no replacement row views or cells.
+The existing filtering, grouping, resizing, and rearrangement count assertions also pass.
+
+The live attribution capture records 16,018 creation and rerun events while expanding 500 grouped records.
+No grouped record subscribes to drafts. A hidden child load causes no group or summary reruns.
+The report records two known scan-breadth entries, four advisory timing entries, and no unexpected diagnostics.
+Timings remain advisory because the host runs other development loads.
+
+Four focused heap captures cover 250 records after 10, 100, and 200 edit/cancel cycles, then disposal.
+All three settled captures retain exactly 250 records, 250 row views, 1,500 cells, and 263 store targets.
+They also retain 17,826 computations, 3,792 owners, and 20,048 dependency links.
+Disposal leaves no classified Table, Solid, or record resources.
+Whole-page heap totals are 10.234, 10.466, and 10.551 MiB during the cycles, then 2.470 MiB after disposal.
+The stable resource counts do not imply that the entire browser heap stays at a fixed size.
+
+The workload keeps a name filter and name sort active. Releasing each lock runs both scans once, even after Cancel.
+The 190 cycles after warmup read 95,190 names, 190 notes, and 190 priorities, with no new row views, cells, or requests.
+The name count includes 500 scan reads and one displayed-cell read per cycle.
+The lock drops scan subscriptions while active and processes current values when it releases.
+
+An initial broad heap run reached the filesystem quota during a 999-row capture.
+Its temporary raw snapshots were removed. The focused four-capture run completed successfully.
+The final reports are `/tmp/table-editing-lock-{source,development,live-final,distribution-final,memory}.json`.
+The focused snapshots and classifications are under `/tmp/table-editing-lock-heaps`.

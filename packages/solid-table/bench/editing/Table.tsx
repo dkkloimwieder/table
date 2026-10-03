@@ -86,6 +86,17 @@ export function Table(props: {
       .getVisibleColumns()
       .reduce((sum, column) => sum + column.getSize(), 230),
   )
+  // One DOM effect updates structural row controls. Each row must not subscribe
+  // to a table-wide lock; that would fan out to every rendered row per edit.
+  createEffect(
+    () => ({ locked: model.locked(), keys: table.getDisplayKeys() }),
+    ({ locked }) => {
+      for (const button of element.querySelectorAll<HTMLButtonElement>(
+        '[data-group-toggle], [data-subtable-toggle]',
+      ))
+        if (button.closest('table') === element) button.disabled = locked
+    },
+  )
   const draftIds = createMemo(
     () => (isGrouped() ? [] : Object.keys(editing.drafts)),
     {
@@ -166,6 +177,7 @@ export function Table(props: {
         <TableColumnMove
           id={props.column.id}
           label={String(props.column.columnDef?.header)}
+          disabled={model.locked()}
           ids={movableColumns()}
           onMove={(destination) => {
             const id = props.column.id
@@ -232,6 +244,7 @@ export function Table(props: {
       <Show when={!props.fixed || neighbor()}>
         <TableColumnResize
           label={String(props.column.columnDef?.header)}
+          disabled={model.locked()}
           size={props.column.getSize()}
           min={bounds()[0]}
           max={bounds()[1]}
@@ -372,6 +385,11 @@ export function Table(props: {
     table.setColumnFilters([])
     table.setGlobalFilter('')
   }
+  function restoreAfterRemoval() {
+    queueMicrotask(() => {
+      if (!disposed && document.activeElement === document.body) focusFilter()
+    })
+  }
   function focusFilter() {
     const candidates = untrack(() => table.state.globalFilter)
       ? [search, externalFilter, headerFilter]
@@ -391,7 +409,7 @@ export function Table(props: {
         hideLabel={placement === 'headers'}
         value={String(column.getFilterValue() ?? '')}
         onValueChange={(value) => column.setFilterValue(value || undefined)}
-        disabled={!model.localProcessing()}
+        disabled={!model.localProcessing() || model.locked()}
         choices={column.id === 'priority' ? priorityChoices : undefined}
         inputRef={(node) => {
           if (column.id === 'name') {
@@ -513,6 +531,7 @@ export function Table(props: {
           }
           ref={nativeEvents<HTMLButtonElement>({
             click: (event) => {
+              if (model.locked()) return
               event.currentTarget.focus({ preventScroll: true })
               props.details!.toggle(id)
             },
@@ -552,7 +571,7 @@ export function Table(props: {
     let detail: HTMLTableRowElement | undefined
     onCleanup(() => {
       counts.unmounted++
-      if (detail?.contains(document.activeElement)) focusFilter()
+      if (detail?.contains(document.activeElement)) restoreAfterRemoval()
     })
     return (
       <tbody>
@@ -588,7 +607,7 @@ export function Table(props: {
         node.contains(document.activeElement) ||
         detail?.contains(document.activeElement)
       )
-        focusFilter()
+        restoreAfterRemoval()
     })
     return (
       <tbody>
@@ -823,7 +842,9 @@ export function Table(props: {
                         aria-expanded={group.getIsExpanded() ? 'true' : 'false'}
                         aria-label={`${group.getIsExpanded() ? 'Collapse' : 'Expand'} ${label()}`}
                         ref={nativeEvents({
-                          click: () => group.toggleExpanded(),
+                          click: () => {
+                            if (!model.locked()) group.toggleExpanded()
+                          },
                         })}
                       >
                         <span aria-hidden="true">
@@ -871,10 +892,19 @@ export function Table(props: {
       </Show>
       {props.settings}
       <p>Filter each column or search across columns.</p>
+      <p
+        role="status"
+        class="editing-lock"
+        style={{ visibility: model.locked() ? 'visible' : 'hidden' }}
+      >
+        Save or cancel edits to change table options. Row order, filters,
+        groups, and column layout stay fixed while this table or a sub-table is
+        being edited.
+      </p>
       <Show when={isGrouped()}>
         <p>
-          Grouped records are read-only. Clear grouping to edit them. Existing
-          drafts are preserved. Expanded records can open their own sub-tables.
+          Grouped records are read-only. Clear grouping to edit them. Individual
+          records can open their own sub-tables when expanded.
         </p>
       </Show>
       <Show when={!isGrouped()}>
@@ -917,7 +947,7 @@ export function Table(props: {
               search
               value={table.state.globalFilter}
               onValueChange={(value) => table.setGlobalFilter(value)}
-              disabled={!model.localProcessing()}
+              disabled={!model.localProcessing() || model.locked()}
               inputRef={(node) => {
                 search = node
               }}
@@ -925,7 +955,7 @@ export function Table(props: {
           </div>
         </Show>
         <button
-          disabled={!model.localProcessing() || !hasFilters()}
+          disabled={!model.localProcessing() || model.locked() || !hasFilters()}
           ref={nativeEvents({
             click: () => {
               focusFilter()
@@ -941,14 +971,14 @@ export function Table(props: {
             <select
               aria-label="Save mode"
               value={saveMode()}
-              disabled={editing.savingAll()}
+              disabled={model.locked()}
               ref={[
                 (node) => {
                   modeControl = node
                 },
                 nativeEvents<HTMLSelectElement>({
                   change: (event) => {
-                    if (!editing.savingAll()) {
+                    if (!model.locked()) {
                       setSaveMode(event.currentTarget.value as SaveMode)
                       setNotice('')
                     }
@@ -1107,7 +1137,7 @@ export function Table(props: {
                       <button
                         class="column-sort"
                         aria-label={`Sort by ${String(column.columnDef?.header)}`}
-                        disabled={!model.localProcessing()}
+                        disabled={!model.localProcessing() || model.locked()}
                         ref={nativeEvents<HTMLElement>({
                           click: (event) =>
                             column.toggleSorting(undefined, event.shiftKey),

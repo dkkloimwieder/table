@@ -1,4 +1,11 @@
-import { createMemo, createSignal, createStore, onCleanup } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  createStore,
+  onCleanup,
+  untrack,
+} from 'solid-js'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
 import { createEditing } from './createEditing'
 import { validateEdits } from './validation'
@@ -14,6 +21,9 @@ import type { Summary, SummaryChoice, ValueKind } from './aggregates'
 import type {
   NativeAggregationFn,
   NativeColumnDef,
+  NativeStateCallbacks,
+  NativeTableState,
+  Updater,
 } from '@tanstack/solid-table/native'
 import type { RecordData, SaveRequest, SaveResult } from './createEditing'
 
@@ -48,18 +58,32 @@ export function createModel(
   mode: 'row' | 'table' = 'row',
 ) {
   const initial = typeof data === 'number' ? createRecords(data) : data
-  const [saveMode, setSaveMode] = createSignal(mode)
+  const [saveMode, writeSaveMode] = createSignal(mode)
   const [records, setRecords] = createStore<
     Record<string, RecordData | undefined>
   >(Object.fromEntries(initial.map((row) => [row.id, row])))
   const [ids, setIds] = createSignal(initial.map((row) => row.id))
-  const [localProcessing, setLocalProcessing] = createSignal(true)
-  const [columnOrder, setColumnOrder] = createSignal<Array<string>>([])
-  const [grouping, setGrouping] = createSignal<Array<string>>([])
-  const [columnPinning, setColumnPinning] = createSignal<{
-    start: Array<string>
-    end: Array<string>
-  }>({ start: [], end: [] })
+  const [localProcessing, writeLocalProcessing] = createSignal(true)
+  const [viewState, setViewState] = createStore<NativeTableState>({
+    columnFilters: [],
+    globalFilter: '',
+    sorting: [],
+    grouping: [],
+    groupSorting: [],
+    groupExpanded: {},
+    rowSelection: {},
+    expanded: {},
+    columnVisibility: {},
+    columnOrder: [],
+    columnPinning: { start: [], end: [] },
+    columnSizing: {},
+    rowPinning: { top: [], bottom: [] },
+  })
+  const columnOrder = () => viewState.columnOrder
+  const grouping = () => viewState.grouping
+  const columnPinning = () => viewState.columnPinning
+  const [descendantEditing, setDescendantEditing] = createSignal(false)
+  const removals = new Set<string>()
   const effectiveColumnPinning = createMemo(() => {
     const pinned = columnPinning()
     if (!localProcessing() || !grouping().length) return pinned
@@ -272,75 +296,6 @@ export function createModel(
     })
     return configured
   })
-  const controlledState = Object.defineProperty(
-    Object.create(null) as { columnOrder: Array<string> },
-    'columnOrder',
-    { get: effectiveColumnOrder },
-  )
-  Object.defineProperty(controlledState, 'grouping', { get: grouping })
-  Object.defineProperty(controlledState, 'columnPinning', {
-    get: effectiveColumnPinning,
-  })
-  const table = createTable<RecordData, ColumnMeta>({
-    source: { ids, get: (id) => records[id] },
-    get manualProcessing() {
-      return !localProcessing()
-    },
-    columns: configuredColumns,
-    state: controlledState,
-    onGroupingChange: setGrouping,
-    onColumnPinningChange: setColumnPinning,
-    onColumnSizingChange: () => {
-      counts.sizingChanges++
-    },
-    onColumnOrderChange: (updater) => {
-      counts.orderChanges++
-      setColumnOrder(updater)
-    },
-  })
-  const isGrouped = createMemo(
-    () => localProcessing() && table.state.grouping.length > 0,
-  )
-  function setSummary(id: string, value: Summary) {
-    const choices = table.getColumn(id)?.columnDef?.meta?.summaryChoices
-    if (choices?.some((choice) => choice.value === value))
-      setSummaries((all) => {
-        all[id] = value
-      })
-  }
-  function configureGrouping(next: Array<string>) {
-    const previous = table.state.grouping
-    const sorting = next.flatMap((id, depth) => {
-      const order = table.state.groupSorting.find(
-        (item) => item.depth === previous.indexOf(id),
-      )
-      return order ? [{ ...order, depth }] : []
-    })
-    table.setGrouping(next)
-    table.setGroupSorting(sorting)
-  }
-  function recordGroupKeys(id: string) {
-    const path: Array<string> = []
-    let keys = table.getRootGroupKeys()
-    while (keys.length) {
-      const key = keys.find((candidate) => {
-        for (const member of table.getGroup(candidate).getLeafRowIds())
-          if (member === id) return true
-        return false
-      })
-      if (!key) break
-      path.push(key)
-      keys = table.getGroup(key).getChildGroupKeys()
-    }
-    return path
-  }
-  function revealRecord(id: string) {
-    const keys = recordGroupKeys(id)
-    table.setGroupExpanded((old) => ({
-      ...old,
-      ...Object.fromEntries(keys.map((key) => [key, true])),
-    }))
-  }
   const sent: Array<SaveRequest> = []
   const waiting = new Set<() => void>()
   let fault: Fault = 'none'
@@ -349,7 +304,7 @@ export function createModel(
     disposed = true
   })
   const editing = createEditing({
-    get: (id) => records[id],
+    get: (id) => (removals.has(id) ? undefined : records[id]),
     validate(values) {
       counts.validations++
       return validateEdits(values)
@@ -408,14 +363,135 @@ export function createModel(
       })
     },
   })
+  const locked = createMemo(
+    () =>
+      (localProcessing() && grouping().length ? false : editing.active()) ||
+      descendantEditing(),
+  )
+  function updateState<K extends keyof NativeTableState>(
+    key: K,
+    updater: Updater<NativeTableState[K]>,
+  ) {
+    if (locked()) return
+    setViewState((draft) => {
+      draft[key] = typeof updater === 'function' ? updater(draft[key]) : updater
+    })
+    if (key === 'columnSizing') counts.sizingChanges++
+    if (key === 'columnOrder') counts.orderChanges++
+  }
+  const setColumnOrder = (updater: Updater<Array<string>>) =>
+    updateState('columnOrder', updater)
+  const controlledState = Object.create(null) as NativeTableState
+  const callbacks: NativeStateCallbacks = {}
+  function install<K extends keyof NativeTableState>(key: K) {
+    Object.defineProperty(controlledState, key, {
+      enumerable: true,
+      get:
+        key === 'columnOrder'
+          ? effectiveColumnOrder
+          : key === 'columnPinning'
+            ? effectiveColumnPinning
+            : () => viewState[key],
+    })
+    Object.defineProperty(
+      callbacks,
+      `on${key[0]!.toUpperCase()}${key.slice(1)}Change`,
+      {
+        enumerable: true,
+        value: (updater: Updater<NativeTableState[K]>) =>
+          updateState(key, updater),
+      },
+    )
+  }
+  for (const key of Object.keys(viewState) as Array<keyof NativeTableState>)
+    install(key)
+  function removeNow(id: string) {
+    setIds((all) => all.filter((value) => value !== id))
+    setRecords((all) => {
+      delete all[id]
+    })
+  }
+  createEffect(locked, (busy) => {
+    if (!busy && removals.size)
+      queueMicrotask(() =>
+        untrack(() => {
+          if (disposed || locked()) return
+          for (const id of removals) removeNow(id)
+          removals.clear()
+        }),
+      )
+  })
+  const table = createTable<RecordData, ColumnMeta>({
+    ...callbacks,
+    source: { ids, get: (id) => records[id] },
+    get rowProcessingPaused() {
+      return locked()
+    },
+    get manualProcessing() {
+      return !localProcessing()
+    },
+    columns: configuredColumns,
+    state: controlledState,
+  })
+  const isGrouped = createMemo(
+    () => localProcessing() && table.state.grouping.length > 0,
+  )
+  function setSummary(id: string, value: Summary) {
+    if (locked()) return
+    const choices = table.getColumn(id)?.columnDef?.meta?.summaryChoices
+    if (choices?.some((choice) => choice.value === value))
+      setSummaries((all) => {
+        all[id] = value
+      })
+  }
+  function configureGrouping(next: Array<string>) {
+    if (locked()) return
+    const previous = table.state.grouping
+    const sorting = next.flatMap((id, depth) => {
+      const order = table.state.groupSorting.find(
+        (item) => item.depth === previous.indexOf(id),
+      )
+      return order ? [{ ...order, depth }] : []
+    })
+    table.setGrouping(next)
+    table.setGroupSorting(sorting)
+  }
+  function recordGroupKeys(id: string) {
+    const path: Array<string> = []
+    let keys = table.getRootGroupKeys()
+    while (keys.length) {
+      const key = keys.find((candidate) => {
+        for (const member of table.getGroup(candidate).getLeafRowIds())
+          if (member === id) return true
+        return false
+      })
+      if (!key) break
+      path.push(key)
+      keys = table.getGroup(key).getChildGroupKeys()
+    }
+    return path
+  }
+  function revealRecord(id: string) {
+    const keys = recordGroupKeys(id)
+    table.setGroupExpanded((old) => ({
+      ...old,
+      ...Object.fromEntries(keys.map((key) => [key, true])),
+    }))
+  }
   return {
     table,
+    locked,
+    setDescendantEditing,
     columnIds: configuredColumns.map((column) => column.id),
     isGrouped,
     saveMode,
-    setSaveMode,
+    setSaveMode: (value: typeof mode) => {
+      if (!locked()) writeSaveMode(value)
+    },
     localProcessing,
-    setLocalProcessing,
+    setLocalProcessing: (value: boolean) => {
+      if (!locked()) writeLocalProcessing(value)
+    },
     setColumnOrder,
     summaries,
     setSummary,
@@ -444,10 +520,8 @@ export function createModel(
     },
     remove(id: string) {
       if (disposed) return
-      setIds((all) => all.filter((value) => value !== id))
-      setRecords((all) => {
-        delete all[id]
-      })
+      if (locked()) removals.add(id)
+      else removeNow(id)
     },
   }
 }

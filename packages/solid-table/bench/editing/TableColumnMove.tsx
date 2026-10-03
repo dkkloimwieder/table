@@ -18,6 +18,7 @@ export function moveColumn(
 
 export function TableColumnMove(props: {
   id: string
+  disabled?: boolean
   label: string
   ids: ReadonlyArray<string>
   onMove: (destination: ColumnDestination) => void
@@ -121,6 +122,7 @@ export function TableColumnMove(props: {
   }
   function start(event: PointerEvent) {
     if (
+      props.disabled ||
       disposed ||
       drag ||
       props.ids.length < 2 ||
@@ -153,7 +155,7 @@ export function TableColumnMove(props: {
   }
   function move(event: PointerEvent) {
     if (!drag || event.pointerId !== drag.pointerId) return
-    if (props.ids !== drag.ids) return cancel()
+    if (props.disabled || props.ids !== drag.ids) return cancel()
     drag.lastX = event.clientX
     drag.moved ||= Math.abs(event.clientX - drag.x) >= 5
     if (!drag.moved) return
@@ -170,9 +172,11 @@ export function TableColumnMove(props: {
     const current = removeDrag()
     if (!current) return
     props.onActivity?.('end', -4)
-    if (current.destination) props.onMove(current.destination)
+    if (current.destination)
+      if (!props.disabled) props.onMove(current.destination)
   }
   function keyboardMove(key: string) {
+    if (props.disabled) return
     const position = index()
     const target =
       key === 'Home'
@@ -194,6 +198,12 @@ export function TableColumnMove(props: {
       if (drag && ids !== drag.ids) cancel()
     },
   )
+  createEffect(
+    () => Boolean(props.disabled),
+    (disabled) => {
+      if (disabled) cancel()
+    },
+  )
   onSettled(() => () => {
     disposed = true
     cancel()
@@ -207,7 +217,7 @@ export function TableColumnMove(props: {
         aria-describedby={helpId}
         aria-controls={menuId}
         aria-expanded="false"
-        disabled={props.ids.length < 2}
+        disabled={props.disabled || props.ids.length < 2}
         ref={[
           (node) => {
             handle = node
@@ -224,7 +234,8 @@ export function TableColumnMove(props: {
             },
             click: (event) => {
               event.stopPropagation()
-              if (suppressClick && event.detail !== 0) return
+              if (props.disabled || (suppressClick && event.detail !== 0))
+                return
               const box = handle.getBoundingClientRect()
               menu.style.left = `${Math.max(8, Math.min(box.left, window.innerWidth - 188))}px`
               menu.style.top = `${Math.max(8, Math.min(box.bottom + 4, window.innerHeight - 190))}px`
@@ -276,25 +287,25 @@ export function TableColumnMove(props: {
         ]}
       >
         <button
-          disabled={first()}
+          disabled={props.disabled || first()}
           ref={nativeEvents({ click: () => keyboardMove('Home') })}
         >
           Move first
         </button>
         <button
-          disabled={first()}
+          disabled={props.disabled || first()}
           ref={nativeEvents({ click: () => keyboardMove('ArrowLeft') })}
         >
           Move left
         </button>
         <button
-          disabled={last()}
+          disabled={props.disabled || last()}
           ref={nativeEvents({ click: () => keyboardMove('ArrowRight') })}
         >
           Move right
         </button>
         <button
-          disabled={last()}
+          disabled={props.disabled || last()}
           ref={nativeEvents({ click: () => keyboardMove('End') })}
         >
           Move last

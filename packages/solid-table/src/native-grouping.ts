@@ -1,4 +1,5 @@
 import { createMemo } from 'solid-js'
+import { holdRowProcessing } from './native-processing'
 import { compareNativeValues } from './native-sorting'
 import type {
   NativeColumnDef,
@@ -76,10 +77,11 @@ export function createNativeGrouping<T, TMeta>(
   access: (record: T, column: NativeColumnDef<T, TMeta>) => unknown,
 ) {
   const tree = createMemo(
-    () => {
+    holdRowProcessing(options, () => {
       const groups = new Map<string, GroupNode>()
+      const orders = new Map<string, ReadonlyArray<string>>()
       if (options.manualProcessing || options.manualGrouping)
-        return { groups, roots: [], active: false }
+        return { groups, orders, roots: [], active: false }
       const columns = Array.from(new Set(state.grouping)).flatMap((id) => {
         const column = definitions().get(id)
         return column ? [column] : []
@@ -121,10 +123,11 @@ export function createNativeGrouping<T, TMeta>(
       }
       return {
         groups,
+        orders,
         roots: columns.length ? build(filteredIds(), 0, []) : [],
         active: columns.length > 0,
       }
-    },
+    }),
     { lazy: true },
   )
 
@@ -209,18 +212,29 @@ export function createNativeGrouping<T, TMeta>(
     )
     return keyed.map((item) => item.key)
   }
-  const roots = createMemo(() => sortKeys(tree().roots, 0), {
-    lazy: true,
-    equals: sameKeys,
-  })
+  const roots = createMemo(
+    holdRowProcessing(options, () => sortKeys(tree().roots, 0)),
+    {
+      lazy: true,
+      equals: sameKeys,
+    },
+  )
   // Hidden children have no ordering consumer and therefore read no aggregates.
   // A requested child sequence runs in its caller's reactive scope.
   const children = (key: string) => {
-    const node = tree().groups.get(key)
-    return node ? sortKeys(node.children, node.path.length) : []
+    const model = tree()
+    const values = model.orders
+    if (options.rowProcessingPaused && values.has(key)) return values.get(key)!
+    const node = model.groups.get(key)
+    if (!node) return []
+    const ordered = sortKeys(node.children, node.path.length)
+    // Cache only requested orders for this membership tree. A new tree releases
+    // the old map, including keys removed by source or grouping changes.
+    values.set(key, ordered)
+    return ordered
   }
   const displayKeys = createMemo(
-    () => {
+    holdRowProcessing(options, () => {
       const model = tree()
       if (!model.active) return sortedIds().map(rowKey)
       const result: Array<string> = []
@@ -243,7 +257,7 @@ export function createNativeGrouping<T, TMeta>(
       }
       append(roots())
       return result
-    },
+    }),
     { lazy: true, equals: sameKeys },
   )
 

@@ -28,6 +28,8 @@ type ChildState =
 export function createSubTables(options: {
   ids: () => ReadonlyArray<string>
   scope: () => string
+  locked: () => boolean
+  onEditingChange: (editing: boolean) => void
   load: (request: ChildLoad) => Promise<Array<RecordData>>
 }) {
   const [entries, setEntries] = createSignal<ReadonlyArray<ChildEntry>>([])
@@ -40,6 +42,14 @@ export function createSubTables(options: {
   const byId = new Map<string, ChildEntry>()
   const collectionOwner = getOwner()
   const counts = { loads: 0, aborted: 0, created: 0, disposed: 0, ignored: 0 }
+  const editingChildren = new Set<string>()
+  function publishEditing(id: string, editing: boolean) {
+    const previous = editingChildren.size > 0
+    if (editing) editingChildren.add(id)
+    else editingChildren.delete(id)
+    const next = editingChildren.size > 0
+    if (previous !== next) options.onEditingChange(next)
+  }
   let disposed = false
 
   function makeEntry(parentId: string, scope: string) {
@@ -58,6 +68,17 @@ export function createSubTables(options: {
           active &&
           options.scope() === scope &&
           options.ids().includes(parentId)
+        // Each entry observes only its own editor. The parent receives one boolean.
+        createEffect(
+          () => {
+            const value = state()
+            return value.status === 'ready' && value.model.locked()
+          },
+          (editing) => {
+            // Publish in the effect phase so the same flush locks the parent.
+            if (!disposed && active) publishEditing(parentId, editing)
+          },
+        )
         function load() {
           if (!current() || state().status === 'ready') return
           request?.abort()
@@ -131,6 +152,9 @@ export function createSubTables(options: {
         const release = action(function* () {
           if (!active) return
           active = false
+          queueMicrotask(() => {
+            if (!disposed) publishEditing(parentId, false)
+          })
           if (request) {
             counts.aborted++
             request.abort()
@@ -151,7 +175,7 @@ export function createSubTables(options: {
             if (current()) setExpanded(true)
           },
           close: () => {
-            if (current()) {
+            if (current() && !options.locked()) {
               closeEditors()
               setExpanded(false)
             }
@@ -196,7 +220,7 @@ export function createSubTables(options: {
     byId.clear()
   })
   function open(id: string) {
-    if (disposed || !options.ids().includes(id)) return
+    if (disposed || options.locked() || !options.ids().includes(id)) return
     reconcile()
     let entry = byId.get(id)
     if (!entry) {

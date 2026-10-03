@@ -39,10 +39,29 @@ When the caller disables local processing, the controls become unavailable and p
 The table shows the caller-provided order until local processing resumes.
 The integration fixture demonstrates the corresponding complete-dataset rule.
 
-Search and filters use committed values. An unsaved draft does not change whether a row matches.
-Hidden drafts remain available through Show and Cancel. Show clears both filtering layers before reopening the row.
-Save all includes hidden drafts. An accepted save can move a row into or out of the current result.
+Search and filters use committed values. During editing, the table holds its displayed membership and row order.
+After the last edit resolves, the table applies current saved values to the existing filters and sort.
 If a save removes the focused row from global search, focus returns to that search control.
+
+## Stable layout during editing
+
+Open editors, unsaved drafts, and pending saves lock changes to table configuration.
+Leaving an unchanged editor releases its draft. Leaving a changed editor keeps the lock until Save or Cancel resolves the draft.
+Failed saves keep their drafts and the lock. Other rows remain editable.
+
+The lock covers filters, search, sorting, grouping, aggregates, column layout, save mode, display controls, and dataset changes.
+Controlled setters reject changes as well as disabling the visible controls. They do not queue rejected configuration changes.
+Child edits also lock parent transitions that can hide or move the child. Sibling tables keep independent editing and saves.
+
+The model passes the reactive `rowProcessingPaused` option to Table.
+The table retains existing ID arrays and group structures while cell values continue to read the canonical Solid store.
+A partial save can update a cell without moving or hiding its row while other edits remain.
+Concurrent revisions remain visible to save validation. A queued removal makes the record unavailable to saves but retains its rendered data until editing ends.
+
+The lock does not copy records or mark them dirty. It derives from the existing draft collection and save state.
+Each child reports its own editing state. One parent boolean avoids subscribing a single computation to every child draft.
+One DOM effect disables the parent row controls, so individual rows do not subscribe to a shared editing flag.
+Paused processing drops subscriptions to scanned fields. Releasing the lock derives the current membership and order once, including after an unchanged session.
 
 ## Sub-tables
 
@@ -55,14 +74,14 @@ The local loader returns five distinct records after a short delay. It never cop
 The browser harness also supplies held, late, empty, refused, and failed responses.
 
 The first expansion loads the child collection. Collapse removes its rendered row views and listeners while preserving its collection and configuration.
-Filtering or regrouping the parent also preserves child drafts. Opening the child again reuses its existing Solid store.
+Parent filtering, regrouping, and collapse are unavailable while a child has open editors, drafts, or a pending save.
+After edits resolve, opening a collapsed child reuses its existing Solid store.
 The registry stores lookup functions under parent IDs. Each parent row subscribes only to its own lookup property.
 A row and its detail row share one keyed `tbody`. The outer insertion effect does not subscribe to every detail branch.
 
-Changing the dataset from the demo refuses the change while child drafts exist. Save or cancel those drafts first.
-An external dataset change or parent removal ends the child scope. The registry aborts pending work and rejects obsolete responses.
-A visible notice reports discarded drafts when an external removal ends their scope.
-Pending saves can finish while a child is collapsed. They cannot move focus back into the removed view.
+Dataset changes require all affected edits to resolve first. The programmatic change path enforces the same rule.
+Parent removal waits while editing remains active. After editing ends, removal releases the child scope and aborts outstanding loads.
+A pending child save keeps its table open and respects later focus changes. Each child still saves only its own records.
 
 Use the built fixture to capture child heaps:
 
@@ -113,9 +132,9 @@ Grouped columns lead in grouping order. Clearing grouping restores the previous 
 Grouped columns have no move handles. Reorder the grouping levels to change their positions.
 The result count distinguishes displayed records from records that match filters.
 
-Grouping uses saved values. Editing a draft does not move its record until a save succeeds.
+Grouping uses saved values. The editing lock also prevents background updates from moving parent records between groups.
 Grouped records are read-only. They render saved values without edit controls or draft subscriptions.
-Clear grouping to edit records or save existing drafts. A save that started before grouping can finish without moving focus.
+Clear grouping before editing records. Finish or discard edits before enabling grouping.
 Group summary rows have no edit or sub-table subscriptions.
 Individual records inside expanded groups can open sub-tables. Those child tables keep their own editing controls.
 
@@ -124,7 +143,7 @@ The local-processing gate disables grouping and summaries and shows the caller-p
 Restoring local processing restores grouping and expansion.
 
 Group rows use Table group views within their rendered Solid owners.
-Collapsed descendants release their row and group views. Drafts remain in the editing controller.
+Collapsed descendants release their row and group views. Active edits prevent collapse.
 The source store retains one canonical record per ID. Group membership stores IDs, and summaries iterate over those IDs.
 Ordered key comparisons prevent unchanged group lists from notifying subscribers after an edit stays in the same group.
 These comparisons do not remove membership scans or summary reads.
@@ -185,10 +204,10 @@ Display options can hide move controls without discarding the order. Rearrangeme
 Order persistence belongs to the future parent view component.
 
 Width, filter, sorting, and aggregate configuration stays attached to each column ID.
-Rearrangement preserves cell and row identities, drafts, and pending requests.
+Rearrangement preserves cell and row identities. Open editors, drafts, and pending requests disable rearrangement.
 Caller changes preserve the active input and its text selection, including when the browser temporarily drops focus during a DOM move.
 Focus restoration runs after owned effects and respects later user interactions. It does not write draft state from an effect.
-Moving focus to a header still closes the row editors and preserves drafts, as other outside interactions do.
+Blocked programmatic rearrangement preserves editor focus and text selection. Leaving a row still closes its editors and preserves drafts.
 
 Escape, pointer cancellation, lost capture, window blur, and a hidden document cancel a drag without changing the order.
 Changes to movable columns or removal of a handle also cancel its drag. Cleanup removes the marker, scroll frame, and gesture listeners.
@@ -218,7 +237,7 @@ Pending requests make text inputs read-only and disable the dropdown, Save, and 
 Other rows remain editable while a request is pending.
 
 Filtering and sorting use committed values.
-A hidden draft appears in a separate notice with Show and Cancel controls.
+Table controls cannot hide drafts. Background removal waits until the editing session ends.
 Saving a value that moves its row preserves the logical record target for focus.
 If the saved row leaves the filter, focus moves to the filter control.
 A completed request does not reclaim focus after a later pointer or focus interaction.
@@ -230,18 +249,18 @@ It never recreates a removed record from a late response.
 
 ## Optional global save
 
-The Save mode selector switches between Per row and Whole table without discarding drafts.
+The Save mode selector switches between Per row and Whole table when no edits remain.
 Per row remains the default. The fixture accepts `saveMode="table"` to start in Whole table mode.
 The URL parameter `save=all` selects the same initial mode.
 
 In Whole table mode, Save all replaces the row Save buttons.
 Enter closes a text editor and preserves its draft. Escape or Cancel discards that row draft.
 Native dropdown keys keep their existing behavior.
-The button includes every outstanding draft, including drafts outside the current filter.
+The button includes every outstanding draft in its table.
 
 Save all captures the draft IDs and applies the application schema to each draft before sending any request.
 An invalid value, missing record, or known revision conflict blocks the whole attempt.
-Errors remain beside visible cells or in the hidden-draft notice.
+Errors remain beside their cells.
 Correcting the affected drafts allows another attempt.
 
 After all drafts pass, the controller sends each changed row with its exact expected revision.
@@ -273,7 +292,7 @@ In Per row mode, Tab moves to Save and Shift+Tab moves to Note.
 In Whole table mode, Tab moves to Cancel. Save all saves the dropdown draft.
 
 Tests cover native keyboard selection and menu dismissal in Chromium on Linux.
-They also cover pointer entry, option changes, invalid values, concurrent updates, refused saves, and drafts hidden by filters.
+They also cover pointer entry, option changes, invalid values, concurrent updates, refused saves, and blocked filter changes during editing.
 The fixture does not provide a custom popup, searchable choices, remote options, or multiple selection.
 Other browsers and operating systems need separate interaction tests.
 
@@ -383,7 +402,7 @@ Start the fixture server before running the same suite against its URL:
 BENCH_URL=http://127.0.0.1:7777/ BENCH_SIZES=25 BENCH_OUTPUT=/tmp/table-editing-live.json node packages/solid-table/bench/editing/run.mjs
 ```
 
-The repeated-draft case creates eight drafts, changes filters, and saves the visible and hidden drafts together.
+The repeated-draft case creates eight drafts, rejects filter changes, and saves the drafts together before filtering resumes.
 The runner rejects page errors and unexpected console warnings or Solid diagnostics.
 It records known broad-dependency diagnostics from filters, sorting, group membership, group ordering, and visible summaries separately.
 Those diagnostics describe the existing algorithms, which read candidate records on each relevant change.
@@ -440,3 +459,13 @@ Timings include browser automation and remain advisory on the shared development
 They do not establish a latency budget or a universal non-virtualized row limit.
 
 The [heap report](../heap-findings.md#non-virtualized-editing-fixture) records the qualified results and the retained-value diagnosis.
+
+To capture the editing lock lifetime separately from the larger workloads:
+
+```sh
+BENCH_DISTRIBUTION=1 BENCH_SCENARIOS=0 BENCH_WORKLOADS=0 BENCH_LOCK_WORKLOAD=1 BENCH_HEAPS=/tmp/table-editing-lock-heaps node packages/solid-table/bench/editing/run.mjs
+```
+
+This workload captures 250 records after 10, 100, and 200 edit/cancel cycles, then disposal.
+It compares retained resource counts and reports the field reads caused by releasing the lock.
+The host runs other development loads, so timing measurements remain advisory.

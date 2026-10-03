@@ -80,6 +80,10 @@ export interface NativeTableOptions<
   columns: ReadonlyArray<NativeColumnDef<T, TMeta>>
   initialState?: Partial<NativeTableState>
   state?: Partial<NativeTableState>
+  /** Hold evaluated row membership, order and group structure. Cell values stay live.
+   * The caller must retain displayed source records and guard configuration changes.
+   */
+  rowProcessingPaused?: boolean
   /** Bypass every local data transformation while preserving view state. */
   manualProcessing?: boolean
   manualFiltering?: boolean

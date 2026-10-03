@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { chromium } from '@playwright/test'
+import { editingLockCases, editingLockWorkload } from './editing-lock-cases.mjs'
 import { groupingProfile } from './grouping-profile.mjs'
 import { subtableCases, subtableWorkload } from './subtable-cases.mjs'
 import { groupingCases } from './grouping-cases.mjs'
@@ -67,6 +68,7 @@ const report = {
   moduleAudit: !externalUrl,
   hostLoad: loadavg(),
   cases: [],
+  failures: [],
   benchmarks: [],
   errors: [],
   diagnostics: [],
@@ -90,6 +92,8 @@ try {
   })
   report.browser = browser.version()
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  if (process.env.BENCH_TIMEOUT)
+    page.setDefaultTimeout(Number(process.env.BENCH_TIMEOUT))
   page.on('pageerror', (error) => {
     report.errors.push(error.stack)
     console.error(error.stack)
@@ -160,8 +164,15 @@ try {
       !new RegExp(process.env.BENCH_CASE_PATTERN).test(name)
     )
       return
-    await test()
-    assert.deepEqual(report.errors, [])
+    try {
+      await test()
+      assert.deepEqual(report.errors, [])
+    } catch (error) {
+      report.failures.push({ name, error: String(error) })
+      if (!process.env.BENCH_CONTINUE) throw error
+      console.error(`FAIL ${name}: ${error}`)
+      return
+    }
     report.cases.push(name)
     console.log(`PASS ${name}`)
   }
@@ -211,6 +222,18 @@ try {
     page.getByRole('status', { name: 'Filter results', exact: true })
   const clearFilters = () =>
     page.getByRole('button', { name: 'Clear all filters', exact: true })
+  await editingLockCases({
+    page,
+    start,
+    call,
+    read,
+    record,
+    settle,
+    idle,
+    edit,
+    input,
+    save,
+  })
   await subtableCases({ page, start, call, read, record, settle, idle })
   await reorderCases({
     page,
@@ -486,16 +509,15 @@ try {
     },
   )
   await record(
-    'showing a hidden draft clears column filters and global search',
+    'search and column filters cannot hide an active draft',
     async () => {
-      await start(8, 'table')
+      await start()
       await edit('R0001', 'note').click()
       await input('R0001', 'note').fill('Unique draft')
-      await search().fill('Note 2')
-      await noteFilter().fill('Note 2')
-      await page
-        .getByRole('button', { name: 'Show R0001', exact: true })
-        .click()
+      assert.equal(await search().isDisabled(), true)
+      assert.equal(await noteFilter().isDisabled(), true)
+      await call('search', 'Note 2')
+      await call('filter', 'note', 'Note 2')
       await settle()
       assert.equal(await search().inputValue(), '')
       assert.equal(await noteFilter().inputValue(), '')
@@ -504,19 +526,21 @@ try {
     },
   )
   await record(
-    'Save all includes drafts hidden by search then updates matching from saved values',
+    'Save all refreshes search membership only after edits resolve',
     async () => {
       await start(8, 'table')
+      await search().fill('Note 1')
       await edit('R0001', 'note').click()
       await input('R0001', 'note').fill('New searchable value')
       await input('R0001', 'note').press('Enter')
-      await search().fill('New searchable value')
-      assert.deepEqual((await read()).ids, [])
+      assert.deepEqual((await read()).ids, ['R0001'])
       await page.getByRole('button', { name: 'Save all', exact: true }).click()
       await idle()
-      assert.deepEqual((await read()).ids, ['R0001'])
+      assert.deepEqual((await read()).ids, [])
       assert.deepEqual((await read()).drafts, {})
       assert.equal((await read()).counts.requests, 1)
+      await search().fill('New searchable value')
+      assert.deepEqual((await read()).ids, ['R0001'])
     },
   )
   await record(
@@ -583,7 +607,7 @@ try {
     },
   )
   await record(
-    'repeated visible drafts keep hidden ID output stable and real filter changes update it',
+    'repeated visible drafts keep the view stable until Save all finishes',
     async () => {
       await start(12, 'table')
       for (let index = 1; index <= 8; index++) {
@@ -599,35 +623,16 @@ try {
           .count(),
         0,
       )
-      const filter = page.getByRole('textbox', {
-        name: 'Filter saved names',
-        exact: true,
-      })
-      await filter.fill('0001')
-      await settle()
-      assert.equal(
-        await page.getByRole('button', { name: /^Show R/ }).count(),
-        7,
-      )
+      const before = (await read()).ids
+      await call('filter', 'name', '0001')
+      assert.deepEqual((await read()).ids, before)
       assert.equal(Object.keys((await read()).drafts).length, 8)
-      await filter.fill('0002')
-      await settle()
-      assert.equal(
-        await page
-          .getByRole('button', { name: 'Show R0001', exact: true })
-          .count(),
-        1,
-      )
-      assert.equal(
-        await page
-          .getByRole('button', { name: 'Show R0002', exact: true })
-          .count(),
-        0,
-      )
       await page.getByRole('button', { name: 'Save all', exact: true }).click()
       await idle()
       assert.equal((await read()).counts.requests, 8)
       assert.deepEqual((await read()).drafts, {})
+      await call('filter', 'name', '0001')
+      assert.deepEqual((await read()).ids, ['R0001'])
     },
   )
   await record(
@@ -683,8 +688,6 @@ try {
         ),
       )
       await page.keyboard.press('Tab')
-      assert.ok(await focused(page.locator('[data-subtable-toggle="R0001"]')))
-      await page.keyboard.press('Tab')
       await settle()
       assert.ok(await focused(edit('R0002')))
       assert.equal(await select().count(), 0)
@@ -692,8 +695,6 @@ try {
         await edit('R0001', 'priority').getAttribute('data-edited'),
         'true',
       )
-      await page.keyboard.press('Shift+Tab')
-      assert.ok(await focused(page.locator('[data-subtable-toggle="R0001"]')))
       await page.keyboard.press('Shift+Tab')
       assert.ok(await focused(edit('R0001', 'priority')))
       await page.keyboard.press('Enter')
@@ -895,41 +896,26 @@ try {
     },
   )
   await record(
-    'dropdown drafts and row identity survive sorting and filter removal',
+    'dropdown edits keep row identity and reject sorting or filter removal',
     async () => {
       await start()
+      await call('remember', 'R0001')
       await edit('R0001', 'priority').click()
       await select().selectOption('low')
-      await page.locator('[data-row="R0001"]').evaluate((node) => {
-        window.originalRow = new WeakRef(node)
-      })
-      await page.getByRole('button', { name: 'Sort by Name' }).click()
-      await page.getByRole('button', { name: 'Sort by Name' }).click()
+      const original = await page.locator('[data-row="R0001"]').elementHandle()
+      await call('sorting', [{ id: 'name', desc: true }])
+      await call('filter', 'name', '0002')
       await settle()
-      assert.equal((await read()).ids.at(-1), 'R0001')
-      assert.equal(await select().count(), 0)
-      assert.ok(
-        await page
-          .locator('[data-row="R0001"]')
-          .evaluate((node) => window.originalRow.deref() === node),
-      )
-      await page
-        .getByRole('textbox', { name: 'Filter saved names', exact: true })
-        .fill('0002')
-      await settle()
-      assert.equal(await select().count(), 0)
-      assert.equal((await read()).drafts.R0001.priority, 'low')
-      await page
-        .getByRole('button', { name: 'Show R0001', exact: true })
-        .click()
-      await settle()
+      assert.equal((await read()).ids[0], 'R0001')
+      assert.equal((await read()).identity, true)
+      assert.equal(await original.evaluate((n) => n.isConnected), true)
       assert.equal(await select().inputValue(), 'low')
       assert.equal((await read()).counts.requests, 0)
-      await select().focus()
       await save().click()
       await idle()
       assert.equal((await read()).sample[0].priority, 'low')
       assert.ok(await focused(edit('R0001', 'priority')))
+      await original.dispose()
     },
   )
   await record(
@@ -1217,7 +1203,7 @@ try {
     },
   )
   await record(
-    'removed pending record is not recreated by its response',
+    'pending removal rejects stale saves and removes the row after draft cancellation',
     async () => {
       await start()
       await edit().click()
@@ -1227,31 +1213,35 @@ try {
       await call('remove', 'R0001')
       await call('release')
       await idle()
-      const value = await read()
+      let value = await read()
+      assert.equal(value.ids.includes('R0001'), true)
+      assert.equal(value.sample[0].name, 'Record 0001')
+      assert.equal(value.drafts.R0001.name, 'Removed draft')
+      assert.equal(value.drafts.R0001.status, 'conflict')
+      if (!(await input().count())) await edit().click()
+      await page
+        .getByRole('button', { name: 'Cancel R0001', exact: true })
+        .click()
+      await settle()
+      value = await read()
+      assert.deepEqual(value.drafts, {})
       assert.equal(value.ids.includes('R0001'), false)
       assert.equal(
         value.sample.some((row) => row.id === 'R0001'),
         false,
       )
-      assert.equal(value.drafts.R0001.name, 'Removed draft')
-      await page
-        .getByRole('button', { name: 'Cancel hidden R0001', exact: true })
-        .click()
-      await settle()
-      assert.deepEqual((await read()).drafts, {})
     },
   )
   await record(
-    'sorting collapses editors and preserves drafts and logical focus after save',
+    'sorting stays fixed during editing and refreshes after the last save',
     async () => {
       await start()
+      await call('sorting', [{ id: 'name', desc: false }])
       await edit().click()
       await input().fill('ZZZ moved')
-      await page.getByRole('button', { name: 'Sort by Name' }).click()
+      await call('sorting', [{ id: 'name', desc: true }])
       await settle()
-      assert.equal(await input().count(), 0)
-      assert.equal(await edit().getAttribute('data-edited'), 'true')
-      await edit().click()
+      assert.equal((await read()).ids[0], 'R0001')
       assert.equal(await input().inputValue(), 'ZZZ moved')
       await input().press('Enter')
       await idle()
@@ -1261,22 +1251,21 @@ try {
     },
   )
   await record(
-    'filter-hidden drafts can be resumed with their values intact',
+    'collapsed drafts stay visible and can resume while filters are locked',
     async () => {
       await start()
       await edit().click()
-      await input().fill('Hidden draft')
+      await input().fill('Visible draft')
       await page
-        .getByRole('textbox', { name: 'Filter saved names', exact: true })
-        .fill('0002')
+        .getByRole('button', { name: 'After table', exact: true })
+        .click()
+      await call('filter', 'name', '0002')
       await settle()
       assert.equal(await input().count(), 0)
-      assert.equal((await read()).drafts.R0001.name, 'Hidden draft')
-      await page
-        .getByRole('button', { name: 'Show R0001', exact: true })
-        .click()
-      await settle()
-      assert.equal(await input().inputValue(), 'Hidden draft')
+      assert.equal((await read()).drafts.R0001.name, 'Visible draft')
+      assert.equal((await read()).ids.length, 8)
+      await edit().click()
+      assert.equal(await input().inputValue(), 'Visible draft')
       assert.ok(await focused(input()))
       assert.equal((await read()).counts.requests, 0)
     },
@@ -1350,7 +1339,7 @@ try {
   const saveAll = () =>
     page.getByRole('button', { name: 'Save all', exact: true })
   await record(
-    'global mode saves visible and filtered drafts with exact revisions',
+    'global mode saves visible drafts with exact revisions while filters stay locked',
     async () => {
       await start(8, 'table')
       assert.equal(await mode().inputValue(), 'table')
@@ -1363,16 +1352,8 @@ try {
       assert.equal((await read()).counts.requests, 0)
       await edit('R0002', 'priority').click()
       await select('R0002').selectOption('high')
-      await page
-        .getByRole('textbox', { name: 'Filter saved names', exact: true })
-        .fill('0002')
-      await settle()
-      assert.equal(
-        await page
-          .getByRole('button', { name: 'Show R0001', exact: true })
-          .count(),
-        1,
-      )
+      await call('filter', 'name', '0002')
+      assert.equal((await read()).ids.length, 8)
       await saveAll().click()
       await idle()
       const value = await read()
@@ -1505,28 +1486,26 @@ try {
       assert.equal((await read()).sent[0].id, 'R0002')
     },
   )
-  await record(
-    'switching save modes preserves drafts and restores row Save buttons',
-    async () => {
-      await start()
-      await edit().click()
-      await input().fill('Mode-independent draft')
-      await mode().focus()
-      await mode().selectOption('table')
-      await settle()
-      await edit().click()
-      assert.equal(await save().count(), 0)
-      assert.equal(await input().inputValue(), 'Mode-independent draft')
-      await mode().focus()
-      await mode().selectOption('row')
-      await edit().click()
-      assert.equal(await save().count(), 1)
-      await save().click()
-      await idle()
-      assert.equal((await read()).sample[0].name, 'Mode-independent draft')
-      assert.equal((await read()).counts.requests, 1)
-    },
-  )
+  await record('save mode can change only after edits resolve', async () => {
+    await start()
+    await edit().click()
+    await input().fill('Mode-independent draft')
+    assert.equal(await mode().isDisabled(), true)
+    assert.equal(await mode().inputValue(), 'row')
+    await save().click()
+    await idle()
+    assert.equal((await read()).sample[0].name, 'Mode-independent draft')
+    await mode().selectOption('table')
+    await edit().click()
+    assert.equal(await save().count(), 0)
+    await page
+      .getByRole('button', { name: 'Cancel R0001', exact: true })
+      .click()
+    await mode().selectOption('row')
+    await edit().click()
+    assert.equal(await save().count(), 1)
+    assert.equal((await read()).counts.requests, 1)
+  })
   await record('disposing during Save all aborts active requests', async () => {
     await start(8, 'table')
     await edit().click()
@@ -2018,6 +1997,15 @@ try {
       `PASS ${size} rearranged records; six drags and nine key moves; zero record/view/summary work and zero retained gesture listeners`,
     )
   }
+  if (process.env.BENCH_LOCK_WORKLOAD)
+    report.editingLock = await editingLockWorkload({
+      start,
+      call,
+      read,
+      settle,
+      metrics,
+      heap,
+    })
   if (process.env.BENCH_CHILD_WORKLOAD)
     report.subtables = await subtableWorkload({
       page,
@@ -2055,3 +2043,4 @@ try {
     )
 }
 console.log(`Saved ${output}`)
+assert.deepEqual(report.failures, [])

@@ -566,3 +566,14 @@ It tests loading, edits, revision conflicts, partial results, and vertical virtu
 Production Form and shared DataGrid adoption are deferred and do not block Table qualification.
 Editing, selection, and action behavior still need separate interaction qualification with plain controls.
 Focused component vendoring remains a later assessment after Table is stable.
+
+## Holding row structure during editing
+
+Use the reactive `rowProcessingPaused` option to keep evaluated row membership, ordering, and group structure fixed while editing.
+Cell values continue to read the caller-owned records. The table retains ID arrays and group structures without copying record data.
+When processing resumes, the table derives membership and order from current records.
+A structure first requested while paused initializes from current data.
+
+The caller must guard configuration changes and retain displayed source records until processing resumes.
+This option does not disable controls or manage drafts, transport requests, or record deletion.
+The editing fixture demonstrates those policies, including independent child saves and deferred removal.

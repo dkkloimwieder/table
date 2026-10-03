@@ -1,4 +1,5 @@
 import { createMemo, getOwner, mapArray } from 'solid-js'
+import { holdRowProcessing } from './native-processing'
 import { createNativeState, resolveUpdater } from './native-state'
 import { createNativeFiltering } from './native-filtering'
 import { createNativeGrouping } from './native-grouping'
@@ -76,7 +77,7 @@ export function createNativeTable<T, TMeta = unknown>(
     access,
   )
   const sortedIds = createMemo(
-    () => {
+    holdRowProcessing(options, () => {
       const input = filteredIds()
       if (options.manualProcessing || options.manualSorting) return input
       const sorting = state.sorting.flatMap((sort) => {
@@ -109,8 +110,14 @@ export function createNativeTable<T, TMeta = unknown>(
         return a.index - b.index
       })
       return keyed.map(({ id }) => id)
+    }),
+    {
+      lazy: true,
+      equals: (left, right) =>
+        left === right ||
+        (left.length === right.length &&
+          left.every((id, index) => id === right[index])),
     },
-    { lazy: true },
   )
   const displayIndexes = createMemo(
     () => new Map(sortedIds().map((id, index) => [id, index])),
@@ -129,7 +136,7 @@ export function createNativeTable<T, TMeta = unknown>(
     access,
   )
   const rowSections = createMemo(
-    () => {
+    holdRowProcessing(options, () => {
       const display = grouping.getDisplayKeys()
       const topIds = state.rowPinning.top
       const bottomIds = state.rowPinning.bottom
@@ -153,7 +160,7 @@ export function createNativeTable<T, TMeta = unknown>(
       const top = select(topIds)
       const bottom = select(bottomIds)
       return { top, center: display.filter((key) => !seen.has(key)), bottom }
-    },
+    }),
     { lazy: true },
   )
   const columns = mapArray(

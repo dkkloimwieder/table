@@ -78,23 +78,24 @@ export function App(props: {
   const defaultLoader = createChildLoader()
   const children = createSubTables({
     ids: model.table.getSourceIds,
+    locked: model.locked,
+    onEditingChange: model.setDescendantEditing,
     scope,
     load: (request) => (props.loadChildren ?? defaultLoader.load)(request),
   })
-  function changeScope(value: string, force = false) {
+  function changeScope(value: string, _force = false) {
     if (value === scope()) return true
-    if (!force && children.entries().some((entry) => entry.draftCount())) {
-      setScopeNotice(
-        'Save or cancel the sub-table drafts before changing the dataset.',
-      )
+    if (model.locked()) {
+      setScopeNotice('Save or cancel edits before changing the dataset.')
       return false
     }
     setScopeNotice('')
     setScope(value)
     return true
   }
-  const configure = (value: Partial<TableControls>) =>
-    setControls((previous) => ({ ...previous, ...value }))
+  const configure = (value: Partial<TableControls>) => {
+    if (!model.locked()) setControls((previous) => ({ ...previous, ...value }))
+  }
   function revealChild(id: string) {
     model.table.setColumnFilters([])
     model.table.setGlobalFilter('')
@@ -122,12 +123,17 @@ export function App(props: {
         }}
         settings={
           <>
-            <TableOptions controls={controls()} configure={configure} />
+            <TableOptions
+              controls={controls()}
+              configure={configure}
+              disabled={model.locked()}
+            />
             <Show when={!model.isGrouped()}>
               <label class="child-dataset">
                 Sub-table dataset
                 <select
                   value={scope()}
+                  disabled={model.locked()}
                   ref={nativeEvents<HTMLSelectElement>({
                     change: (event) => {
                       if (!changeScope(event.currentTarget.value))
@@ -141,7 +147,7 @@ export function App(props: {
               </label>
               <p class="column-layout">
                 Expand a row to load its sub-table. Each table saves its own
-                edits. Collapse keeps sub-table drafts.
+                edits. Save or cancel edits before collapsing a sub-table.
               </p>
               <For each={children.entries()}>
                 {(entry) => (

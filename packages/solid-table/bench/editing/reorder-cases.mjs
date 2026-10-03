@@ -297,7 +297,7 @@ export async function reorderCases({
     },
   )
   await record(
-    'caller order changes preserve the focused editor, text selection, draft and record target',
+    'blocked caller order changes preserve editor focus, selection and record target',
     async () => {
       await start()
       await edit().click()
@@ -331,6 +331,7 @@ export async function reorderCases({
       assert.equal((await read()).drafts.R0001.name, 'Keep this draft')
       assert.equal((await read()).drafts.R0001.expanded, true)
       assert.deepEqual(work(await read()), work(before))
+      assert.deepEqual((await read()).visibleColumns, before.visibleColumns)
       await input().press('Enter')
       await idle()
       assert.equal((await read()).sample[0].name, 'Keep this draft')
@@ -339,7 +340,7 @@ export async function reorderCases({
     },
   )
   await record(
-    'dropdown edits and pending saves retain their logical target through caller moves',
+    'dropdown edits and pending saves block caller moves and respect later focus',
     async () => {
       await start()
       await edit('R0001', 'priority').click()
@@ -364,16 +365,19 @@ export async function reorderCases({
       await page.waitForFunction(
         () => window.editingFixture.read().counts.requests === 1,
       )
-      await handle(page, 'priority').focus()
-      await page.keyboard.press('End')
+      assert.equal(await handle(page, 'priority').isDisabled(), true)
+      await page
+        .getByRole('button', { name: 'After table', exact: true })
+        .click()
+      await call('order', ['name', 'priority'])
       await settle()
       await call('release')
       await idle()
       assert.equal((await read()).sample[0].priority, 'high')
       assert.equal(
-        await handle(page, 'priority').evaluate(
-          (node) => node === document.activeElement,
-        ),
+        await page
+          .getByRole('button', { name: 'After table', exact: true })
+          .evaluate((node) => node === document.activeElement),
         true,
       )
       assert.equal((await read()).sent[0].id, 'R0001')
@@ -406,7 +410,7 @@ export async function reorderCases({
     },
   )
   await record(
-    'rearrangement retains filters, sorting, summaries, widths and drafts in both resize modes',
+    'rearrangement retains configuration in both resize modes before editing',
     async () => {
       for (const resizeBehavior of ['grow', 'fixed']) {
         await start(8, 'table')
@@ -415,8 +419,6 @@ export async function reorderCases({
         await call('filter', 'note', 'Note')
         await call('search', 'Record')
         await call('sorting', [{ id: 'amount', desc: true }])
-        await edit().click()
-        await input().fill('Unsaved reordered name')
         await call('grouping', ['priority'])
         await call('expandGroups', true)
         await page.getByRole('heading', { name: 'Table', exact: true }).click()
@@ -451,6 +453,8 @@ export async function reorderCases({
         )
         assert.equal(resized.widths.note, 300)
         await call('grouping', [])
+        await edit().click()
+        await input().fill('Unsaved reordered name')
         await page
           .getByRole('button', { name: 'Save all', exact: true })
           .click()

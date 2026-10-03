@@ -165,13 +165,10 @@ export async function aggregateCases({
     },
   )
   await record(
-    'summary controls preserve drafts, caller choices and configuration when hidden or gated',
+    'summary controls retain configuration and reflect edits saved before grouping',
     async () => {
       await seed()
-      await call('grouping', [])
-      await edit('R0001', 'note').click()
-      await input('R0001', 'note').fill('')
-      await call('grouping', ['priority'])
+
       assert.match(await value('note'), /Filled notes: 5/)
       await choice('Note').selectOption('empty')
       assert.ok((await value('note')).endsWith(': 0'))
@@ -190,6 +187,8 @@ export async function aggregateCases({
       assert.ok(await choice('Amount').isDisabled())
       await call('localProcessing', true)
       await call('grouping', [])
+      await edit('R0001', 'note').click()
+      await input('R0001', 'note').fill('')
       await page.getByRole('button', { name: 'Save all', exact: true }).click()
       await idle()
       await call('grouping', ['priority'])

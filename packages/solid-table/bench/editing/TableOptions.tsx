@@ -2,13 +2,14 @@ import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/na
 import type { TableControls } from './Table'
 
 export function TableOptions(props: {
+  disabled?: boolean
   controls: TableControls
   configure: (value: Partial<TableControls>) => void
 }) {
   return (
     <details class="display-options">
       <summary>Display options</summary>
-      <div class="display-fields">
+      <fieldset class="display-fields" disabled={props.disabled}>
         <label>
           Column filter controls
           <select
@@ -102,7 +103,7 @@ export function TableOptions(props: {
           />
           Column rearrangement
         </label>
-      </div>
+      </fieldset>
     </details>
   )
 }

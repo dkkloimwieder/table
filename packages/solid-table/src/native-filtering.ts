@@ -1,4 +1,5 @@
 import { createMemo, onCleanup } from 'solid-js'
+import { holdRowProcessing } from './native-processing'
 import type {
   NativeColumnDef,
   NativeTableOptions,
@@ -63,12 +64,12 @@ export function createNativeFiltering<T, TMeta>(
     }
   }
   const filteredIds = createMemo(
-    () => {
+    holdRowProcessing(options, () => {
       const input = ids()
       if (options.manualProcessing || options.manualFiltering) return input
       const matches = createMatcher()
       return matches ? input.filter((id) => matches(getRecord(id)!)) : input
-    },
+    }),
     {
       lazy: true,
       equals: (left, right) =>
