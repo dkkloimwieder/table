@@ -1,6 +1,7 @@
 import { render } from '@solidjs/web'
 import { OBSERVE, action, flush, snapshot } from 'solid-js'
 import { App } from './App'
+import type { SaveMode } from './App'
 import type { EditingModel } from './model'
 
 const root = document.getElementById('root')!
@@ -26,7 +27,7 @@ function stop() {
   remembered = undefined
   flush()
 }
-function start(size = 8) {
+function start(size = 8, saveMode: SaveMode = 'row') {
   stop()
   events.push(...(capture?.stop() ?? []))
   capture = OBSERVE?.diagnostics.capture()
@@ -34,6 +35,7 @@ function start(size = 8) {
     () => (
       <App
         size={size}
+        saveMode={saveMode}
         ready={(value) => {
           model = value
         }}
@@ -54,6 +56,7 @@ const api = {
       .slice(0, 8)
       .map((id) => ({ ...model!.records[id] })),
     drafts: snapshot(model!.editing.drafts),
+    savingAll: model!.editing.savingAll(),
     counts: { ...model!.counts },
     sent: model!.sent,
     identity: remembered
@@ -74,6 +77,10 @@ const api = {
     void model!.editing.save(id)
     void model!.editing.save(id)
   },
+  saveAllTwice: () => {
+    void model!.editing.saveAll()
+    void model!.editing.saveAll()
+  },
   remember: (id: string) => {
     rememberedId = id
     remembered = new WeakRef(model!.records[id]!)
@@ -91,4 +98,8 @@ declare global {
   }
 }
 window.editingFixture = api
-start(Number(new URLSearchParams(location.search).get('size')) || 8)
+const parameters = new URLSearchParams(location.search)
+start(
+  Number(parameters.get('size')) || 8,
+  parameters.get('save') === 'all' ? 'table' : 'row',
+)

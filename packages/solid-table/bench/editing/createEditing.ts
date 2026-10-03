@@ -1,4 +1,4 @@
-import { createStore, onCleanup } from 'solid-js'
+import { createSignal, createStore, onCleanup } from 'solid-js'
 
 export type RecordData = {
   id: string
@@ -25,6 +25,12 @@ export type SaveRequest = {
 export type SaveResult =
   | { status: 'saved'; id: string; revision: string }
   | { status: 'refused' | 'conflict' | 'uncertain'; message: string }
+export type SaveAllResult = {
+  status: 'blocked' | 'complete' | 'partial' | 'aborted'
+  saved: Array<string>
+  unchanged: Array<string>
+  failed: Array<string>
+}
 type Draft = {
   name: string
   note: string
@@ -51,16 +57,21 @@ export function createEditing(options: {
 }) {
   const [drafts, setDrafts] = createStore<Record<string, Draft | undefined>>({})
   const pending = new Map<string, AbortController>()
+  const batchIds = new Set<string>()
+  const [savingAll, setSavingAll] = createSignal(false)
+  let batchRunning = false
   let disposed = false
+  const isDisposed = () => disposed
   // Primitive cleanup also guards responses when disposed before settlement.
   onCleanup(() => {
     disposed = true
     for (const controller of pending.values()) controller.abort()
     pending.clear()
+    batchIds.clear()
   })
   function begin(id: string, column: EditColumn = 'name') {
     const row = options.get(id)
-    if (disposed || !row || pending.has(id)) return
+    if (disposed || !row || pending.has(id) || batchIds.has(id)) return
     const initial: Draft = {
       name: row.name,
       note: row.note,
@@ -87,6 +98,7 @@ export function createEditing(options: {
       if (!draft) return
       if (
         !pending.has(id) &&
+        !batchIds.has(id) &&
         draft.status === 'editing' &&
         row?.revision === draft.revision &&
         row.name === draft.name &&
@@ -104,7 +116,7 @@ export function createEditing(options: {
     })
   }
   function change(id: string, column: EditColumn, value: string) {
-    if (disposed || pending.has(id)) return
+    if (disposed || pending.has(id) || batchIds.has(id)) return
     setDrafts((all) => {
       const draft = all[id]
       if (!draft) return
@@ -123,7 +135,7 @@ export function createEditing(options: {
     })
   }
   function cancel(id: string) {
-    if (disposed || pending.has(id)) return false
+    if (disposed || pending.has(id) || batchIds.has(id)) return false
     setDrafts((all) => {
       delete all[id]
     })
@@ -133,7 +145,7 @@ export function createEditing(options: {
     id: string,
     status: 'refused' | 'conflict' | 'uncertain',
     message: string,
-  ) {
+  ): false {
     setDrafts((all) => {
       const draft = all[id]
       if (draft) {
@@ -149,8 +161,7 @@ export function createEditing(options: {
     draft.message = result.success ? '' : result.message
     draft.status = result.success ? 'editing' : 'invalid'
   }
-  async function save(id: string) {
-    if (disposed || pending.has(id)) return false
+  function prepare(id: string): SaveRequest | false {
     const draft = drafts[id]
     if (!draft) return false
     const row = options.get(id)
@@ -185,7 +196,18 @@ export function createEditing(options: {
           : {}),
       },
     }
-    if (!Object.keys(request.changes).length) return cancel(id)
+    return request
+  }
+  async function submit(request: SaveRequest) {
+    if (disposed) return false
+    const { id } = request
+    const row = options.get(id)
+    if (!row || row.revision !== request.expectedRevision)
+      return fail(
+        id,
+        'conflict',
+        'This record changed before saving. Your draft is preserved.',
+      )
     const controller = new AbortController()
     // Solid commits writes later. This synchronous request guard prevents duplicates.
     pending.set(id, controller)
@@ -227,5 +249,80 @@ export function createEditing(options: {
       pending.delete(id)
     }
   }
-  return { drafts, begin, collapse, focus, change, cancel, save }
+  async function save(id: string) {
+    if (disposed || pending.has(id) || batchIds.has(id)) return false
+    const request = prepare(id)
+    if (!request) return false
+    if (!Object.keys(request.changes).length) return cancel(id)
+    return submit(request)
+  }
+  async function saveAll(): Promise<SaveAllResult | undefined> {
+    // Guard before Solid commits the reactive busy flag.
+    if (disposed || batchRunning || pending.size) return
+    batchRunning = true
+    setSavingAll(true)
+    const result: SaveAllResult = {
+      status: 'complete',
+      saved: [],
+      unchanged: [],
+      failed: [],
+    }
+    try {
+      const requests: Array<SaveRequest> = []
+      // Only drafts present at activation belong to this save.
+      for (const id of Object.keys(drafts)) {
+        const request = prepare(id)
+        if (!request) result.failed.push(id)
+        else if (Object.keys(request.changes).length) requests.push(request)
+        else result.unchanged.push(id)
+      }
+      if (result.failed.length) {
+        result.status = 'blocked'
+        return result
+      }
+      // Freeze queued rows as well as requests already in flight.
+      for (const request of requests) batchIds.add(request.id)
+      setDrafts((all) => {
+        for (const id of result.unchanged) delete all[id]
+        for (const { id } of requests) all[id]!.status = 'pending'
+      })
+      let next = 0
+      async function worker() {
+        while (!disposed) {
+          const request = requests[next++]
+          if (!request) return
+          const saved = await submit(request)
+          if (isDisposed()) return
+          if (saved) result.saved.push(request.id)
+          else result.failed.push(request.id)
+          batchIds.delete(request.id)
+        }
+      }
+      // Bound transport concurrency without building a second record collection.
+      await Promise.all(
+        Array.from({ length: Math.min(4, requests.length) }, worker),
+      )
+      result.status = isDisposed()
+        ? 'aborted'
+        : result.failed.length
+          ? 'partial'
+          : 'complete'
+      return result
+    } finally {
+      batchIds.clear()
+      batchRunning = false
+      if (!isDisposed()) setSavingAll(false)
+    }
+  }
+  return {
+    drafts,
+    begin,
+    collapse,
+    focus,
+    change,
+    cancel,
+    save,
+    saveAll,
+    savingAll,
+  }
 }

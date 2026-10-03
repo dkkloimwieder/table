@@ -692,3 +692,31 @@ Raw reports are `/tmp/table-editing-collapse-{source,distribution,development}.j
 Actual snapshots and summaries are under `/tmp/table-editing-collapse-heaps` with the same four snapshot names.
 The served preview also passes a browser smoke test for two collapsed drafts with separate cell markers.
 Timings remain advisory on this shared machine.
+
+### Optional global save
+
+The fixture now offers Per row and Whole table save modes.
+Thirty-eight browser scenarios pass against source, built, and development entries in Chromium `151.0.7922.34` on Linux.
+All runs report zero browser errors and Solid diagnostics. Ten controller and validation unit tests pass.
+The tests cover filtered drafts, validation before any request, partial failures, retries, concurrency, queued revisions, new drafts, and disposal.
+
+The source and built runs render 25, 250, and 999 records. The development run renders 25 records.
+Saving three collapsed drafts applies the schema three times, sends three requests, and reads 18 Table cell values at every size.
+This includes the displayed draft values and markers. The earlier open-editor save workload still reads three values per row.
+Record identity remains stable, with no replacement row views or cells.
+The batch prepares changes only for captured drafts and limits concurrent requests to four.
+
+The built fixture uses 23.708 MiB after loading 999 records and 23.893 MiB after both per-row saves.
+The premount heap uses 3.591 MiB. After the global save and disposal, the heap uses 3.670 MiB.
+The existing snapshot sequence precedes the new global workload to preserve the earlier record-retention comparison.
+The harness then saves three collapsed drafts through Save all before disposal.
+
+The loaded snapshot contains 47,015 computations, 54,007 dependency links, 10,996 owners, and 1,006 store targets.
+It retains 999 row views and 3,996 cells.
+Record counts remain 1,000 after both per-row saves and repeated updates, then reach 1,001 after another record changes.
+Disposal after the global workload removes all classified records, views, cells, store targets, computations, owners, and dependency links.
+Thirty Maps and 208 V8 allocation templates remain.
+
+Raw reports are `/tmp/table-editing-global-{source,distribution,development}.json`.
+Actual snapshots and summaries are under `/tmp/table-editing-global-heaps` with the same four snapshot names.
+The served preview also passes a two-row Save all smoke test. Timings remain advisory on this shared machine.

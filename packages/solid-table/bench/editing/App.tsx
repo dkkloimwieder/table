@@ -13,18 +13,27 @@ import type { EditingModel } from './model'
 import type { EditColumn } from './createEditing'
 import './style.css'
 
+export type SaveMode = 'row' | 'table'
+
 export function App(props: {
   size: number
+  saveMode?: SaveMode
   ready: (model: EditingModel) => void
 }) {
   const model = createModel(untrack(() => props.size))
   const { table, editing, counts } = model
   let filter!: HTMLInputElement
   let element!: HTMLTableElement
+  let modeControl!: HTMLSelectElement
+  let saveAllButton!: HTMLButtonElement
   let disposed = false
   let focusIntent = 0
   let activeId: string | undefined
   const [notice, setNotice] = createSignal('')
+  const [saveMode, setSaveMode] = createSignal(
+    untrack(() => props.saveMode ?? 'row'),
+  )
+  const draftIds = createMemo(() => Object.keys(editing.drafts))
   function belongsToRow(id: string, target: EventTarget | null) {
     return (
       target instanceof Element &&
@@ -77,7 +86,7 @@ export function App(props: {
   const visibleIds = createMemo(() => new Set(table.getRowIds()))
   const hiddenDrafts = createMemo(() => {
     const visible = visibleIds()
-    return Object.keys(editing.drafts).filter((id) => !visible.has(id))
+    return draftIds().filter((id) => !visible.has(id))
   })
   const filterEvents = nativeEvents<HTMLInputElement>({
     input: (event) =>
@@ -113,6 +122,38 @@ export function App(props: {
     setNotice(`Canceled changes to ${id}.`)
     onSettled(() => {
       if (!disposed && intent === focusIntent) focusCell(id, column, false)
+    })
+  }
+  function finish(id: string, column: EditColumn) {
+    activeId = undefined
+    editing.collapse(id)
+    const intent = ++focusIntent
+    onSettled(() => {
+      if (!disposed && intent === focusIntent) focusCell(id, column, false)
+    })
+  }
+  async function saveAll() {
+    const origin = document.activeElement
+    const intent = ++focusIntent
+    const result = await editing.saveAll()
+    if (disposed || !result) return
+    if (result.status === 'blocked')
+      setNotice(
+        `Nothing saved. Correct ${result.failed.length} draft${result.failed.length === 1 ? '' : 's'} before saving all.`,
+      )
+    else
+      setNotice(
+        `Saved ${result.saved.length} row${result.saved.length === 1 ? '' : 's'}. ${result.failed.length} failed. ${result.unchanged.length} unchanged.`,
+      )
+    onSettled(() => {
+      if (disposed || intent !== focusIntent) return
+      if (
+        document.activeElement !== origin &&
+        document.activeElement !== document.body
+      )
+        return
+      const target = saveAllButton.disabled ? modeControl : saveAllButton
+      target.focus({ preventScroll: true })
     })
   }
   async function save(id: string, column: EditColumn) {
@@ -240,7 +281,8 @@ export function App(props: {
                           if (event.isComposing || event.keyCode === 229) return
                           if (event.key === 'Enter') {
                             event.preventDefault()
-                            void save(id, field)
+                            if (saveMode() === 'table') finish(id, field)
+                            else void save(id, field)
                           } else if (event.key === 'Escape') {
                             event.preventDefault()
                             cancel(id, field)
@@ -271,17 +313,19 @@ export function App(props: {
             }
           >
             <div class="buttons">
-              <button
-                aria-label={`Save ${id}`}
-                disabled={editing.drafts[id]?.status === 'pending'}
-                ref={nativeEvents({
-                  click: () => {
-                    void save(id, actionColumn(id))
-                  },
-                })}
-              >
-                Save
-              </button>
+              <Show when={saveMode() === 'row'}>
+                <button
+                  aria-label={`Save ${id}`}
+                  disabled={editing.drafts[id]?.status === 'pending'}
+                  ref={nativeEvents({
+                    click: () => {
+                      void save(id, actionColumn(id))
+                    },
+                  })}
+                >
+                  Save
+                </button>
+              </Show>
               <button
                 aria-label={`Cancel ${id}`}
                 disabled={editing.drafts[id]?.status === 'pending'}
@@ -307,8 +351,9 @@ export function App(props: {
     <main>
       <h1>Inline editing</h1>
       <p>
-        Edit a name, note, or priority. Save saves the row and Cancel discards
-        its draft. In text fields, Enter saves and Escape cancels.
+        {saveMode() === 'row'
+          ? 'Edit a name, note, or priority. Save saves the row and Cancel discards its draft. In text fields, Enter saves and Escape cancels.'
+          : 'Save all saves every draft, including filtered rows. In text fields, Enter closes the editors and Escape discards that row draft.'}
       </p>
       <p>
         Leaving a row closes its editors and keeps your draft. Changed cells
@@ -320,6 +365,55 @@ export function App(props: {
         save the row.
       </p>
       <div class="toolbar">
+        <label>
+          Save mode
+          <select
+            aria-label="Save mode"
+            value={saveMode()}
+            disabled={editing.savingAll()}
+            ref={[
+              (node) => {
+                modeControl = node
+              },
+              nativeEvents<HTMLSelectElement>({
+                change: (event) => {
+                  if (!editing.savingAll()) {
+                    setSaveMode(event.currentTarget.value as SaveMode)
+                    setNotice('')
+                  }
+                },
+              }),
+            ]}
+          >
+            <option value="row">Per row</option>
+            <option value="table">Whole table</option>
+          </select>
+        </label>
+        <Show when={saveMode() === 'table'}>
+          <button
+            aria-label="Save all"
+            aria-describedby="save-all-description"
+            disabled={
+              editing.savingAll() ||
+              !draftIds().length ||
+              draftIds().some((id) => editing.drafts[id]?.status === 'pending')
+            }
+            ref={[
+              (node) => {
+                saveAllButton = node
+              },
+              nativeEvents<HTMLButtonElement>({
+                click: () => {
+                  void saveAll()
+                },
+              }),
+            ]}
+          >
+            {editing.savingAll()
+              ? 'Saving…'
+              : `Save all (${draftIds().length})`}
+          </button>
+        </Show>
         <label>
           Filter saved names
           <input
@@ -342,10 +436,16 @@ export function App(props: {
           Sort names {table.getColumn('name')!.getIsSorted() || 'off'}
         </button>
         <span>
-          {table.getRowIds().length} records ·{' '}
-          {Object.keys(editing.drafts).length} drafts
+          {table.getRowIds().length} records · {draftIds().length} drafts
         </span>
       </div>
+      <Show when={saveMode() === 'table'}>
+        <p id="save-all-description">
+          All drafts must pass validation before saving starts. Each row saves
+          separately. Failed rows keep their drafts. New edits during a save
+          wait for the next Save all.
+        </p>
+      </Show>
       <Show when={hiddenDrafts().length > 0}>
         <aside aria-label="Hidden drafts">
           <p>Drafts outside the current view are preserved.</p>

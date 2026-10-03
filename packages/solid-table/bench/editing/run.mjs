@@ -88,8 +88,8 @@ try {
           requestAnimationFrame(() => requestAnimationFrame(resolve)),
         ),
     )
-  const start = async (size = 8) => {
-    await call('start', size)
+  const start = async (size = 8, mode = 'row') => {
+    await call('start', size, mode)
     await page.waitForFunction(() => window.editingFixture.ready())
     await settle()
   }
@@ -107,10 +107,12 @@ try {
   const focused = (locator) =>
     locator.evaluate((node) => node === document.activeElement)
   const idle = async () => {
-    await page.waitForFunction(() =>
-      Object.values(window.editingFixture.read().drafts).every(
-        (draft) => draft.status !== 'pending',
-      ),
+    await page.waitForFunction(
+      () =>
+        !window.editingFixture.read().savingAll &&
+        Object.values(window.editingFixture.read().drafts).every(
+          (draft) => draft.status !== 'pending',
+        ),
     )
     await settle()
   }
@@ -860,6 +862,199 @@ try {
       assert.equal((await read()).sample[0].name, 'Record 0001')
     },
   )
+  const mode = () =>
+    page.getByRole('combobox', { name: 'Save mode', exact: true })
+  const saveAll = () =>
+    page.getByRole('button', { name: 'Save all', exact: true })
+  await record(
+    'global mode saves visible and filtered drafts with exact revisions',
+    async () => {
+      await start(8, 'table')
+      assert.equal(await mode().inputValue(), 'table')
+      await edit().click()
+      await input().fill('Global name')
+      assert.equal(await save().count(), 0)
+      await input().press('Enter')
+      await settle()
+      assert.equal(await input().count(), 0)
+      assert.equal((await read()).counts.requests, 0)
+      await edit('R0002', 'priority').click()
+      await select('R0002').selectOption('high')
+      await page
+        .getByRole('textbox', { name: 'Filter saved names', exact: true })
+        .fill('0002')
+      await settle()
+      assert.equal(
+        await page
+          .getByRole('button', { name: 'Show R0001', exact: true })
+          .count(),
+        1,
+      )
+      await saveAll().click()
+      await idle()
+      const value = await read()
+      assert.deepEqual(value.drafts, {})
+      assert.equal(value.sample[0].name, 'Global name')
+      assert.equal(value.sample[1].priority, 'high')
+      assert.deepEqual(value.sent, [
+        {
+          id: 'R0001',
+          expectedRevision: '9007199254740993',
+          changes: { name: 'Global name' },
+        },
+        {
+          id: 'R0002',
+          expectedRevision: '9007199254740993',
+          changes: { priority: 'high' },
+        },
+      ])
+      assert.match(
+        await page.locator('.notice').innerText(),
+        /Saved 2 rows. 0 failed/,
+      )
+      assert.ok(await focused(mode()))
+    },
+  )
+  await record(
+    'global validation blocks every request until all drafts are valid',
+    async () => {
+      await start(8, 'table')
+      await edit().click()
+      await input().fill('Valid draft')
+      await edit('R0002').click()
+      await input('R0002').fill('')
+      await saveAll().click()
+      await idle()
+      let value = await read()
+      assert.equal(value.counts.requests, 0)
+      assert.equal(Object.keys(value.drafts).length, 2)
+      assert.equal(value.counts.validations, 2)
+      assert.match(
+        await page.locator('.notice').innerText(),
+        /Nothing saved. Correct 1 draft/,
+      )
+      assert.match(
+        await page.locator('#error-R0002-name').innerText(),
+        /Enter a name/,
+      )
+      await edit('R0002').click()
+      await input('R0002').fill('Corrected draft')
+      await input('R0002').press('Enter')
+      await saveAll().click()
+      await idle()
+      value = await read()
+      assert.equal(value.counts.requests, 2)
+      assert.deepEqual(value.drafts, {})
+    },
+  )
+  await record(
+    'global partial failure keeps only the failed draft and retry does not resend success',
+    async () => {
+      await start(8, 'table')
+      await edit().click()
+      await input().fill('First draft')
+      await edit('R0002').click()
+      await input('R0002').fill('Second draft')
+      await call('fault', 'refuse')
+      await saveAll().click()
+      await idle()
+      let value = await read()
+      assert.deepEqual(Object.keys(value.drafts), ['R0001'])
+      assert.equal(value.sample[0].name, 'Record 0001')
+      assert.equal(value.sample[1].name, 'Second draft')
+      assert.match(
+        await page.locator('.notice').innerText(),
+        /Saved 1 row. 1 failed/,
+      )
+      await saveAll().click()
+      await idle()
+      value = await read()
+      assert.equal(value.counts.requests, 3)
+      assert.equal(value.sent[2].id, 'R0001')
+      assert.equal(value.sample[1].revision, '9007199254740994')
+      assert.deepEqual(value.drafts, {})
+    },
+  )
+  await record(
+    'pending global save rejects duplicates and preserves new drafts and later focus',
+    async () => {
+      await start(8, 'table')
+      await edit().click()
+      await input().fill('Held draft')
+      await call('fault', 'hold')
+      await saveAll().click()
+      await settle()
+      assert.equal(await saveAll().isDisabled(), true)
+      assert.equal(await mode().isDisabled(), true)
+      assert.equal(await edit().isDisabled(), true)
+      await call('saveAllTwice')
+      assert.equal((await read()).counts.requests, 1)
+      await edit('R0002').click()
+      await input('R0002').fill('Next batch')
+      await call('release')
+      await idle()
+      const value = await read()
+      assert.equal(value.counts.requests, 1)
+      assert.equal(value.sample[0].name, 'Held draft')
+      assert.equal(value.sample[1].name, 'Record 0002')
+      assert.equal(value.drafts.R0002.name, 'Next batch')
+      assert.ok(await focused(input('R0002')))
+    },
+  )
+  await record(
+    'global preflight detects a conflicting revision without saving other rows',
+    async () => {
+      await start(8, 'table')
+      await edit().click()
+      await input().fill('Stale draft')
+      await edit('R0002').click()
+      await input('R0002').fill('Valid second draft')
+      await call('patch', 'R0001', { note: 'External change' })
+      await saveAll().click()
+      await idle()
+      assert.equal((await read()).counts.requests, 0)
+      assert.equal((await read()).drafts.R0001.status, 'conflict')
+      await edit().click()
+      await input().press('Escape')
+      await saveAll().click()
+      await idle()
+      assert.equal((await read()).counts.requests, 1)
+      assert.equal((await read()).sent[0].id, 'R0002')
+    },
+  )
+  await record(
+    'switching save modes preserves drafts and restores row Save buttons',
+    async () => {
+      await start()
+      await edit().click()
+      await input().fill('Mode-independent draft')
+      await mode().focus()
+      await mode().selectOption('table')
+      await settle()
+      await edit().click()
+      assert.equal(await save().count(), 0)
+      assert.equal(await input().inputValue(), 'Mode-independent draft')
+      await mode().focus()
+      await mode().selectOption('row')
+      await edit().click()
+      assert.equal(await save().count(), 1)
+      await save().click()
+      await idle()
+      assert.equal((await read()).sample[0].name, 'Mode-independent draft')
+      assert.equal((await read()).counts.requests, 1)
+    },
+  )
+  await record('disposing during Save all aborts active requests', async () => {
+    await start(8, 'table')
+    await edit().click()
+    await input().fill('Pending batch')
+    await call('fault', 'hold')
+    await saveAll().click()
+    await call('stop')
+    await settle()
+    assert.equal((await call('lastCounts')).aborted, 1)
+    assert.equal(await page.locator('[data-row]').count(), 0)
+  })
   const sizes = (process.env.BENCH_SIZES ?? '25,250,999').split(',').map(Number)
   for (const size of sizes) {
     await call('stop')
@@ -957,6 +1152,32 @@ try {
       .getByRole('button', { name: 'Cancel R0001', exact: true })
       .click()
     await settle()
+    await mode().selectOption('table')
+    for (const id of ['R0001', 'R0002', 'R0003']) {
+      await edit(id, 'note').click()
+      await input(id, 'note').fill('Global measured draft')
+      await input(id, 'note').press('Enter')
+    }
+    await settle()
+    const beforeGlobal = await read()
+    await saveAll().click()
+    await idle()
+    const global = await read()
+    const globalReads =
+      global.counts.name +
+      global.counts.note +
+      global.counts.priority -
+      beforeGlobal.counts.name -
+      beforeGlobal.counts.note -
+      beforeGlobal.counts.priority
+    assert.equal(global.counts.requests - beforeGlobal.counts.requests, 3)
+    assert.equal(global.counts.validations - beforeGlobal.counts.validations, 3)
+    assert.equal(global.counts.views, size)
+    assert.equal(global.counts.cells, size * 4)
+    assert.equal(global.identity, true)
+    assert.deepEqual(global.drafts, {})
+    // These three rows display drafts and markers before saving, unlike open editors.
+    assert.equal(globalReads, 18, `Save all cell reads changed at size ${size}`)
     await call('stop')
     const disposed = await metrics()
     let disposedObjects
@@ -989,6 +1210,7 @@ try {
       editAccessorReads: reads,
       selectAccessorReads: selectReads,
       collapseAccessorReads: collapseReads,
+      globalAccessorReads: globalReads,
       selectCounts: selected.counts,
       elapsedMs,
       before,
@@ -1002,7 +1224,7 @@ try {
       hostLoad: loadavg(),
     })
     console.log(
-      `PASS ${size} fully rendered rows; text reads ${reads}; select reads ${selectReads}; collapse reads ${collapseReads}; zero replacement views/cells`,
+      `PASS ${size} fully rendered rows; text reads ${reads}; select reads ${selectReads}; collapse reads ${collapseReads}; Save all reads ${globalReads}; zero replacement views/cells`,
     )
   }
   report.diagnostics = await call('diagnostics')

@@ -15,10 +15,11 @@ Leaving the row closes its editors and preserves its draft.
 Collapsed cells show draft values with an Edited marker on each changed field.
 Clicking a cell resumes that row draft. Multiple rows can have drafts, but only the active row shows inputs.
 An unchanged visit or a reverted edit leaves no draft when the row closes.
-Save and Cancel appear while the row is open. Errors and pending status remain visible after it closes.
+In Per row mode, Save and Cancel appear while the row is open.
+Errors and pending status remain visible after it closes.
 
-Save saves the row. Cancel discards its draft.
-In text inputs, Enter saves and Escape cancels.
+In Per row mode, Save saves the row. Cancel discards its draft.
+In that mode, Enter saves a text input and Escape cancels its row draft.
 An unchanged save sends no request. A blank name keeps the editor open with an error.
 Composition events do not save or cancel an unfinished input method composition.
 Pending requests make text inputs read-only and disable the dropdown, Save, and Cancel.
@@ -35,6 +36,36 @@ Cancel reveals the current committed values after a conflicting update.
 The fixture rejects a response for another record or a revision that changed during a request.
 It never recreates a removed record from a late response.
 
+## Optional global save
+
+The Save mode selector switches between Per row and Whole table without discarding drafts.
+Per row remains the default. The fixture accepts `saveMode="table"` to start in Whole table mode.
+The URL parameter `save=all` selects the same initial mode.
+
+In Whole table mode, Save all replaces the row Save buttons.
+Enter closes a text editor and preserves its draft. Escape or Cancel discards that row draft.
+Native dropdown keys keep their existing behavior.
+The button includes every outstanding draft, including drafts outside the current filter.
+
+Save all captures the draft IDs and applies the application schema to each draft before sending any request.
+An invalid value, missing record, or known revision conflict blocks the whole attempt.
+Errors remain beside visible cells or in the hidden-draft notice.
+Correcting the affected drafts allows another attempt.
+
+After all drafts pass, the controller sends each changed row with its exact expected revision.
+It sends at most four requests at a time and reexamines each queued revision before sending.
+Rows in that save remain locked until their request finishes. Other rows remain editable.
+New drafts wait for the next Save all. A repeated click or same-turn call does not start duplicate requests.
+
+The transport saves each row separately, so server refusals or later conflicts can produce partial success.
+The result reports saved, failed, and unchanged row counts. Failed rows retain their drafts and errors.
+Retry sends the remaining drafts. It does not resend successful rows unless the user edits them again.
+Unchanged drafts send no request. Closing the table aborts active requests and prevents queued requests from starting.
+
+This policy belongs to the fixture controller. It adds no batch endpoint or transaction guarantee to the published Table API.
+The controller stores prepared changes only for the captured drafts, without copying the record collection.
+The running save does not reclaim focus after a later user interaction.
+
 ## Dropdown behavior
 
 Priority uses a native select input with Low, Normal, and High as example choices.
@@ -46,8 +77,8 @@ Each draft remembers its own focus target, including when several rows have draf
 The dropdown retains its [native select behavior](https://html.spec.whatwg.org/multipage/form-elements.html#the-select-element).
 The fixture attaches no Enter or Escape handler to the select.
 Those keys control the dropdown without saving or discarding the row.
-Tab moves to Save and Shift+Tab moves to Note.
-Use Save or Cancel to finish the row from the dropdown.
+In Per row mode, Tab moves to Save and Shift+Tab moves to Note.
+In Whole table mode, Tab moves to Cancel. Save all saves the dropdown draft.
 
 Tests cover native keyboard selection and menu dismissal in Chromium on Linux.
 They also cover pointer entry, option changes, invalid values, concurrent updates, refused saves, and drafts hidden by filters.
@@ -75,7 +106,7 @@ The save transport is a deterministic local simulation with refusal, conflict, d
 It does not connect to WAMN or implement a production persistence protocol.
 The module audit rejects table-core, TanStack Store, virtual-core, Form, and the excluded UI libraries.
 Dropdown editing is qualified under `table-gd3.6.7.3`. Action use cases remain under `table-gd3.6.7`.
-The user's select request means a dropdown input. It does not add row selection or bulk actions to this fixture.
+The user's select request means a dropdown input. It does not add row selection or selection-based actions to this fixture.
 The editing controller is fixture code, not a new public Table API.
 
 ## Application validation
@@ -92,8 +123,9 @@ These rules demonstrate application policy. Table does not impose these limits.
 The default schema preserves whitespace in valid names.
 An application can replace the schema without changing Table.
 
-Saving validates only the edited row's name, note, and priority.
-An invalid result preserves the draft, marks each affected input, and focuses the first invalid field.
+A row save applies the schema only to that row's name, note, and priority.
+An invalid result preserves the draft, marks each affected input, and focuses the first invalid field for a per-row save.
+Save all reports the errors without moving focus into a row.
 Each input refers to its error text through `aria-describedby` and exposes `aria-invalid` when invalid.
 After the first validation attempt, a field change validates that row again to update errors involving related fields.
 Rendering, sorting, and filtering do not run validation.
@@ -117,6 +149,7 @@ pnpm --filter @tanstack/solid-table exec vite --config bench/editing/vite.config
 ```
 
 Open the local URL printed by Vite. Add `?size=250` to change the initial record count.
+Add `?size=25&save=all` to start with global save enabled.
 Stop the server after review.
 
 ## Browser qualification
