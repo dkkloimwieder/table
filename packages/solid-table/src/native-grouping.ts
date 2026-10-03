@@ -70,6 +70,7 @@ export function createNativeGrouping<T, TMeta>(
   ids: () => ReadonlyArray<string>,
   filteredIds: () => ReadonlyArray<string>,
   sortedIds: () => ReadonlyArray<string>,
+  orderIndexes: () => ReadonlyMap<string, number>,
   definitions: () => ReadonlyMap<string, NativeColumnDef<T, TMeta>>,
   getRecord: (id: string) => T | undefined,
   access: (record: T, column: NativeColumnDef<T, TMeta>) => unknown,
@@ -137,28 +138,49 @@ export function createNativeGrouping<T, TMeta>(
   }
   function aggregate(
     column: NativeColumnDef<T, TMeta>,
-    members: Iterable<string>,
+    members: () => Iterable<string>,
     count: number,
+    sourceOrder = false,
   ) {
     function* values() {
-      for (const id of members) {
+      for (const id of members()) {
         const record = getRecord(id)
         if (record !== undefined) yield access(record, column)
       }
     }
-    return column.aggregationFn?.(values(), { count })
+    function boundary(last: boolean) {
+      const indexes = sourceOrder ? undefined : orderIndexes()
+      let selected: string | undefined
+      let rank = last ? -Infinity : Infinity
+      let sourceIndex = 0
+      for (const id of members()) {
+        const index = indexes ? indexes.get(id) : sourceIndex++
+        if (index !== undefined && (last ? index > rank : index < rank)) {
+          selected = id
+          rank = index
+        }
+      }
+      const record = selected === undefined ? undefined : getRecord(selected)
+      return record === undefined ? undefined : access(record, column)
+    }
+    return column.aggregationFn?.(values(), {
+      count,
+      getFirstValue: () => boundary(false),
+      getLastValue: () => boundary(true),
+    })
   }
   function value(
     node: GroupNode,
     groups: ReadonlyMap<string, GroupNode>,
     columnId: string,
+    aggregateOnly = false,
   ) {
     const entry = node.path.find((part) => part.columnId === columnId)
-    if (entry) return entry.value
+    if (entry && !aggregateOnly) return entry.value
     if (options.manualProcessing || options.manualAggregating) return undefined
     const column = definitions().get(columnId)
     return column
-      ? aggregate(column, leaves(node, groups), node.count)
+      ? aggregate(column, () => leaves(node, groups), node.count)
       : undefined
   }
   // Membership tracks only grouping fields. Aggregate edits do not rebuild it.
@@ -173,7 +195,12 @@ export function createNativeGrouping<T, TMeta>(
     const keyed = keys.map((key, index) => ({
       key,
       index,
-      value: value(model.groups.get(key)!, model.groups, order.id),
+      value: value(
+        model.groups.get(key)!,
+        model.groups,
+        order.id,
+        model.groups.get(key)!.path[depth]?.columnId !== order.id,
+      ),
     }))
     keyed.sort(
       (a, b) =>
@@ -197,7 +224,7 @@ export function createNativeGrouping<T, TMeta>(
       const model = tree()
       if (!model.active) return sortedIds().map(rowKey)
       const result: Array<string> = []
-      let indexes: Map<string, number> | undefined
+      let indexes: ReadonlyMap<string, number> | undefined
       function append(keys: ReadonlyArray<string>) {
         for (const key of keys) {
           result.push(key)
@@ -206,7 +233,7 @@ export function createNativeGrouping<T, TMeta>(
           if (node.children.length) append(children(key))
           else {
             // Collapsed groups do not activate leaf sorting or its field reads.
-            indexes ??= new Map(sortedIds().map((id, index) => [id, index]))
+            indexes ??= orderIndexes()
             const rows = [...node.leafIds].sort(
               (a, b) => indexes!.get(a)! - indexes!.get(b)!,
             )
@@ -243,6 +270,13 @@ export function createNativeGrouping<T, TMeta>(
         const node = model.groups.get(key)
         return node
           ? (value(node, model.groups, columnId) as V | undefined)
+          : undefined
+      },
+      getAggregateValue: <V>(columnId: string) => {
+        const model = tree()
+        const node = model.groups.get(key)
+        return node
+          ? (value(node, model.groups, columnId, true) as V | undefined)
           : undefined
       },
       getIsExpanded: () => state.groupExpanded[key] === true,
@@ -300,7 +334,12 @@ export function createNativeGrouping<T, TMeta>(
       const column = definitions().get(columnId)
       if (!column?.aggregationFn) return undefined
       const input = scope === 'source' ? ids() : filteredIds()
-      return aggregate(column, input, input.length) as V | undefined
+      return aggregate(
+        column,
+        () => input,
+        input.length,
+        scope === 'source',
+      ) as V | undefined
     },
   }
 }

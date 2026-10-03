@@ -8,7 +8,12 @@ export interface NativeGroupPathEntry {
 }
 export type NativeAggregationFn = (
   values: Iterable<unknown>,
-  context: { readonly count: number },
+  context: {
+    readonly count: number
+    /** Ordered boundaries supplied by Table. Standalone calls use iterator order. */
+    readonly getFirstValue?: () => unknown
+    readonly getLastValue?: () => unknown
+  },
 ) => unknown
 export type NativeDisplayItem =
   { kind: 'row'; id: string } | { kind: 'group'; key: string }
@@ -32,6 +37,8 @@ export interface NativeColumnDef<T, TMeta = unknown> {
   /** Return a scalar bucket, such as an application-defined date bucket. */
   getGroupingValue?: (record: T) => NativeGroupValue | undefined
   aggregationFn?: NativeAggregationFn
+  /** Preserve equivalent structured summary results, such as a min/max pair. */
+  aggregationEquals?: (previous: unknown, next: unknown) => boolean
   header?: unknown
   cell?: unknown
   meta?: TMeta
@@ -153,6 +160,7 @@ export interface NativeGroup {
   getLeafRowIds: () => Iterable<string>
   getChildGroupKeys: () => ReadonlyArray<string>
   getValue: <V = unknown>(columnId: string) => V | undefined
+  getAggregateValue: <V = unknown>(columnId: string) => V | undefined
   getIsExpanded: () => boolean
   toggleExpanded: (expanded?: boolean) => void
 }

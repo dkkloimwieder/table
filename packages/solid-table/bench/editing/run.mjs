@@ -9,6 +9,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { chromium } from '@playwright/test'
 import { groupingCases } from './grouping-cases.mjs'
+import { aggregateCases } from './aggregate-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -200,6 +201,17 @@ try {
     page.getByRole('status', { name: 'Filter results', exact: true })
   const clearFilters = () =>
     page.getByRole('button', { name: 'Clear all filters', exact: true })
+  await aggregateCases({
+    page,
+    start,
+    call,
+    read,
+    record,
+    settle,
+    edit,
+    input,
+    idle,
+  })
   await groupingCases({
     page,
     start,
@@ -1501,7 +1513,7 @@ try {
     const value = await read()
     assert.equal(value.identity, true)
     assert.equal(value.counts.views, size)
-    assert.equal(value.counts.cells, size * 4)
+    assert.equal(value.counts.cells, size * 6)
     assert.equal(value.counts.validations, 1)
     const reads =
       value.counts.name +
@@ -1524,7 +1536,7 @@ try {
       beforeSelect.counts.priority
     assert.equal(selected.identity, true)
     assert.equal(selected.counts.views, size)
-    assert.equal(selected.counts.cells, size * 4)
+    assert.equal(selected.counts.cells, size * 6)
     assert.equal(selected.counts.validations, 2)
     assert.equal(selected.sample[0].priority, 'high')
     assert.ok(
@@ -1567,7 +1579,7 @@ try {
       `Collapsing a draft reread ${collapseReads} cells at size ${size}`,
     )
     assert.equal(collapsed.counts.views, size)
-    assert.equal(collapsed.counts.cells, size * 4)
+    assert.equal(collapsed.counts.cells, size * 6)
     assert.equal(
       collapsed.counts.validations,
       beforeCollapse.counts.validations,
@@ -1600,7 +1612,7 @@ try {
     assert.equal(global.counts.requests - beforeGlobal.counts.requests, 3)
     assert.equal(global.counts.validations - beforeGlobal.counts.validations, 3)
     assert.equal(global.counts.views, size)
-    assert.equal(global.counts.cells, size * 4)
+    assert.equal(global.counts.cells, size * 6)
     assert.equal(global.identity, true)
     assert.deepEqual(global.drafts, {})
     // These three rows display drafts and markers before saving, unlike open editors.
@@ -1624,7 +1636,7 @@ try {
     // Each pass checks the Name column filter, then global search matches Name.
     assert.equal(searchReads, size * 10)
     assert.equal(searched.counts.views, size)
-    assert.equal(searched.counts.cells, size * 4)
+    assert.equal(searched.counts.cells, size * 6)
     assert.equal(searched.counts.requests, global.counts.requests)
     assert.equal(searched.counts.validations, global.counts.validations)
     assert.equal(searched.identity, true)
@@ -1689,10 +1701,70 @@ try {
     for (const objects of [groupedObjects, regroupedObjects]) {
       if (!objects) continue
       assert.equal(objects['Native row views'], size)
-      assert.equal(objects['Table cells'], size * 4)
+      assert.equal(objects['Table cells'], size * 6)
       assert.equal(objects['Native group views'], 4)
-      assert.equal(objects['Native group cells'], 16)
+      assert.equal(objects['Native group cells'], 24)
       assert.equal(objects['Native group membership nodes'], 4)
+    }
+    const summaryWork = {}
+    const summaryBaseline = await read()
+    for (const name of [
+      'median',
+      'range',
+      'span',
+      'first',
+      'last',
+      'count',
+      'sum',
+    ]) {
+      const beforeSummary = await read()
+      await call('summary', 'amount', name)
+      const afterSummary = await read()
+      const amountReads =
+        afterSummary.counts.amount - beforeSummary.counts.amount
+      const scalarValues =
+        afterSummary.counts.medianValues - beforeSummary.counts.medianValues
+      assert.equal(
+        amountReads,
+        name === 'count' ? 0 : ['first', 'last'].includes(name) ? 4 : size * 2,
+      )
+      assert.equal(
+        scalarValues,
+        name === 'median' ? 2 * (size - Math.floor(size / 11)) : 0,
+      )
+      summaryWork[name] = { amountReads, scalarValues }
+    }
+    for (let repeat = 0; repeat < 5; repeat++)
+      for (const name of ['median', 'range', 'first', 'last', 'sum'])
+        await call('summary', 'amount', name)
+    const afterSummaries = await read()
+    assert.equal(
+      afterSummaries.counts.groupReads,
+      summaryBaseline.counts.groupReads,
+    )
+    assert.equal(afterSummaries.counts.views, summaryBaseline.counts.views)
+    assert.equal(afterSummaries.counts.cells, summaryBaseline.counts.cells)
+    assert.equal(
+      afterSummaries.counts.groupViews,
+      summaryBaseline.counts.groupViews,
+    )
+    assert.equal(
+      afterSummaries.counts.groupCells,
+      summaryBaseline.counts.groupCells,
+    )
+    assert.equal(afterSummaries.counts.note, summaryBaseline.counts.note)
+    assert.equal(afterSummaries.counts.dueDate, summaryBaseline.counts.dueDate)
+    const summaryMetrics = await metrics()
+    const summaryObjects =
+      size === sizes.at(-1) ? await heap('summaries') : undefined
+    if (summaryObjects) {
+      assert.equal(
+        summaryObjects['Data records'],
+        regroupedObjects['Data records'],
+      )
+      assert.equal(summaryObjects['Table cells'], size * 6)
+      assert.equal(summaryObjects['Native group cells'], 24)
+      assert.equal(summaryObjects['Native group membership nodes'], 4)
     }
     await call('stop')
     const disposed = await metrics()
@@ -1734,6 +1806,9 @@ try {
       fiveCombinedSearchAccessorReads: searchReads,
       groupingReads,
       aggregateEditReads,
+      summaryWork,
+      summaryMetrics,
+      summaryObjects,
       groupedMetrics,
       regroupedMetrics,
       groupedObjects,

@@ -811,3 +811,52 @@ Thirty Maps and 334 V8 allocation templates remain.
 Raw reports are `/tmp/table-grouping-{source,distribution,development,live}.json`.
 Snapshots and summaries are under `/tmp/table-grouping-heaps`.
 They include `loaded`, `repeated-edit`, `second-record-edit`, `grouped`, `regrouped`, and `disposed` captures.
+
+## Per-column summaries
+
+The Table fixture adds Amount and Due date, plus one controlled summary choice for each column.
+Amount supports sum, min, max, average, median, range, and span.
+Date summaries use UTC timestamps and show date endpoints or elapsed days.
+General summaries include counts, first, and last. Summary changes preserve the source records and editing drafts.
+
+All 131 unit tests and 68 Chromium scenarios pass.
+The browser cases pass in source, built-package, development, and live Vite runs.
+Source and built workloads cover 25, 250, and 999 records. Development and live workloads cover 25 records.
+Types, scoped lint, formatting, builds, package imports, publint, and server rendering pass.
+Live Vite records 96 expected scan-breadth entries and 12 advisory timing entries, with no unexpected diagnostics.
+Console and structured capture can record the same diagnostic separately.
+
+The two-level workload observes four groups. Sum, range, span, and median read 50, 500, and 1,998 amounts at the three sizes.
+Median places 46, 456, and 1,818 valid numbers into temporary arrays across those groups.
+Missing amounts account for the difference between accessor reads and valid numbers.
+Median sorts numbers without copying records. Range allocates a pair of numbers for each result.
+First and last each read four endpoint values. They scan member IDs and share the existing table order index.
+Row count reads no amounts. Repeated choices allocate no replacement row views, cells, group views, or group membership.
+They also leave note and date accessor counts unchanged.
+Text save, dropdown save, editor collapse, and three-row global save retain their previous read counts: 3, 3, 6, and 18.
+
+At 999 records, the final built heap measures 4.229 MiB before mounting and 26.255 MiB after loading.
+It measures 27.104 MiB with groups expanded, 27.142 MiB after regrouping, and 27.151 MiB after repeated summary changes.
+Disposal returns it to 4.253 MiB.
+The fixture now renders six cells per record, compared with four in the preceding grouping workload.
+This added rendering work contributes to the higher loaded baseline. These figures do not isolate the cost of an aggregate function.
+
+Grouped, regrouped, and summary captures each contain 999 row views, 5,994 cells, four group views, 24 group cells, and four membership nodes.
+Each capture contains 49,673 computations, 15,162 owners, 1,007 store targets, and 1,002 classified data records.
+The three additional record objects match the existing bounded retention of prior values for three edited records.
+Repeated aggregate changes add no retained data records or reactive owners.
+After disposal, every classified record, Table view, group node, store target, computation, owner, and dependency link is absent.
+The remaining categories contain 348 V8 allocation templates and 30 JavaScript Maps.
+
+The first heap run found eight records from the initial fixture instance after disposal.
+Their retaining path passed through a V8 allocation template, a shared descriptor array, and a column accessor closure.
+Replacing literal getters with `Object.defineProperty` alone did not remove the shared descriptor path.
+The final model creates fresh dictionary objects for column definitions and metadata, then installs their getters.
+A focused disposal probe and the full seven-snapshot workload show that this change removes the retained instance.
+This fix changes column configuration objects. It does not copy records or introduce a second dataset.
+
+Final reports are `/tmp/table-aggregate-final-{source,distribution,development,live}.json`.
+The seven snapshots and their classification reports are under `/tmp/table-aggregate-final-heaps`.
+The initial evidence remains under `/tmp/table-aggregate-heaps` and `/tmp/table-aggregate-qualified-heaps`.
+Desktop and 390px mobile layouts were inspected. The mobile page has no horizontal overflow outside the table scroll area.
+The host runs other development workloads. Absolute timings remain advisory.

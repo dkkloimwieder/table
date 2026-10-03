@@ -1,24 +1,34 @@
 import { createSignal, createStore, onCleanup } from 'solid-js'
-import { createTable } from '@tanstack/solid-table/native'
+import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
 import { createEditing } from './createEditing'
 import { validateEdits } from './validation'
-import type { NativeAggregationFn } from '@tanstack/solid-table/native'
+import {
+  compareValues,
+  day,
+  formatSummary,
+  formatValue,
+  sameSummary,
+  summaryChoices,
+} from './aggregates'
+import type { Summary, SummaryChoice, ValueKind } from './aggregates'
 import type {
-  EditValues,
-  RecordData,
-  SaveRequest,
-  SaveResult,
-} from './createEditing'
+  NativeAggregationFn,
+  NativeColumnDef,
+} from '@tanstack/solid-table/native'
+import type { RecordData, SaveRequest, SaveResult } from './createEditing'
 
 type Fault =
   'none' | 'hold' | 'refuse' | 'conflict' | 'uncertain' | 'throw' | 'wrong-id'
 const contains = (value: unknown, query: unknown) =>
   String(value).toLowerCase().includes(String(query).trim().toLowerCase())
-const compareText = (left: unknown, right: unknown) =>
-  String(left).localeCompare(String(right))
 
-export type NoteSummary = 'filled' | 'distinct' | 'none'
-export type ColumnMeta = { groupingLabel?: string; summaryLabel?: string }
+export type ColumnMeta = {
+  groupingLabel?: string
+  summaryLabel?: string
+  summaryChoices?: ReadonlyArray<SummaryChoice>
+  formatValue?: (value: unknown) => string
+  formatSummary?: (value: unknown) => string
+}
 
 export function createModel(size: number) {
   const initial = Array.from({ length: size }, (_, index): RecordData => ({
@@ -26,6 +36,9 @@ export function createModel(size: number) {
     name: `Record ${String(index + 1).padStart(4, '0')}`,
     note: `Note ${index + 1}`,
     priority: 'normal',
+    amount: index % 11 === 10 ? null : ((index * 37) % 500) + 10,
+    dueDate:
+      index % 13 === 12 ? null : Date.UTC(2026, 9, 1) + (index % 31) * day,
     revision: '9007199254740993',
   }))
   const [records, setRecords] = createStore<
@@ -33,11 +46,21 @@ export function createModel(size: number) {
   >(Object.fromEntries(initial.map((row) => [row.id, row])))
   const [ids, setIds] = createSignal(initial.map((row) => row.id))
   const [localProcessing, setLocalProcessing] = createSignal(true)
-  const [noteSummary, setNoteSummary] = createSignal<NoteSummary>('filled')
+  const [summaries, setSummaries] = createStore<Record<string, Summary>>({
+    id: 'none',
+    name: 'none',
+    note: 'filled',
+    priority: 'none',
+    amount: 'sum',
+    dueDate: 'range',
+  })
   const counts = {
     name: 0,
     note: 0,
     priority: 0,
+    amount: 0,
+    dueDate: 0,
+    medianValues: 0,
     views: 0,
     cells: 0,
     unmounted: 0,
@@ -50,95 +73,163 @@ export function createModel(size: number) {
     groupCells: 0,
     groupsUnmounted: 0,
   }
-  const summaries: Record<Exclude<NoteSummary, 'none'>, NativeAggregationFn> = {
-    filled(values) {
-      counts.aggregates++
-      let total = 0
-      for (const value of values) if (String(value ?? '').trim()) total++
-      return total
-    },
-    distinct(values) {
-      counts.aggregates++
-      const notes = new Set<string>()
-      for (const value of values) {
-        const text = String(value ?? '').trim()
-        if (text) notes.add(text)
-      }
-      return notes.size
-    },
+  const aggregateFunctions: Record<
+    string,
+    Record<string, NativeAggregationFn>
+  > = {}
+  function aggregated(
+    id: string,
+    header: string,
+    kind: ValueKind,
+    groupingLabel?: string,
+  ) {
+    const choices = summaryChoices[kind]
+    const functions = Object.fromEntries(
+      choices.flatMap(({ value }) => {
+        if (value === 'none') return []
+        const fn: NativeAggregationFn = (values, context) => {
+          counts.aggregates++
+          function* measured() {
+            for (const item of values) {
+              if (
+                value === 'median' &&
+                typeof item === 'number' &&
+                Number.isFinite(item)
+              )
+                counts.medianValues++
+              yield item
+            }
+          }
+          return nativeAggregations[value](measured(), context)
+        }
+        return [[value, fn]]
+      }),
+    )
+    aggregateFunctions[id] = functions
+    const meta = Object.assign(Object.create(null) as ColumnMeta, {
+      groupingLabel,
+      summaryChoices: choices,
+      formatValue: (value: unknown) => formatValue(value, kind),
+      formatSummary: (value: unknown) =>
+        formatSummary(value, kind, summaries[id]!),
+    })
+    // V8 allocation templates can retain closures from object-literal accessors.
+    Object.defineProperty(meta, 'summaryLabel', {
+      get: () => {
+        const value = summaries[id]
+        if (id === 'note' && value === 'filled') return 'Filled notes'
+        if (id === 'note' && value === 'distinct') return 'Distinct notes'
+        return `${header} · ${choices.find((choice) => choice.value === value)?.label}`
+      },
+    })
+    return { aggregationEquals: sameSummary, meta }
   }
+
+  const columns: Array<NativeColumnDef<RecordData, ColumnMeta>> = [
+    {
+      ...aggregated('id', 'Record', 'text'),
+      id: 'id',
+      header: 'Record',
+      accessorKey: 'id',
+      filterFn: contains,
+      sortFn: compareValues,
+      enableGlobalFilter: false,
+    },
+    {
+      ...aggregated('name', 'Name', 'text', 'Name initial'),
+      id: 'name',
+      header: 'Name',
+      filterFn: contains,
+      sortFn: compareValues,
+      getGroupingValue: (row) => {
+        counts.groupReads++
+        return row.name.trim().charAt(0).toUpperCase() || null
+      },
+      accessorFn: (row) => {
+        counts.name++
+        return row.name
+      },
+    },
+    {
+      id: 'note',
+      header: 'Note',
+      filterFn: contains,
+      ...aggregated('note', 'Note', 'text'),
+      sortFn: compareValues,
+      accessorFn: (row) => {
+        counts.note++
+        return row.note
+      },
+    },
+    {
+      id: 'priority',
+      header: 'Priority',
+      ...aggregated('priority', 'Priority', 'text', 'Priority'),
+      getGroupingValue: (row) => {
+        counts.groupReads++
+        return row.priority || null
+      },
+      filterFn: (value, choice) => value === choice,
+      sortFn: (left, right) =>
+        typeof left === 'number' && typeof right === 'number'
+          ? left - right
+          : ['low', 'normal', 'high'].indexOf(String(left)) -
+            ['low', 'normal', 'high'].indexOf(String(right)),
+      accessorFn: (row) => {
+        counts.priority++
+        return row.priority
+      },
+    },
+    {
+      ...aggregated('amount', 'Amount', 'number'),
+      id: 'amount',
+      header: 'Amount',
+      enableGlobalFilter: false,
+      filterFn: contains,
+      sortFn: compareValues,
+      accessorFn: (row) => {
+        counts.amount++
+        return row.amount
+      },
+    },
+    {
+      ...aggregated('dueDate', 'Due date', 'date'),
+      id: 'dueDate',
+      header: 'Due date',
+      enableGlobalFilter: false,
+      filterFn: (value, query) => contains(formatValue(value, 'date'), query),
+      sortFn: compareValues,
+      accessorFn: (row) => {
+        counts.dueDate++
+        return row.dueDate
+      },
+    },
+  ]
+  const configuredColumns = columns.map((column) => {
+    // A fresh dictionary also avoids template-shared accessor descriptors.
+    const configured = Object.assign(
+      Object.create(null) as NativeColumnDef<RecordData, ColumnMeta>,
+      column,
+    )
+    Object.defineProperty(configured, 'aggregationFn', {
+      get: () => aggregateFunctions[column.id]![summaries[column.id]!],
+    })
+    return configured
+  })
   const table = createTable<RecordData, ColumnMeta>({
     source: { ids, get: (id) => records[id] },
     get manualProcessing() {
       return !localProcessing()
     },
-    columns: [
-      {
-        id: 'id',
-        header: 'Record',
-        accessorKey: 'id',
-        filterFn: contains,
-        sortFn: compareText,
-        enableGlobalFilter: false,
-      },
-      {
-        id: 'name',
-        header: 'Name',
-        filterFn: contains,
-        sortFn: compareText,
-        meta: { groupingLabel: 'Name initial' },
-        getGroupingValue: (row) => {
-          counts.groupReads++
-          return row.name.trim().charAt(0).toUpperCase() || null
-        },
-        accessorFn: (row) => {
-          counts.name++
-          return row.name
-        },
-      },
-      {
-        id: 'note',
-        header: 'Note',
-        filterFn: contains,
-        sortFn: (left, right) =>
-          typeof left === 'number' && typeof right === 'number'
-            ? left - right
-            : compareText(left, right),
-        get aggregationFn() {
-          const summary = noteSummary()
-          return summary === 'none' ? undefined : summaries[summary]
-        },
-        meta: {
-          get summaryLabel() {
-            return noteSummary() === 'filled'
-              ? 'Filled notes'
-              : 'Distinct notes'
-          },
-        },
-        accessorFn: (row) => {
-          counts.note++
-          return row.note
-        },
-      },
-      {
-        id: 'priority',
-        header: 'Priority',
-        meta: { groupingLabel: 'Priority' },
-        getGroupingValue: (row) => {
-          counts.groupReads++
-          return row.priority || null
-        },
-        filterFn: (value, choice) => value === choice,
-        sortFn: (left, right) =>
-          ['low', 'normal', 'high'].indexOf(String(left)) -
-          ['low', 'normal', 'high'].indexOf(String(right)),
-        accessorFn: (row) => {
-          counts.priority++
-          return row.priority
-        },
-      },
-    ],
+    columns: configuredColumns,
   })
+  function setSummary(id: string, value: Summary) {
+    const choices = table.getColumn(id)?.columnDef?.meta?.summaryChoices
+    if (choices?.some((choice) => choice.value === value))
+      setSummaries((all) => {
+        all[id] = value
+      })
+  }
   function configureGrouping(next: Array<string>) {
     const previous = table.state.grouping
     const sorting = next.flatMap((id, depth) => {
@@ -243,8 +334,8 @@ export function createModel(size: number) {
     table,
     localProcessing,
     setLocalProcessing,
-    noteSummary,
-    setNoteSummary,
+    summaries,
+    setSummary,
     configureGrouping,
     recordGroupKeys,
     revealRecord,
@@ -258,7 +349,7 @@ export function createModel(size: number) {
     release: () => {
       for (const release of [...waiting]) release()
     },
-    patch(id: string, changes: Partial<EditValues>) {
+    patch(id: string, changes: Partial<Omit<RecordData, 'id' | 'revision'>>) {
       if (disposed) return
       setRecords((all) => {
         const row = all[id]

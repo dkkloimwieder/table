@@ -374,19 +374,53 @@ Group rendering does not invent an original record for a group.
 
 ## Aggregate values
 
-`aggregationFn(values, { count })` receives a single-pass iterator over the original leaf values and the number of member records.
+`aggregationFn(values, context)` receives a single-pass iterator over original leaf values. The context includes the member count.
 Every level aggregates original leaves. Parent groups do not aggregate child averages.
-The grouping columns in a group's path return their bucket values instead of aggregates.
-Other columns return their aggregate or `undefined` when no function exists.
+For grouping columns, `group.getValue(columnId)` returns the bucket value.
+`group.getAggregateValue(columnId)` always requests the aggregate, including on a grouping column.
+A group cell uses the aggregate when its column defines one. Otherwise, it uses the bucket value.
+Group sorting uses the bucket for the current grouping column and aggregates for other columns.
 
-`nativeAggregations` provides `count`, `sum`, `min`, `max`, and `mean`.
-The numeric functions ignore nonnumeric and nonfinite values.
-For empty input, sum returns zero. Min, max, and mean return `undefined`.
-Count uses membership metadata and does not read accessor values.
-Applications can supply aggregates for dates, decimals, or other types.
+`nativeAggregations` provides these helpers:
+
+- Numeric: `sum`, `min`, `max`, `mean`, `median`, `range`, and `span`.
+- Counts: `count`, `filled`, `empty`, and `distinct`.
+- Ordered values: `first` and `last`.
+
+Numeric helpers ignore nonnumeric and nonfinite values.
+For empty input, `sum` returns zero. Other numeric helpers return `undefined`.
+`range` returns a minimum–maximum tuple. `span` returns maximum minus minimum.
+`median` sorts a temporary array of valid numbers. It does not copy or sort source records.
+An even-sized input uses the average of its two middle numbers.
+
+`count` uses membership metadata and reads no accessor values.
+`empty` counts null, undefined, and blank strings. `filled` counts the remaining values, including zero and false.
+`distinct` counts nonempty values through a JavaScript Set. It preserves whitespace in nonblank strings and uses identity for objects.
+Applications can supply a different comparison or normalization policy.
+
+`first` and `last` preserve the actual endpoint value, including null or an empty string.
+Within Table, they follow the current record sort across the group, independent of subgroup order and expansion.
+Without sorting, they follow source order. Filtering limits the candidate records.
+They scan member IDs through the existing order index and read only the selected accessor value.
+Requesting either summary can activate record sorting, including in collapsed groups.
+Other aggregates do not subscribe to record sorting.
+
+The context supplies lazy `getFirstValue()` and `getLastValue()` callbacks for custom ordered summaries.
+Standalone calls without those callbacks use iterator order, for example `nativeAggregations.first(values, { count: 3 })`.
+The iterator remains single-pass. Custom functions can use the boundary callbacks independently of that iterator.
+
+Date columns can supply epoch milliseconds, which are numeric timestamps, through their accessor.
+Numeric minimum, maximum, range, and span then support date summaries without parsing strings inside Table.
+A span uses milliseconds. The application controls date formatting, time zones, and calendar-day calculations.
+Applications can supply custom aggregates for decimals or other types.
+
+For a structured result such as a range tuple, supply `column.aggregationEquals(previous, next)` to compare equivalent results.
+Group cells use this comparison before notifying subscribers. The default comparison uses `Object.is`.
+This comparison preserves equivalent output references. It does not remove the aggregate scan or its temporary output allocation.
 
 Without an external provider, `getTotalValue(columnId)` aggregates filtered records, independent of grouping and expansion.
 Pass `'source'` as the second argument to aggregate all loaded source records.
+For first and last, this explicit source scope follows source order and ignores table sorting and filters.
 Neither scope proves that the loaded set represents a complete server result.
 `manualAggregating` disables local group aggregates and totals. Unavailable values return `undefined`.
 `manualGrouping` bypasses groups while preserving their state.

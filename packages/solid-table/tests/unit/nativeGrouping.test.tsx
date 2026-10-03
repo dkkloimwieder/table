@@ -654,3 +654,210 @@ test('objects require an explicit scalar grouping value', () => {
     dispose()
   })
 })
+
+test('first and last follow the table sort within nested collapsed groups without copying records', () => {
+  const h = setup(['region', 'city'])
+  const [summary, setSummary] = createSignal<'first' | 'last'>('first')
+  h.setRecords((all) => {
+    all.e = { region: 'east', city: 'A', amount: 25, unused: 0 }
+  })
+  h.setIds(['a', 'b', 'c', 'd', 'e'])
+  h.setColumns(
+    h.definitions.map((column) =>
+      column.id === 'amount'
+        ? {
+            ...column,
+            get aggregationFn() {
+              return nativeAggregations[summary()]
+            },
+          }
+        : column,
+    ),
+  )
+  flush()
+  const east = h.group('east')
+  const value = observe(() => east.getAggregateValue('amount'))
+  try {
+    expect(value.value()).toBe(10)
+    setSummary('last')
+    flush()
+    expect(value.value()).toBe(25) // Source order, not depth-first subgroup order.
+    h.region.mockClear()
+    h.amount.mockClear()
+    h.table.setSorting([{ id: 'amount', desc: true }])
+    flush()
+    expect(value.value()).toBe(10)
+    expect(h.region).not.toHaveBeenCalled()
+    expect(h.amount).toHaveBeenCalledTimes(6) // Five sort keys and one boundary value.
+    h.amount.mockClear()
+    setSummary('first')
+    flush()
+    expect(value.value()).toBe(30)
+    expect(h.amount).toHaveBeenCalledTimes(1)
+    expect(east.getIsExpanded()).toBe(false)
+    h.table.setGroupSorting([{ depth: 1, id: 'amount', desc: false }])
+    flush()
+    expect(value.value()).toBe(30)
+    h.table.setColumnFilters([{ id: 'amount', value: 35 }])
+    flush()
+    expect(value.value()).toBeUndefined()
+    expect(h.table.getTotalValue('amount')).toBe(40)
+    expect(h.table.getTotalValue('amount', 'source')).toBe(10)
+  } finally {
+    value.stop()
+    h.dispose()
+  }
+})
+
+test('group cells can summarize a grouping column while its bucket remains available', () => {
+  const h = setup()
+  h.setColumns(
+    h.definitions.map((column) =>
+      column.id === 'region'
+        ? {
+            ...column,
+            aggregationFn: nativeAggregations.count,
+          }
+        : column,
+    ),
+  )
+  flush()
+  const east = h.group('east')
+  const view = createRoot((dispose) => ({
+    dispose,
+    group: h.table.createGroupView(east.key),
+  }))
+  const summary = observe(() =>
+    view.group
+      .getVisibleCells()
+      .find((cell) => cell.column.id === 'region')!
+      .getValue(),
+  )
+  try {
+    expect(east.getValue('region')).toBe('east')
+    expect(east.getAggregateValue('region')).toBe(2)
+    expect(summary.value()).toBe(2)
+    h.table.setGroupSorting([{ depth: 0, id: 'region', desc: false }])
+    flush()
+    expect(h.table.getRootGroupKeys()[0]).toBe(east.key)
+  } finally {
+    summary.stop()
+    view.dispose()
+    h.dispose()
+  }
+})
+
+test('equivalent range results retain the group cell reference but changed endpoints notify', () => {
+  const h = setup()
+  h.setRecords((all) => {
+    all.e = { region: 'east', city: 'A', amount: 20, unused: 0 }
+  })
+  h.setIds(['a', 'b', 'c', 'd', 'e'])
+  h.setColumns(
+    h.definitions.map((column) =>
+      column.id === 'amount'
+        ? {
+            ...column,
+            aggregationFn: nativeAggregations.range,
+            aggregationEquals: (a, b) =>
+              Array.isArray(a) &&
+              Array.isArray(b) &&
+              a[0] === b[0] &&
+              a[1] === b[1],
+          }
+        : column,
+    ),
+  )
+  flush()
+  const view = createRoot((dispose) => ({
+    dispose,
+    group: h.table.createGroupView(h.group('east').key),
+  }))
+  let reads = 0
+  const value = observe(() => {
+    reads++
+    return view.group
+      .getVisibleCells()
+      .find((cell) => cell.column.id === 'amount')!
+      .getValue()
+  })
+  try {
+    const original = value.value()
+    const before = reads
+    for (let i = 0; i < 6; i++) {
+      h.setRecords((all) => {
+        all.e!.amount = 21 + i
+      })
+      flush()
+    }
+    expect(value.value()).toBe(original)
+    expect(reads).toBe(before)
+    h.setRecords((all) => {
+      all.e!.amount = 40
+    })
+    flush()
+    expect(value.value()).toEqual([10, 40])
+    expect(reads).toBe(before + 1)
+  } finally {
+    value.stop()
+    view.dispose()
+    h.dispose()
+  }
+})
+
+test('nested average and median use all filtered leaves rather than subgroup summaries', () => {
+  const h = setup(['region', 'city'])
+  h.setRecords((all) => {
+    all.e = { region: 'east', city: 'A', amount: 20, unused: 0 }
+  })
+  h.setIds(['a', 'b', 'c', 'd', 'e'])
+  h.setColumns(
+    h.definitions.map((column) =>
+      column.id === 'amount'
+        ? { ...column, aggregationFn: nativeAggregations.mean }
+        : column,
+    ),
+  )
+  flush()
+  expect(h.group('east').getAggregateValue('amount')).toBe(20)
+  h.table.setColumnFilters([{ id: 'amount', value: 20 }])
+  flush()
+  expect(h.group('east').getAggregateValue('amount')).toBe(25)
+  h.setColumns(
+    h.definitions.map((column) =>
+      column.id === 'amount'
+        ? { ...column, aggregationFn: nativeAggregations.median }
+        : column,
+    ),
+  )
+  flush()
+  expect(h.group('east').getAggregateValue('amount')).toBe(25)
+  h.dispose()
+})
+
+test('summary ordering can count a grouping ancestor without sorting by its shared bucket', () => {
+  const h = setup(['region', 'city'])
+  h.setRecords((all) => {
+    all.e = { region: 'east', city: 'A', amount: 20, unused: 0 }
+  })
+  h.setIds(['a', 'b', 'c', 'd', 'e'])
+  h.setColumns(
+    h.definitions.map((column) =>
+      column.id === 'region'
+        ? {
+            ...column,
+            aggregationFn: nativeAggregations.count,
+          }
+        : column,
+    ),
+  )
+  h.table.setGroupSorting([{ depth: 1, id: 'region', desc: false }])
+  flush()
+  expect(
+    h
+      .group('east')
+      .getChildGroupKeys()
+      .map((key) => h.table.getGroup(key).getValue('city')),
+  ).toEqual(['C', 'A'])
+  h.dispose()
+})

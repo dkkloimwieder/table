@@ -1,6 +1,6 @@
 # Table controls and inline editing
 
-This fixture tests filters, search, grouping, and inline editing with Solid 2 and plain HTML controls.
+This fixture tests filters, search, grouping, column summaries, and inline editing with Solid 2 and plain HTML controls.
 It renders records in expanded groups, or every matching record when grouping is off.
 Virtualization is optional elsewhere and is not a dependency here.
 The measured editing subsets contain 25, 250, and 999 records. These sizes are not product limits.
@@ -9,12 +9,13 @@ The measured editing subsets contain 25, 250, and 999 records. These sizes are n
 
 Column filters appear above the table by default.
 Record, Name, and Note use text matching. Priority uses an exact choice.
+Amount matches numeric text. Due date matches its UTC date text.
 Text matching ignores case and surrounding whitespace.
 All active column filters must match a record.
 
 Global search is a separate, optional control.
 It searches saved values in visible, searchable columns and combines with the column filters.
-The Record column is excluded from global search in this example, but its column filter remains available.
+Record, Amount, and Due date are excluded from global search in this example. Their column filters remain available.
 An explicit column filter still applies when its column is hidden.
 
 Each control has its own clear button. Escape clears a text filter or global search and keeps focus in that control.
@@ -58,8 +59,25 @@ Keyboard activation uses standard buttons and selects. Moving a level returns fo
 
 Each level can follow record order, group-value order, or summary order.
 Header sorting controls records within each group and leaves group ordering independent.
-The Note summary selector demonstrates application-defined aggregations: filled notes, distinct nonblank notes, or Off.
-Turning the summary off suspends summary ordering and preserves its configuration.
+Each column has a summary selector with choices from its application metadata.
+Amount offers sum, minimum, maximum, average, median, range, and span.
+Due date offers earliest, latest, range, and span in days. The demo stores dates as UTC timestamps at midnight.
+Range shows both endpoints. Span shows their difference. Date spans measure elapsed 24-hour days.
+General choices include row count, filled count, empty count, distinct count, first, last, and None.
+First and last follow the current table sort and preserve blank endpoint values.
+Empty means null, undefined, or a blank string. Distinct excludes empty values and preserves whitespace in nonblank strings.
+Numeric statistics ignore missing or invalid numbers. An empty sum is zero. Other empty statistics show a dash.
+Amount and Due date are read-only fields in this editing demo.
+Their deterministic values include missing entries in larger datasets.
+
+The application owns the selected aggregate identifiers in a small Solid configuration store.
+Column getters expose the selected functions without a second record store.
+Column definitions and metadata use fresh dictionary objects before their getters are installed.
+The heap captures found that V8 template descriptors otherwise retained an earlier fixture through a getter closure.
+A later parent view can persist these identifiers with the other table configuration.
+Caller changes update the selectors. Invalid choices for a column are ignored.
+Selecting None suspends summary ordering and preserves its configuration.
+A level can sort by its grouping value or another column summary. Ranges compare the minimum, then the maximum.
 Summaries appear on each visible group, including collapsed groups, and use records that pass the active filters.
 The result count distinguishes displayed records from records that match filters.
 
@@ -287,11 +305,18 @@ The equality comparison checks ordered IDs and prevents unchanged results from u
 It does not copy records or eliminate the filter scan.
 Heap captures classify records and reactive resources before and after disposal.
 They also measure 20 further edits to one record and an edit to a second record.
+Each row now has six cells. The added read-only cells account for additional baseline resources.
 The grouping workload adds two levels and repeats collapse, expansion, removal, and restoration.
 Initial grouping reads two grouping values per record. Expansion does not rescan grouping values.
 A note edit recalculates its two visible ancestor summaries and reads its displayed note, for `2 * (size - 1) + 1` reads.
 It does not rebuild membership or replace row or group views.
 The `grouped` and `regrouped` snapshots measure live group resources before and after repeated layout changes.
+The aggregate workload switches Amount through median, range, span, first, last, count, and sum, then repeats summary changes.
+With two grouping levels, scanning aggregates read two amount values per record across the observed groups.
+Median allocates one temporary number array per observed group. The workload counts the numbers placed into those arrays.
+First and last each read four endpoint values across four groups. Count reads none.
+These changes must retain existing views, cells, membership, note reads, and date reads.
+The additional `summaries` snapshot measures retained resources after these changes.
 The disposed snapshot must contain no classified group views, group cells, or membership nodes.
 Timings include browser automation and remain advisory on the shared development machine.
 They do not establish a latency budget or a universal non-virtualized row limit.

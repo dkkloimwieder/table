@@ -37,6 +37,8 @@ const filterLabels: Record<string, string> = {
   name: 'Filter saved names',
   note: 'Filter saved notes',
   priority: 'Filter priority',
+  amount: 'Filter amounts',
+  dueDate: 'Filter due dates',
 }
 const priorityChoices = [
   { value: 'low', label: 'Low' },
@@ -318,6 +320,12 @@ export function Table(props: {
             counts.cells++
             const column = cell.column.id
             if (column === 'id') return <th scope="row">{id}</th>
+            if (column === 'amount' || column === 'dueDate')
+              return (
+                <td data-column={column} class="read-only-value">
+                  {cell.column.columnDef?.meta?.formatValue?.(cell.getValue())}
+                </td>
+              )
             const field = column as EditColumn
             const changed = () => {
               const draft = editing.drafts[id]
@@ -509,7 +517,10 @@ export function Table(props: {
                     >
                       {cell.column.columnDef?.meta?.summaryLabel ??
                         String(cell.column.columnDef?.header)}
-                      : {String(cell.getValue() ?? '—')}
+                      :{' '}
+                      {cell.column.columnDef?.meta?.formatSummary?.(
+                        cell.getValue(),
+                      ) ?? String(cell.getValue() ?? '—')}
                     </span>
                   </Show>
                 )
@@ -525,8 +536,8 @@ export function Table(props: {
       <h1>Table</h1>
       {props.settings}
       <p>
-        Filter each column or search across columns. Click a cell to edit its
-        saved value.
+        Filter each column or search across columns. Click a name, note, or
+        priority to edit its saved value.
       </p>
       <details class="editing-help">
         <summary>Editing help</summary>

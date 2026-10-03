@@ -1,6 +1,7 @@
 import { For, Show, onSettled } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import type { EditingModel, NoteSummary } from './model'
+import type { Summary } from './aggregates'
+import type { EditingModel } from './model'
 
 export function TableGrouping(props: { model: EditingModel }) {
   const { table, configureGrouping } = props.model
@@ -78,22 +79,6 @@ export function TableGrouping(props: { model: EditingModel }) {
           </select>
         </label>
         <Show when={table.state.grouping.length > 0}>
-          <label>
-            Note summary
-            <select
-              value={props.model.noteSummary()}
-              ref={nativeEvents<HTMLSelectElement>({
-                change: (event) =>
-                  props.model.setNoteSummary(
-                    event.currentTarget.value as NoteSummary,
-                  ),
-              })}
-            >
-              <option value="filled">Filled notes</option>
-              <option value="distinct">Distinct notes</option>
-              <option value="none">Off</option>
-            </select>
-          </label>
           <button
             ref={nativeEvents({
               click: () => table.toggleAllGroupsExpanded(true),
@@ -175,18 +160,35 @@ export function TableGrouping(props: { model: EditingModel }) {
                       <option value="value:desc">
                         Group value: descending
                       </option>
-                      <option
-                        value="note:asc"
-                        disabled={props.model.noteSummary() === 'none'}
-                      >
-                        Note summary: lowest first
-                      </option>
-                      <option
-                        value="note:desc"
-                        disabled={props.model.noteSummary() === 'none'}
-                      >
-                        Note summary: highest first
-                      </option>
+                      <For each={table.getColumns()}>
+                        {(column) => (
+                          <Show
+                            when={
+                              column.id !== id &&
+                              column.columnDef?.meta?.summaryChoices
+                            }
+                          >
+                            <option
+                              value={`${column.id}:asc`}
+                              disabled={
+                                props.model.summaries[column.id] === 'none'
+                              }
+                            >
+                              {String(column.columnDef?.header)} summary:
+                              ascending
+                            </option>
+                            <option
+                              value={`${column.id}:desc`}
+                              disabled={
+                                props.model.summaries[column.id] === 'none'
+                              }
+                            >
+                              {String(column.columnDef?.header)} summary:
+                              descending
+                            </option>
+                          </Show>
+                        )}
+                      </For>
                     </select>
                   </label>
                   <button
@@ -226,6 +228,40 @@ export function TableGrouping(props: { model: EditingModel }) {
             }}
           </For>
         </ol>
+        <div
+          class="summary-controls"
+          role="group"
+          aria-label="Column summaries"
+        >
+          <For each={table.getColumns()}>
+            {(column) => (
+              <label>
+                {String(column.columnDef?.header)} summary
+                <select
+                  value={props.model.summaries[column.id]}
+                  ref={nativeEvents<HTMLSelectElement>({
+                    change: (event) =>
+                      props.model.setSummary(
+                        column.id,
+                        event.currentTarget.value as Summary,
+                      ),
+                  })}
+                >
+                  <For each={column.columnDef?.meta?.summaryChoices}>
+                    {(choice) => (
+                      <option value={choice.value}>{choice.label}</option>
+                    )}
+                  </For>
+                </select>
+              </label>
+            )}
+          </For>
+        </div>
+        <p class="summary-help">
+          Summaries use saved, filtered records, including collapsed rows. First
+          and last follow the table sort order. Range shows both endpoints. Span
+          shows their difference.
+        </p>
       </Show>
     </fieldset>
   )

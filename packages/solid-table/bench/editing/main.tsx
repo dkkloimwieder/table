@@ -58,6 +58,7 @@ const api = {
     search: model!.table.state.globalFilter,
     grouping: snapshot(model!.table.state.grouping),
     groupSorting: snapshot(model!.table.state.groupSorting),
+    summaries: snapshot(model!.summaries),
     display: model!.table
       .getDisplayKeys()
       .map((key) => model!.table.getDisplayItem(key)),
@@ -105,6 +106,14 @@ const api = {
   },
   grouping: (ids: Array<string>) => {
     model!.configureGrouping(ids)
+    flush()
+  },
+  summary: (id: string, value: Parameters<EditingModel['setSummary']>[1]) => {
+    model!.setSummary(id, value)
+    flush()
+  },
+  sorting: (value: Array<{ id: string; desc: boolean }>) => {
+    model!.table.setSorting(value)
     flush()
   },
   expandGroups: (expanded: boolean, depth?: number) => {

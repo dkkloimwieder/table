@@ -123,6 +123,7 @@ export function createNativeTable<T, TMeta = unknown>(
     ids,
     filteredIds,
     sortedIds,
+    displayIndexes,
     definitions,
     getRecord,
     access,
@@ -365,9 +366,18 @@ export function createNativeTable<T, TMeta = unknown>(
         throw new Error('Create the group view inside its rendered Solid owner')
       const group = grouping.getGroup(key)
       const cells = mapArray(visibleColumns, (column) => {
-        const value = createMemo(() => group.getValue(column.id), {
-          lazy: true,
-        })
+        const value = createMemo(
+          () =>
+            column.columnDef?.aggregationFn
+              ? group.getAggregateValue(column.id)
+              : group.getValue(column.id),
+          {
+            lazy: true,
+            equals: (previous, next) =>
+              column.columnDef?.aggregationEquals?.(previous, next) ??
+              Object.is(previous, next),
+          },
+        )
         return {
           id: JSON.stringify([key, column.id]),
           group,

@@ -6,6 +6,8 @@ export type RecordData = {
   note: string
   priority: string
   revision: string
+  amount?: number | null
+  dueDate?: number | null
 }
 export type TextColumn = 'name' | 'note'
 export type EditColumn = TextColumn | 'priority'

@@ -138,7 +138,7 @@ export async function groupingCases({
       await page
         .getByRole('combobox', { name: 'Note summary', exact: true })
         .selectOption('none')
-      assert.equal(await page.locator('[data-group-summary]').count(), 0)
+      assert.equal(await page.locator('[data-group-summary=note]').count(), 0)
     },
   )
   await record(
