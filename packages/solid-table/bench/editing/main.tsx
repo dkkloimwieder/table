@@ -8,6 +8,9 @@ import {
 } from 'solid-js/attribution'
 import { App } from './App'
 import { createChildLoader } from './childLoader'
+import { createViewStorageFixture } from './viewStorageFixture'
+import type { ViewStorageFixture } from './viewStorageFixture'
+import type { TableViews } from './createTableViews'
 import type { ChildLoader } from './childLoader'
 import type { SubTables } from './createSubTables'
 import type { SaveMode, TableControls } from './Table'
@@ -17,6 +20,10 @@ const root = document.getElementById('root')!
 let model: EditingModel | undefined
 let children: SubTables | undefined
 let childLoader: ChildLoader | undefined
+let views: TableViews | undefined
+let childViews: ((model: EditingModel) => { views: TableViews }) | undefined
+let viewStorage: ViewStorageFixture | undefined
+let lastViewStorageCounts: ViewStorageFixture['counts'] | undefined
 let changeChildScope: ((value: string, force?: boolean) => boolean) | undefined
 let lastChildCounts: SubTables['counts'] | undefined
 let configureControls: ((value: Partial<TableControls>) => void) | undefined
@@ -39,6 +46,7 @@ const disposeRoot = action(function* () {
 function stop() {
   const counts = model?.counts
   const childCounts = children?.counts
+  const viewCounts = viewStorage?.counts
   disposeRoot()
   lastCounts = counts && { ...counts }
   dispose = undefined
@@ -48,6 +56,10 @@ function stop() {
   childLoader = undefined
   changeChildScope = undefined
   configureControls = undefined
+  views = undefined
+  childViews = undefined
+  lastViewStorageCounts = viewCounts && { ...viewCounts }
+  viewStorage = undefined
   remembered = undefined
   flush()
 }
@@ -57,16 +69,27 @@ function start(size = 8, saveMode: SaveMode = 'row') {
   capture = OBSERVE?.diagnostics.capture()
   dispose = render(() => {
     childLoader = createChildLoader()
+    viewStorage = createViewStorageFixture()
     return (
       <App
         size={size}
         saveMode={saveMode}
         loadChildren={childLoader.load}
-        ready={(value, configure, registry, changeScope) => {
+        viewStorage={viewStorage.storage}
+        ready={(
+          value,
+          configure,
+          registry,
+          changeScope,
+          rootViews,
+          viewFor,
+        ) => {
           children = registry
           changeChildScope = changeScope
           model = value
           configureControls = configure
+          views = rootViews
+          childViews = viewFor
         }}
       />
     )
@@ -113,10 +136,61 @@ function childModel(id: string) {
   if (state.status !== 'ready') throw new Error('Sub-table is not ready')
   return state.model
 }
+function tableViews(parent?: string) {
+  return parent ? childViews!(childModel(parent)).views : views!
+}
 const api = {
   start,
   stop,
   ready: () => Boolean(model),
+  viewRead: (parent?: string) => {
+    const value = tableViews(parent)
+    return {
+      views: value.views(),
+      selected: value.selected(),
+      busy: value.busy(),
+      error: value.error(),
+      message: value.message(),
+      configuration: value.capture(),
+    }
+  },
+  viewChoose: (id: string, parent?: string) => {
+    const result = tableViews(parent).choose(id)
+    flush()
+    return result
+  },
+  viewSaveAs: (name: string, parent?: string) => {
+    void tableViews(parent).saveAs(name)
+    flush()
+  },
+  viewUpdate: (parent?: string) => {
+    void tableViews(parent).update()
+    flush()
+  },
+  viewRename: (name: string, parent?: string) => {
+    void tableViews(parent).rename(name)
+    flush()
+  },
+  viewRemove: (parent?: string) => {
+    void tableViews(parent).remove()
+    flush()
+  },
+  viewReload: (parent?: string) => {
+    void tableViews(parent).reload()
+    flush()
+  },
+  viewStorageFault: (value: Parameters<ViewStorageFixture['fault']>[0]) =>
+    viewStorage!.fault(value),
+  viewStorageReply: (value: unknown) => viewStorage!.reply(value),
+  viewStorageRelease: () => viewStorage!.release(),
+  viewStorageRead: () =>
+    viewStorage
+      ? {
+          ...viewStorage.counts,
+          pending: viewStorage.pending(),
+          lastSaved: viewStorage.lastSaved(),
+        }
+      : lastViewStorageCounts,
   traceStart: () => {
     releaseTrace?.()
     unsubscribeTrace?.()

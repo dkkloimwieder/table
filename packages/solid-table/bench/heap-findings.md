@@ -1099,3 +1099,51 @@ An initial broad heap run reached the filesystem quota during a 999-row capture.
 Its temporary raw snapshots were removed. The focused four-capture run completed successfully.
 The final reports are `/tmp/table-editing-lock-{source,development,live-final,distribution-final,memory}.json`.
 The focused snapshots and classifications are under `/tmp/table-editing-lock-heaps`.
+
+## Parent-owned named views
+
+The editing fixture now keeps named configurations in parent-owned view controllers.
+Saved payloads contain filters, search, sorting, grouping, aggregates, column layout, and display controls.
+They exclude records, drafts, revisions, widths, and transient row state.
+Each collection still owns one canonical Solid record store.
+The demo uses memory storage for one App mount. Application callbacks supply durable storage later.
+
+The focused workload retains 100 parent records and five records in a collapsed child table.
+Two parent views alternate ascending and descending name sorting. The child keeps one saved view.
+Snapshots follow 10, 100, and 200 pairs of switches, then disposal.
+All three active snapshots contain 105 records, 100 rendered row views, 600 cells, and 123 store targets.
+They also contain 7,541 computations, 1,554 owner scopes, 8,323 dependency links, and two view controllers.
+The three snapshots contain seven saved-view objects and seven configuration objects.
+These represent three storage entries, three controller entries, and the last saved request in the harness.
+Every classified record, Table, Solid, saved-view, configuration, and controller resource disappears after disposal.
+
+The 190 pairs after warmup read 38,000 names for sorting. They create no replacement row views or cells and send no storage requests.
+Storage-only operations read no record fields and create no row views or cells in the browser scenarios.
+Heap snapshot totals are 11.470, 11.642, and 11.744 MiB while active, then 4.875 MiB after disposal.
+These totals sum object self sizes across the page, including browser automation resources.
+Stable resource counts do not imply a fixed whole-page heap size. Timing measurements remain advisory on the shared host.
+
+The first classifier counted Zod schema shapes as saved views because their property names matched.
+Strong retaining paths led to the module-level Zod definitions, not application view data.
+The classifier now requires a string ID for saved views and a numeric version for configuration objects.
+Reanalysis and the final captures show no saved-view instances after disposal.
+
+A later capture reached the temporary-file quota. Only superseded raw snapshots from this named-view task were removed.
+Their summaries were kept. Final captures remain under `/tmp/table-views-final-heaps`.
+The four raw snapshots use gzip compression to release temporary filesystem space. Their JSON summaries remain uncompressed.
+Chromium runs with `TMPDIR=/dev/shm` completed after browser crashes with temporary files on the quota-limited filesystem.
+The successful workload report is `/tmp/table-views-memory-final.json`.
+
+All 138 package tests pass. Source types, fixture types, scoped lint, and source, distribution, and development fixture builds pass.
+The final distribution suite passes all 122 browser scenarios without errors or diagnostics.
+The final 11 named-view scenarios also pass against source, development, and live entries.
+Earlier complete 121-scenario runs pass in all four modes. Source and distribution workloads pass at 25, 250, and 999 records.
+The final added scenario tests keyboard focus after storage actions and prevents delayed focus restoration from interrupting later navigation.
+Desktop and 390-pixel layouts show no page overflow.
+
+The final live attribution capture records 16,018 creation and rerun events without grouped-row draft subscriptions.
+A hidden child load causes no group or summary reruns.
+It records two known scan-breadth entries, six advisory timing entries, and no unexpected diagnostics.
+Final reports are `/tmp/table-views-{source,distribution,development,memory}-final.json` and `/tmp/table-views-focus-live.json`.
+The attribution report is `/tmp/table-views-live.json`.
+These changes affect the development fixture and require no published-package changeset.

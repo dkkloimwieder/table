@@ -5,9 +5,14 @@ import { TableOptions } from './TableOptions'
 import { createModel } from './model'
 import { createSubTables } from './createSubTables'
 import { createChildLoader } from './childLoader'
+import { createTableViews } from './createTableViews'
+import { createMemoryViewStorage } from './viewStorage'
+import { TableViews } from './TableViews'
 import type { SaveMode, TableControls } from './Table'
 import type { EditingModel } from './model'
 import type { ChildLoad, SubTables } from './createSubTables'
+import type { TableViews as Views } from './createTableViews'
+import type { ViewStorage } from './viewStorage'
 
 const defaultControls: TableControls = {
   filters: 'external',
@@ -19,7 +24,13 @@ const defaultControls: TableControls = {
   resizeBehavior: 'grow',
 }
 
-function ChildTable(props: { children: SubTables; parentId: string }) {
+type ViewBinding = { views: Views; controls: () => TableControls }
+
+function ChildTable(props: {
+  children: SubTables
+  parentId: string
+  viewFor: (model: EditingModel) => ViewBinding
+}) {
   const entry = untrack(() => props.children.get(props.parentId)!)
   const readyModel = () => {
     const state = entry.state()
@@ -42,14 +53,20 @@ function ChildTable(props: { children: SubTables; parentId: string }) {
         </button>
       </Show>
       <Show when={readyModel()} keyed>
-        {(model) => (
-          <Table
-            model={model}
-            title={`Sub-table for ${props.parentId}`}
-            scope={props.parentId}
-            controls={defaultControls}
-          />
-        )}
+        {(model) => {
+          const binding = props.viewFor(model)
+          return (
+            <Table
+              model={model}
+              title={`Sub-table for ${props.parentId}`}
+              scope={props.parentId}
+              controls={binding.controls()}
+              settings={
+                <TableViews views={binding.views} locked={model.locked()} />
+              }
+            />
+          )
+        }}
       </Show>
     </div>
   )
@@ -61,11 +78,14 @@ export function App(props: {
   loadChildren?: (
     request: ChildLoad,
   ) => ReturnType<Parameters<typeof createSubTables>[0]['load']>
+  viewStorage?: ViewStorage
   ready: (
     model: EditingModel,
     configure: (value: Partial<TableControls>) => void,
     children: SubTables,
     changeScope: (value: string, force?: boolean) => boolean,
+    views: Views,
+    viewFor: (model: EditingModel) => ViewBinding,
   ) => void
 }) {
   const model = createModel(
@@ -75,6 +95,19 @@ export function App(props: {
   const [controls, setControls] = createSignal(defaultControls)
   const [scope, setScope] = createSignal('current')
   const [scopeNotice, setScopeNotice] = createSignal('')
+  const storage = untrack(() => props.viewStorage) ?? createMemoryViewStorage()
+  const configure = (value: Partial<TableControls>) => {
+    if (!model.locked()) setControls((previous) => ({ ...previous, ...value }))
+  }
+  const views = createTableViews({
+    model,
+    scope: 'root',
+    storage,
+    controls,
+    configure,
+  })
+  const childViews = new WeakMap<EditingModel, ViewBinding>()
+  const viewFor = (model: EditingModel) => childViews.get(model)!
   const defaultLoader = createChildLoader()
   const children = createSubTables({
     ids: model.table.getSourceIds,
@@ -82,6 +115,20 @@ export function App(props: {
     onEditingChange: model.setDescendantEditing,
     scope,
     load: (request) => (props.loadChildren ?? defaultLoader.load)(request),
+    ready: (model, scope, parentId) => {
+      const [controls, setControls] = createSignal(defaultControls)
+      // A child model owns its controller, so collapse only removes the UI.
+      const views = createTableViews({
+        model,
+        scope: JSON.stringify(['child', scope, parentId]),
+        storage,
+        controls,
+        configure: (value) => {
+          if (!model.locked()) setControls(value)
+        },
+      })
+      childViews.set(model, { views, controls })
+    },
   })
   function changeScope(value: string, _force = false) {
     if (value === scope()) return true
@@ -92,9 +139,6 @@ export function App(props: {
     setScopeNotice('')
     setScope(value)
     return true
-  }
-  const configure = (value: Partial<TableControls>) => {
-    if (!model.locked()) setControls((previous) => ({ ...previous, ...value }))
   }
   function revealChild(id: string) {
     model.table.setColumnFilters([])
@@ -114,15 +158,20 @@ export function App(props: {
       <Table
         model={model}
         controls={controls()}
-        ready={() => props.ready(model, configure, children, changeScope)}
+        ready={() =>
+          props.ready(model, configure, children, changeScope, views, viewFor)
+        }
         details={{
           expanded: (id) => children.get(id)?.expanded() ?? false,
           draftCount: (id) => children.get(id)?.draftCount() ?? 0,
           toggle: children.toggle,
-          render: (id) => <ChildTable parentId={id} children={children} />,
+          render: (id) => (
+            <ChildTable parentId={id} children={children} viewFor={viewFor} />
+          ),
         }}
         settings={
           <>
+            <TableViews views={views} locked={model.locked()} />
             <TableOptions
               controls={controls()}
               configure={configure}

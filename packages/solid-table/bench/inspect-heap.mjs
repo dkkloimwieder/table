@@ -72,6 +72,7 @@ for (let i = 0; i < count; i++) {
   const properties = new Set()
   const contexts = new Set()
   let stringId = false
+  let numberVersion = false
   for (let edge = cursor; edge < cursor + length; edge += ef) {
     const kind = edgeTypes[edges[edge + ei.type]]
     if (kind === 'property') {
@@ -79,6 +80,10 @@ for (let i = 0; i < count; i++) {
       if (strings[edges[edge + ei.name_or_index]] === 'id') {
         const target = edges[edge + ei.to_node]
         stringId = nodeTypes[nodes[target + ni.type]].includes('string')
+      }
+      if (strings[edges[edge + ei.name_or_index]] === 'version') {
+        const target = edges[edge + ei.to_node]
+        numberVersion = nodeTypes[nodes[target + ni.type]] === 'number'
       }
     }
     if (kind === 'context')
@@ -105,6 +110,27 @@ for (let i = 0; i < count; i++) {
     category = 'Virtual geometry items'
   else if (properties.has('getVisibleCells') && properties.has('getLeafRowIds'))
     category = 'Native group views'
+  else if (
+    stringId &&
+    properties.has('configuration') &&
+    properties.has('id') &&
+    properties.has('name')
+  )
+    category = 'Saved Table views'
+  else if (
+    numberVersion &&
+    properties.has('summaries') &&
+    properties.has('columnFilters') &&
+    properties.has('controls')
+  )
+    category = 'Saved Table configurations'
+  else if (
+    properties.has('choose') &&
+    properties.has('capture') &&
+    properties.has('saveAs') &&
+    properties.has('reload')
+  )
+    category = 'Table view controllers'
   else if (
     properties.has('leafIds') &&
     properties.has('children') &&

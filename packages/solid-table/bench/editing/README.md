@@ -1,6 +1,6 @@
 # Table controls and inline editing
 
-This fixture tests filters, search, grouping, column summaries, resizing, rearrangement, sub-tables, and inline editing with Solid 2 and plain HTML controls.
+This fixture tests filters, search, grouping, column summaries, resizing, rearrangement, named views, sub-tables, and inline editing with Solid 2 and plain HTML controls.
 It renders records in expanded groups, or every matching record when grouping is off.
 Virtualization is optional elsewhere and is not a dependency here.
 The measured editing subsets contain 25, 250, and 999 records. These sizes are not product limits.
@@ -31,8 +31,7 @@ Both filter presentations share Table state. Hiding or moving controls preserves
 External state changes update the controls without another filter store.
 `TableFilter.tsx` accepts a value and change callback, so a parent can compose its own filter panel.
 
-The existing controlled Table API remains the boundary for a later view component.
-That parent will own saved configurations and persistence. This fixture adds no persistence layer.
+The parent owns named views and storage through the existing controlled Table API.
 Records, drafts, and pending requests remain separate from view configuration.
 
 When the caller disables local processing, the controls become unavailable and preserve their configuration.
@@ -42,6 +41,49 @@ The integration fixture demonstrates the corresponding complete-dataset rule.
 Search and filters use committed values. During editing, the table holds its displayed membership and row order.
 After the last edit resolves, the table applies current saved values to the existing filters and sort.
 If a save removes the focused row from global search, focus returns to that search control.
+
+## Named views
+
+The parent renders `TableViews.tsx` through the Table settings slot.
+`createTableViews.ts` owns the saved list and storage requests outside the Table renderer.
+The default storage keeps views in memory for one App mount. Reloading the page clears this demo storage.
+
+Enter a name and select Save as new view to save the current configuration.
+Choose a saved view to apply its configuration.
+Update view overwrites the selected saved configuration with the current configuration.
+Rename view changes only its name. Delete view leaves the current table configuration in place.
+Reload views reads the storage list without applying a view.
+Changing table controls after selecting a view does not automatically update the saved view.
+
+Views include column filters, global search, sorting, grouping, group ordering, aggregates, column order, visibility, pinning, and display controls.
+Saved order and pinning describe the manual layout before grouped columns move to the front.
+Views exclude records, drafts, revisions, widths, save mode, local-processing policy, row selections, and expansion state.
+Applying a view keeps current widths and starts its groups collapsed.
+The model applies the configuration in one synchronous sequence without replacing the record store.
+
+`App.viewStorage` accepts application callbacks named `load`, `save`, and `remove`.
+Bind these callbacks to the application table identity before passing them to App.
+Every callback receives a scope and an abort signal. Save also receives a view, and remove receives its ID.
+Load returns the saved list. Save and remove complete without a return value.
+Callbacks can complete synchronously or return promises. Reject a promise or throw an error to report a failed operation.
+Applications own durable storage and concurrent-write policy. This fixture adds no browser storage, URL persistence, or backend integration.
+
+Zod Mini validates a versioned configuration before it enters the saved list.
+Unknown fields, missing columns, duplicate names or IDs, unsupported aggregates, and invalid grouping levels produce an error.
+A failed load preserves the previous list. Failed saves and deletes preserve saved views and the current table configuration.
+View names must contain text and use at most 80 characters. Name comparisons ignore surrounding whitespace and letter case.
+
+The editing lock guards UI controls and programmatic view operations. Rejected switches are not queued.
+Storage requests disable view controls until completion and reject duplicate operations.
+A save captures configuration when it starts. A delayed response never applies configuration over newer controls or record edits.
+Disposal aborts pending requests and ignores late responses.
+Storage actions restore keyboard focus after their controls become available again.
+A later pointer action, key press, or focus change cancels that restoration. Disposal removes the temporary listeners.
+
+Each child model owns its view controller, so collapse preserves its list and selected view.
+Child storage scopes include the dataset and parent record ID. Parent and sibling lists remain independent.
+Changing datasets releases the old child controllers. Returning to a dataset can reload its saved list without automatically applying it.
+These scoped lists contain configuration only. They do not retain child records after disposal.
 
 ## Stable layout during editing
 
@@ -471,3 +513,21 @@ BENCH_DISTRIBUTION=1 BENCH_SCENARIOS=0 BENCH_WORKLOADS=0 BENCH_LOCK_WORKLOAD=1 B
 This workload captures 250 records after 10, 100, and 200 edit/cancel cycles, then disposal.
 It compares retained resource counts and reports the field reads caused by releasing the lock.
 The host runs other development loads, so timing measurements remain advisory.
+
+To measure named-view switching, first build the distribution fixture with `BENCH_DISTRIBUTION=1 BENCH_PROFILE=1`.
+Then run its focused workload:
+
+```sh
+BENCH_DISTRIBUTION=1 BENCH_SCENARIOS=0 BENCH_WORKLOADS=0 BENCH_VIEW_WORKLOAD=1 BENCH_HEAPS=/tmp/table-views-heaps node packages/solid-table/bench/editing/run.mjs
+```
+
+The workload alternates two sort views over 100 parent records. It also retains a collapsed child with five records and its own view.
+Four snapshots cover 10, 100, and 200 pairs of switches, then disposal.
+The harness compares record, Table, Solid, saved-view, and configuration counts between snapshots.
+Separate browser scenarios cover storage failures, stale configurations, editing locks, and independent child lists.
+Saving, renaming, reloading, and deleting views perform no record reads or row recreation.
+Switching sort views runs the required sort scan and preserves record and rendered-row identity.
+
+The shared host reached its temporary-file quota during qualification.
+On this host, `TMPDIR=/dev/shm` moves Chromium scratch files into the available shared-memory filesystem.
+Heap artifacts still use `BENCH_HEAPS`. Keep this host workaround outside application code.

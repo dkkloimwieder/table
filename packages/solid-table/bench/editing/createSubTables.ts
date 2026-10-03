@@ -31,6 +31,7 @@ export function createSubTables(options: {
   locked: () => boolean
   onEditingChange: (editing: boolean) => void
   load: (request: ChildLoad) => Promise<Array<RecordData>>
+  ready?: (model: EditingModel, scope: string, parentId: string) => void
 }) {
   const [entries, setEntries] = createSignal<ReadonlyArray<ChildEntry>>([])
   const [notice, setNotice] = createSignal('')
@@ -108,9 +109,11 @@ export function createSubTables(options: {
                   return
                 }
                 request = undefined
-                const model = runWithOwner(owner, () =>
-                  createModel(records!, 'table'),
-                )
+                const model = runWithOwner(owner, () => {
+                  const model = createModel(records!, 'table')
+                  options.ready?.(model, scope, parentId)
+                  return model
+                })
                 counts.created++
                 setState({ status: 'ready', model })
               },

@@ -15,6 +15,7 @@ import { groupingCases } from './grouping-cases.mjs'
 import { aggregateCases } from './aggregate-cases.mjs'
 import { resizeCases, resizeWorkload } from './resize-cases.mjs'
 import { reorderCases, reorderWorkload } from './reorder-cases.mjs'
+import { viewCases, viewWorkload } from './view-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -222,6 +223,17 @@ try {
     page.getByRole('status', { name: 'Filter results', exact: true })
   const clearFilters = () =>
     page.getByRole('button', { name: 'Clear all filters', exact: true })
+  await viewCases({
+    page,
+    start,
+    call,
+    read,
+    record,
+    settle,
+    edit,
+    input,
+    idle,
+  })
   await editingLockCases({
     page,
     start,
@@ -1997,6 +2009,15 @@ try {
       `PASS ${size} rearranged records; six drags and nine key moves; zero record/view/summary work and zero retained gesture listeners`,
     )
   }
+  if (process.env.BENCH_VIEW_WORKLOAD)
+    report.viewWorkload = await viewWorkload({
+      page,
+      start,
+      call,
+      read,
+      metrics,
+      heap,
+    })
   if (process.env.BENCH_LOCK_WORKLOAD)
     report.editingLock = await editingLockWorkload({
       start,

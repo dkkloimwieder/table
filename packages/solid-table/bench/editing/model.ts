@@ -4,6 +4,7 @@ import {
   createSignal,
   createStore,
   onCleanup,
+  snapshot,
   untrack,
 } from 'solid-js'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
@@ -26,6 +27,7 @@ import type {
   Updater,
 } from '@tanstack/solid-table/native'
 import type { RecordData, SaveRequest, SaveResult } from './createEditing'
+import type { ViewConfiguration } from './viewConfiguration'
 
 type Fault =
   'none' | 'hold' | 'refuse' | 'conflict' | 'uncertain' | 'throw' | 'wrong-id'
@@ -471,8 +473,45 @@ export function createModel(
       ...Object.fromEntries(keys.map((key) => [key, true])),
     }))
   }
+  function captureView(): Omit<ViewConfiguration, 'controls'> {
+    return {
+      version: 1,
+      columnFilters: viewState.columnFilters.map(({ id, value }) => ({
+        id,
+        value: String(value ?? ''),
+      })),
+      globalFilter: viewState.globalFilter,
+      sorting: snapshot(viewState.sorting),
+      grouping: snapshot(viewState.grouping),
+      groupSorting: snapshot(viewState.groupSorting),
+      summaries: snapshot(summaries),
+      // Preserve manual order and pinning, before grouping moves its columns.
+      columnOrder: snapshot(viewState.columnOrder),
+      columnVisibility: snapshot(viewState.columnVisibility),
+      columnPinning: snapshot(viewState.columnPinning),
+    }
+  }
+  function applyView(configuration: ViewConfiguration) {
+    if (disposed || locked()) return false
+    const next = structuredClone(configuration)
+    setViewState((state) => {
+      state.columnFilters = next.columnFilters
+      state.globalFilter = next.globalFilter
+      state.sorting = next.sorting
+      state.grouping = next.grouping
+      state.groupSorting = next.groupSorting
+      state.columnOrder = next.columnOrder
+      state.columnVisibility = next.columnVisibility
+      state.columnPinning = next.columnPinning
+      state.groupExpanded = {}
+    })
+    setSummaries((state) => Object.assign(state, next.summaries))
+    return true
+  }
   return {
     table,
+    captureView,
+    applyView,
     locked,
     setDescendantEditing,
     columnIds: configuredColumns.map((column) => column.id),
