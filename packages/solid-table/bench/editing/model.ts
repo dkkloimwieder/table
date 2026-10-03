@@ -139,12 +139,7 @@ export function createModel(
     string,
     Record<string, NativeAggregationFn>
   > = {}
-  function aggregated(
-    id: string,
-    header: string,
-    kind: ValueKind,
-    groupingLabel?: string,
-  ) {
+  function aggregated(id: string, kind: ValueKind, groupingLabel?: string) {
     const choices = summaryChoices[kind]
     const functions = Object.fromEntries(
       choices.flatMap(({ value }) => {
@@ -179,9 +174,7 @@ export function createModel(
     Object.defineProperty(meta, 'summaryLabel', {
       get: () => {
         const value = summaries[id]
-        if (id === 'note' && value === 'filled') return 'Filled notes'
-        if (id === 'note' && value === 'distinct') return 'Distinct notes'
-        return `${header} · ${choices.find((choice) => choice.value === value)?.label}`
+        return value === 'none' ? undefined : value === 'mean' ? 'avg' : value
       },
     })
     return { aggregationEquals: sameSummary, meta }
@@ -189,7 +182,7 @@ export function createModel(
 
   const columns: Array<NativeColumnDef<RecordData, ColumnMeta>> = [
     {
-      ...aggregated('id', 'Record', 'text'),
+      ...aggregated('id', 'text'),
       id: 'id',
       size: 130,
       minSize: 96,
@@ -201,7 +194,7 @@ export function createModel(
       enableGlobalFilter: false,
     },
     {
-      ...aggregated('name', 'Name', 'text', 'Name initial'),
+      ...aggregated('name', 'text', 'Name initial'),
       id: 'name',
       size: 220,
       minSize: 140,
@@ -225,7 +218,7 @@ export function createModel(
       maxSize: 800,
       header: 'Note',
       filterFn: contains,
-      ...aggregated('note', 'Note', 'text'),
+      ...aggregated('note', 'text'),
       sortFn: compareValues,
       accessorFn: (row) => {
         counts.note++
@@ -238,7 +231,7 @@ export function createModel(
       minSize: 120,
       maxSize: 280,
       header: 'Priority',
-      ...aggregated('priority', 'Priority', 'text', 'Priority'),
+      ...aggregated('priority', 'text', 'Priority'),
       getGroupingValue: (row) => {
         counts.groupReads++
         return row.priority || null
@@ -255,7 +248,7 @@ export function createModel(
       },
     },
     {
-      ...aggregated('amount', 'Amount', 'number'),
+      ...aggregated('amount', 'number'),
       id: 'amount',
       size: 120,
       minSize: 96,
@@ -270,7 +263,7 @@ export function createModel(
       },
     },
     {
-      ...aggregated('dueDate', 'Due date', 'date'),
+      ...aggregated('dueDate', 'date'),
       id: 'dueDate',
       size: 170,
       minSize: 140,

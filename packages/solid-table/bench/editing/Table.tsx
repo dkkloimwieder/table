@@ -862,11 +862,6 @@ export function Table(props: {
                       class="group-summary"
                       data-group-summary={cell.column.id}
                     >
-                      <span class="group-summary-label">
-                        {cell.column.columnDef?.meta?.summaryLabel ??
-                          String(cell.column.columnDef?.header)}
-                        :{' '}
-                      </span>
                       {cell.column.columnDef?.meta?.formatSummary?.(
                         cell.getValue(),
                       ) ?? String(cell.getValue() ?? '—')}
@@ -1177,6 +1172,20 @@ export function Table(props: {
               </For>
               <th scope="col">Row actions</th>
             </tr>
+            <Show when={isGrouped()}>
+              <tr class="group-summary-headers">
+                <For each={table.getVisibleColumns()}>
+                  {(column) => (
+                    <th scope="col" data-summary-header={column.id}>
+                      {table.state.grouping.includes(column.id)
+                        ? `group${column.columnDef?.meta?.summaryLabel ? ` · ${column.columnDef.meta.summaryLabel}` : ''}`
+                        : (column.columnDef?.meta?.summaryLabel ?? '-')}
+                    </th>
+                  )}
+                </For>
+                <th scope="col">-</th>
+              </tr>
+            </Show>
           </thead>
           <Show
             when={isGrouped()}

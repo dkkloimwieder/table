@@ -109,16 +109,28 @@ export async function groupingCases({
         await page.locator('[data-group]').first().textContent(),
         /Priority: normal/,
       )
-      assert.match(
-        await group('Priority: high').textContent(),
-        /Filled notes: 2/,
+      assert.equal(
+        await group('Priority: high')
+          .locator('[data-group-summary=note]')
+          .textContent(),
+        '2',
+      )
+      assert.equal(
+        await page.locator('[data-summary-header=note]').innerText(),
+        'filled',
       )
       await page
         .getByRole('combobox', { name: 'Note summary', exact: true })
         .selectOption('distinct')
-      assert.match(
-        await group('Priority: high').textContent(),
-        /Distinct notes: 1/,
+      assert.equal(
+        await group('Priority: high')
+          .locator('[data-group-summary=note]')
+          .textContent(),
+        '1',
+      )
+      assert.equal(
+        await page.locator('[data-summary-header=note]').innerText(),
+        'distinct',
       )
       await button('Expand all groups').click()
       await button('Sort by Name').click()

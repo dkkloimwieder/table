@@ -16,6 +16,8 @@ export async function aggregateCases({
   const group = () => page.locator('[data-group]').first()
   const summary = (id) => group().locator(`[data-group-summary="${id}"]`)
   const value = (id) => summary(id).textContent()
+  const header = (id) =>
+    page.locator(`[data-summary-header="${id}"]`).innerText()
   const day = 86_400_000
   async function seed() {
     await start(5, 'table')
@@ -48,22 +50,20 @@ export async function aggregateCases({
         ['distinct', '3'],
       ]) {
         await choice('Amount').selectOption(name)
-        assert.ok(
-          (await value('amount')).endsWith(`: ${result}`),
-          await value('amount'),
-        )
+        assert.equal(await value('amount'), result)
+        assert.equal(await header('amount'), name === 'mean' ? 'avg' : name)
       }
       await choice('Amount').selectOption('mean')
       await call('grouping', ['priority', 'name'])
-      assert.ok((await value('amount')).endsWith(': 35')) // Child averages would be incorrect.
+      assert.equal(await value('amount'), '35') // Child averages would be incorrect.
       await call('filter', 'name', 'a')
-      assert.ok((await value('amount')).endsWith(': 40'))
+      assert.equal(await value('amount'), '40')
       await choice('Amount').selectOption('median')
-      assert.ok((await value('amount')).endsWith(': 20'))
+      assert.equal(await value('amount'), '20')
       await call('filter', 'name', '')
       await call('patch', 'R0003', { amount: -10 })
       await choice('Amount').selectOption('range')
-      assert.ok((await value('amount')).endsWith(': -10 – 20'))
+      assert.equal(await value('amount'), '-10 – 20')
     },
   )
   await record(
@@ -84,19 +84,20 @@ export async function aggregateCases({
         ['count', '5'],
       ]) {
         await choice('Due date').selectOption(name)
-        assert.ok((await value('dueDate')).endsWith(`: ${result}`))
+        assert.equal(await value('dueDate'), result)
+        assert.equal(await header('dueDate'), name)
       }
       await call('filter', 'name', 'Bea')
       await choice('Due date').selectOption('range')
-      assert.ok((await value('dueDate')).endsWith(': —'))
+      assert.equal(await value('dueDate'), '—')
       await choice('Amount').selectOption('mean')
-      assert.ok((await value('amount')).endsWith(': —'))
+      assert.equal(await value('amount'), '—')
       await choice('Amount').selectOption('sum')
-      assert.ok((await value('amount')).endsWith(': 0'))
+      assert.equal(await value('amount'), '0')
       await call('filter', 'name', 'absent')
       assert.equal(await page.locator('[data-group]').count(), 0)
       await call('filter', 'name', '')
-      assert.ok((await value('dueDate')).endsWith(': 2026-10-01 – 2026-10-05'))
+      assert.equal(await value('dueDate'), '2026-10-01 – 2026-10-05')
     },
   )
   await record(
@@ -118,7 +119,8 @@ export async function aggregateCases({
         ['distinct', 2],
       ]) {
         await choice('Note').selectOption(name)
-        assert.ok((await value('note')).endsWith(`: ${result}`))
+        assert.equal(await value('note'), String(result))
+        assert.equal(await header('note'), name)
       }
       assert.equal(
         await choice('Note').locator('option[value=median]').count(),
@@ -135,19 +137,19 @@ export async function aggregateCases({
       await seed()
       await call('grouping', ['priority', 'name'])
       await choice('Amount').selectOption('last')
-      assert.ok((await value('amount')).endsWith(': 20'))
+      assert.equal(await value('amount'), '20')
       await call('sorting', [{ id: 'name', desc: false }])
-      assert.ok((await value('amount')).endsWith(': 20')) // Ben is last.
+      assert.equal(await value('amount'), '20') // Ben is last.
       await choice('Amount').selectOption('first')
-      assert.ok((await value('amount')).endsWith(': 90')) // Ada is first.
+      assert.equal(await value('amount'), '90') // Ada is first.
       await call('sorting', [{ id: 'name', desc: true }])
-      assert.ok((await value('amount')).endsWith(': 20'))
+      assert.equal(await value('amount'), '20')
       await call('sorting', [{ id: 'dueDate', desc: true }])
       await choice('Amount').selectOption('last')
-      assert.ok((await value('amount')).endsWith(': —')) // Missing dates sort last, and first/last preserve blanks.
+      assert.equal(await value('amount'), '—') // Missing dates sort last, and first/last preserve blanks.
       assert.equal(await page.locator('[data-row]').count(), 0)
       await call('expandGroups', true)
-      assert.ok((await value('amount')).endsWith(': —'))
+      assert.equal(await value('amount'), '—')
     },
   )
   await record(
@@ -156,12 +158,14 @@ export async function aggregateCases({
       await seed()
       await choice('Priority').selectOption('count')
       assert.match(await group().innerText(), /Priority: normal/)
-      assert.ok((await value('priority')).endsWith(': 5'))
+      assert.equal(await value('priority'), '5')
+      assert.equal(await header('priority'), 'group · count')
       await call('grouping', ['name'])
       await choice('Name').selectOption('first')
       await call('sorting', [{ id: 'name', desc: false }])
       assert.match(await group().innerText(), /Name initial: A/)
-      assert.ok((await value('name')).endsWith(': Ada'))
+      assert.equal(await value('name'), 'Ada')
+      assert.equal(await header('name'), 'group · first')
     },
   )
   await record(
@@ -169,9 +173,10 @@ export async function aggregateCases({
     async () => {
       await seed()
 
-      assert.match(await value('note'), /Filled notes: 5/)
+      assert.equal(await value('note'), '5')
+      assert.equal(await header('note'), 'filled')
       await choice('Note').selectOption('empty')
-      assert.ok((await value('note')).endsWith(': 0'))
+      assert.equal(await value('note'), '0')
       await choice('Amount').focus()
       await page.keyboard.press('Home')
       await page.keyboard.press('ArrowDown')
@@ -192,7 +197,7 @@ export async function aggregateCases({
       await page.getByRole('button', { name: 'Save all', exact: true }).click()
       await idle()
       await call('grouping', ['priority'])
-      assert.ok((await value('note')).endsWith(': 1'))
+      assert.equal(await value('note'), '1')
       assert.deepEqual((await read()).drafts, {})
     },
   )
@@ -216,6 +221,7 @@ export async function aggregateCases({
       assert.match(await group().innerText(), /Priority: high/)
       await choice('Amount').selectOption('none')
       assert.equal(await summary('amount').count(), 0)
+      assert.equal(await header('amount'), '-')
       assert.equal((await read()).groupSorting[0].id, 'amount')
       await choice('Amount').selectOption('sum')
       assert.match(await group().innerText(), /Priority: high/)
@@ -229,7 +235,7 @@ export async function aggregateCases({
       const before = await read()
       for (let i = 0; i < 8; i++)
         await call('patch', 'R0002', { amount: 21 + i })
-      assert.ok((await value('amount')).endsWith(': 10 – 90'))
+      assert.equal(await value('amount'), '10 – 90')
       for (let i = 0; i < 8; i++) {
         await choice('Amount').selectOption('median')
         await choice('Amount').selectOption('range')

@@ -128,6 +128,8 @@ Caller changes update the selectors. Invalid choices for a column are ignored.
 Selecting None suspends summary ordering and preserves its configuration.
 A level can sort by its grouping value or another column summary. Ranges compare the minimum, then the maximum.
 Summaries appear in their corresponding columns on each visible group row. They use saved records that pass the active filters.
+A second header row shows `group`, the aggregate name, or `-` for each column. Group summary cells show only formatted values.
+If a grouped column also has an aggregate, its header shows both labels, for example `group · count`.
 Grouped columns lead in grouping order. Clearing grouping restores the previous manual order.
 Grouped columns have no move handles. Reorder the grouping levels to change their positions.
 The result count distinguishes displayed records from records that match filters.
