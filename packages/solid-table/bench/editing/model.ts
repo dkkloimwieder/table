@@ -1,6 +1,7 @@
 import { createSignal, createStore, onCleanup } from 'solid-js'
 import { createTable } from '@tanstack/solid-table/native'
 import { createEditing } from './createEditing'
+import { validateEdits } from './validation'
 import type { RecordData, SaveRequest, SaveResult } from './createEditing'
 
 type Fault =
@@ -24,6 +25,7 @@ export function createModel(size: number) {
     unmounted: 0,
     requests: 0,
     aborted: 0,
+    validations: 0,
   }
   const table = createTable({
     source: { ids, get: (id) => records[id] },
@@ -57,6 +59,10 @@ export function createModel(size: number) {
   })
   const editing = createEditing({
     get: (id) => records[id],
+    validate(values) {
+      counts.validations++
+      return validateEdits(values)
+    },
     async commit(request, signal) {
       counts.requests++
       sent.push(request)

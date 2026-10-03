@@ -564,7 +564,7 @@ The fixture in `bench/editing` uses plain controls and renders every matching re
 It imports neither virtual-core nor Form/UI components.
 Non-virtualized editing is a supported use case. The measured subset sizes are not automatic virtualization thresholds.
 
-Twenty browser scenarios pass against the source entry, built package, and development runtime.
+The initial qualification passes twenty browser scenarios against the source entry, built package, and development runtime.
 They cover keyboard entry, Tab navigation, save/cancel, draft preservation, focus races, IME composition, revision conflicts, and late responses.
 The development pass reports no Solid diagnostics or browser errors.
 The test browser is Chromium `151.0.7922.34`, selected through `BENCH_EXECUTABLE_PATH` from the installed cache.
@@ -604,3 +604,32 @@ Raw results are `/tmp/table-editing-qualified-{source,distribution,development}.
 Actual snapshots and summaries are under `/tmp/table-editing-qualified-heaps`.
 The snapshot names are `loaded`, `repeated-edit`, `second-record-edit`, and `disposed`.
 The [fixture guide](./editing/README.md) provides reproduction commands and states the current scope.
+
+### Zod Mini validation
+
+The follow-up fixture uses Zod 4.6.5 through `zod/mini` for application-owned edit rules.
+Twenty-one browser scenarios pass against the source entry, built package, and development runtime.
+Four unit tests cover field errors, rules involving multiple fields, row errors, and parsed values in save requests.
+The development run reports no browser errors or Solid diagnostics.
+Module audits require Mini and reject the regular Zod implementation, Form, and the excluded UI dependencies.
+
+The source and built-package workloads render 25, 250, and 999 records.
+Mounting performs zero validations. Each measured save validates one row and reads two Table cell values.
+The edit preserves the record proxy and creates no replacement Table views or cells.
+After an attempted save, corrections validate only that draft again.
+Zod allocates parsed values and validation errors for the edited row. It does not parse or copy the collection.
+
+The source fixture JavaScript grows from 91,455 to 106,540 bytes.
+With Node's default `gzipSync`, it grows from 32,351 to 37,199 bytes, an increase of 4,848 bytes.
+These figures include Zod, validation handling, and the field-error UI. They are not an isolated Zod bundle measurement.
+Zod remains a fixture development dependency and adds no import to the published Table runtime.
+
+The built-package heap contains 14.146 MiB after loading 999 rows and 14.268 MiB after an edit.
+The premount heap contains 3.375 MiB and the disposed heap contains 3.384 MiB.
+The captured record counts remain 1,000 after one edit, 1,000 after repeated edits, and 1,001 after editing a second record.
+Loaded captures contain 999 views, 2,997 cells, 21,027 computations, 8,997 owners, 23,025 links, and 1,007 store targets.
+All classified records, views, cells, store targets, owners, computations, and links disappear after disposal.
+Thirty Maps and 182 V8 allocation templates remain. Shared-host timing results remain advisory.
+
+Raw reports are `/tmp/table-editing-zod-{source,distribution,development}.json`.
+Actual snapshots and summaries are under `/tmp/table-editing-zod-heaps` with the same four snapshot names.

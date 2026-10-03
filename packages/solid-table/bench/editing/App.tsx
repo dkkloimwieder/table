@@ -89,7 +89,12 @@ export function App(props: {
       )
         return
       if (saved) focusCell(id, column, false)
-      else if (origin instanceof HTMLElement && origin.isConnected)
+      else if (editing.drafts[id]?.status === 'invalid') {
+        const first = (['name', 'note'] as const).find(
+          (field) => editing.drafts[id]?.fieldErrors[field],
+        )
+        focusCell(id, first ?? column, true)
+      } else if (origin instanceof HTMLElement && origin.isConnected)
         origin.focus({ preventScroll: true })
     })
   }
@@ -134,7 +139,12 @@ export function App(props: {
                   <input
                     data-editor={`${id}/${field}`}
                     aria-label={`${field === 'name' ? 'Name' : 'Note'} ${id}`}
-                    aria-describedby={`message-${id}`}
+                    aria-describedby={`error-${id}-${field} message-${id}`}
+                    aria-invalid={
+                      editing.drafts[id]?.fieldErrors[field]
+                        ? 'true'
+                        : undefined
+                    }
                     value={editing.drafts[id]?.[field] ?? ''}
                     readonly={editing.drafts[id]?.status === 'pending'}
                     ref={nativeEvents<HTMLInputElement>({
@@ -152,6 +162,9 @@ export function App(props: {
                       },
                     })}
                   />
+                  <p id={`error-${id}-${field}`} class="message">
+                    {editing.drafts[id]?.fieldErrors[field]}
+                  </p>
                 </Show>
               </td>
             )

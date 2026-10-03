@@ -43,6 +43,31 @@ The module audit rejects table-core, TanStack Store, virtual-core, Form, and the
 Dropdown editors, row selection, and bulk-action design remain separate work in `table-gd3.6.7`.
 The editing controller is fixture code, not a new public Table API.
 
+## Application validation
+
+`validation.ts` uses [Zod Mini](https://zod.dev/packages/mini) through `zod/mini` from Zod 4.6.5.
+Zod is a development dependency of this fixture. The published Table runtime does not import it.
+The application supplies a synchronous `validate` callback to the editing controller.
+The callback returns parsed values or field and row errors.
+Tests also cover schemas with rules that involve multiple fields and transformations such as trimming.
+
+The fixture requires a nonblank name with at most 80 characters and a note with at most 240 characters.
+These rules demonstrate application policy. Table does not impose these limits.
+The default schema preserves whitespace in valid names.
+An application can replace the schema without changing Table.
+
+Save or Enter validates only the edited row's name and note.
+An invalid result preserves the draft, marks each affected input, and focuses the first invalid field.
+Each input refers to its error text through `aria-describedby` and exposes `aria-invalid` when invalid.
+After the first validation attempt, a field change validates that row again to update errors involving related fields.
+Rendering, sorting, and filtering do not run validation.
+
+Zod parses a small values object for the edited row. It does not receive or copy the record collection.
+The controller builds the save request from parsed values, so schema transformations reach the commit callback.
+Only an accepted save updates the canonical Solid record store.
+The callback supports synchronous rules. Async validation and production server validation remain outside this fixture.
+The simulated server refusal path continues to preserve drafts.
+
 The fixture uses the existing native event listener cleanup and rc.13 root-disposal workaround.
 Beads `table-gd3.6.4` and `table-gd3.6.5` track those runtime workarounds.
 

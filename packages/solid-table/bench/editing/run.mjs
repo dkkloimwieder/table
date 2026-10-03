@@ -24,6 +24,8 @@ assert.ok(
     ),
   ),
 )
+assert.ok(modules.some((path) => /zod\/v4\/mini\//.test(path)))
+assert.ok(!modules.some((path) => /zod\/v4\/classic\//.test(path)))
 const server = createServer(async (request, response) => {
   try {
     const path = new URL(request.url, 'http://localhost').pathname
@@ -287,14 +289,68 @@ try {
       await idle()
       assert.equal((await read()).counts.requests, 0)
       assert.match(
-        await page.locator('#message-R0001').innerText(),
+        await page.locator('#error-R0001-name').innerText(),
         /Enter a name/,
+      )
+      assert.equal(await input().getAttribute('aria-invalid'), 'true')
+      assert.match(
+        await input().getAttribute('aria-describedby'),
+        /error-R0001-name/,
       )
       assert.ok(await focused(input()))
       await input().fill('Valid name')
+      await settle()
+      assert.equal(await input().getAttribute('aria-invalid'), null)
       await page.keyboard.press('Enter')
       await idle()
       assert.equal((await read()).sample[0].name, 'Valid name')
+    },
+  )
+  await record(
+    'Zod field errors survive other field changes and focus the first invalid editor',
+    async () => {
+      await start()
+      assert.equal((await read()).counts.validations, 0)
+      await edit().click()
+      await input().fill('n'.repeat(81))
+      await input('R0001', 'note').fill('t'.repeat(241))
+      assert.equal((await read()).counts.validations, 0)
+      await save().click()
+      await idle()
+      let value = await read()
+      assert.equal(value.counts.requests, 0)
+      assert.equal(value.counts.validations, 1)
+      assert.equal(value.sample[0].name, 'Record 0001')
+      assert.equal(value.drafts.R0001.name.length, 81)
+      assert.equal(await input().getAttribute('aria-invalid'), 'true')
+      assert.equal(
+        await input('R0001', 'note').getAttribute('aria-invalid'),
+        'true',
+      )
+      assert.ok(await focused(input()))
+      await input().fill('Corrected name')
+      await settle()
+      assert.equal(await input().getAttribute('aria-invalid'), null)
+      assert.match(await page.locator('#error-R0001-note').innerText(), /240/)
+      await page.keyboard.press('Enter')
+      await idle()
+      assert.ok(await focused(input('R0001', 'note')))
+      assert.equal((await read()).counts.requests, 0)
+      await input('R0001', 'note').fill('Corrected note')
+      await settle()
+      assert.equal(
+        await input('R0001', 'note').getAttribute('aria-invalid'),
+        null,
+      )
+      await page.keyboard.press('Enter')
+      await idle()
+      value = await read()
+      assert.equal(value.counts.requests, 1)
+      assert.deepEqual(value.sent[0].changes, {
+        name: 'Corrected name',
+        note: 'Corrected note',
+      })
+      assert.equal(value.sample[0].note, 'Corrected note')
     },
   )
   for (const fault of [
@@ -502,6 +558,7 @@ try {
     const loaded = await metrics()
     assert.equal(await page.locator('[data-row]').count(), size)
     const baseline = await read()
+    assert.equal(baseline.counts.validations, 0)
     await call('remember', 'R0001')
     const begin = performance.now()
     await edit('R0001', 'note').click()
@@ -514,6 +571,7 @@ try {
     assert.equal(value.identity, true)
     assert.equal(value.counts.views, size)
     assert.equal(value.counts.cells, size * 3)
+    assert.equal(value.counts.validations, 1)
     const reads =
       value.counts.name +
       value.counts.note -

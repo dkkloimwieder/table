@@ -56,6 +56,9 @@ input {
 input[readonly] {
   background: #edf0f4;
 }
+input[aria-invalid='true'] {
+  border-color: #9d251e;
+}
 .toolbar,
 .buttons,
 .hidden-draft {

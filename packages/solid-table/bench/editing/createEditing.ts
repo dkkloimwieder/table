@@ -7,6 +7,14 @@ export type RecordData = {
   revision: string
 }
 export type TextColumn = 'name' | 'note'
+export type EditValues = Pick<RecordData, TextColumn>
+export type ValidationResult =
+  | { success: true; data: EditValues }
+  | {
+      success: false
+      fieldErrors: Partial<Record<TextColumn, string>>
+      message: string
+    }
 export type SaveRequest = {
   id: string
   expectedRevision: string
@@ -19,13 +27,17 @@ type Draft = {
   name: string
   note: string
   revision: string
-  status: 'editing' | 'pending' | 'refused' | 'conflict' | 'uncertain'
+  status:
+    'editing' | 'invalid' | 'pending' | 'refused' | 'conflict' | 'uncertain'
   message: string
+  fieldErrors: Partial<Record<TextColumn, string>>
+  validationAttempted: boolean
 }
 
 /** Fixture policy, separate from Table and from each rendered row's lifetime. */
 export function createEditing(options: {
   get: (id: string) => RecordData | undefined
+  validate: (values: EditValues) => ValidationResult
   commit: (request: SaveRequest, signal: AbortSignal) => Promise<SaveResult>
   apply: (
     request: SaveRequest,
@@ -50,6 +62,8 @@ export function createEditing(options: {
       revision: row.revision,
       status: 'editing',
       message: '',
+      fieldErrors: {},
+      validationAttempted: false,
     }
     setDrafts((all) => {
       all[id] ??= initial
@@ -63,6 +77,11 @@ export function createEditing(options: {
       draft[column] = value
       draft.status = 'editing'
       draft.message = ''
+      if (draft.validationAttempted)
+        showValidation(
+          draft,
+          options.validate({ name: draft.name, note: draft.note }),
+        )
     })
   }
   function cancel(id: string) {
@@ -86,6 +105,12 @@ export function createEditing(options: {
     })
     return false
   }
+  function showValidation(draft: Draft, result: ValidationResult) {
+    draft.validationAttempted = true
+    draft.fieldErrors = result.success ? {} : result.fieldErrors
+    draft.message = result.success ? '' : result.message
+    draft.status = result.success ? 'editing' : 'invalid'
+  }
   async function save(id: string) {
     if (disposed || pending.has(id)) return false
     const draft = drafts[id]
@@ -103,14 +128,16 @@ export function createEditing(options: {
         'conflict',
         'This record changed after editing started. Cancel to use its current values.',
       )
-    if (!draft.name.trim())
-      return fail(id, 'refused', 'Enter a name before saving.')
+    const validation = options.validate({ name: draft.name, note: draft.note })
+    setDrafts((all) => showValidation(all[id]!, validation))
+    if (!validation.success) return false
+    const values = validation.data
     const request: SaveRequest = {
       id,
       expectedRevision: draft.revision,
       changes: {
-        ...(draft.name !== row.name ? { name: draft.name } : {}),
-        ...(draft.note !== row.note ? { note: draft.note } : {}),
+        ...(values.name !== row.name ? { name: values.name } : {}),
+        ...(values.note !== row.note ? { note: values.note } : {}),
       },
     }
     if (!Object.keys(request.changes).length) return cancel(id)
