@@ -125,6 +125,15 @@ tbody th {
 .cell-value:hover {
   border-color: #8793a5;
 }
+.cell-value[data-edited='true'] {
+  background: #fff7d9;
+}
+.edited-marker {
+  display: inline-block;
+  margin-left: 8px;
+  color: #765200;
+  font-size: 0.75rem;
+}
 .message {
   color: #9d251e;
   margin: 6px 0 0;

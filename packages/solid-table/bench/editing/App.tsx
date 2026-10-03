@@ -23,19 +23,55 @@ export function App(props: {
   let element!: HTMLTableElement
   let disposed = false
   let focusIntent = 0
+  let activeId: string | undefined
   const [notice, setNotice] = createSignal('')
+  function belongsToRow(id: string, target: EventTarget | null) {
+    return (
+      target instanceof Element &&
+      target.closest<HTMLTableRowElement>('tr[data-row]')?.dataset.row === id &&
+      element.contains(target)
+    )
+  }
+  function collapseOutside(target: EventTarget | null) {
+    if (!activeId || belongsToRow(activeId, target)) return
+    const id = activeId
+    activeId = undefined
+    // Focus can move from row cleanup. Write only after that owned scope ends.
+    queueMicrotask(() => {
+      if (!disposed && activeId !== id) editing.collapse(id)
+    })
+  }
   onSettled(() => {
-    const interruptFocus = () => {
+    const interruptFocus = (event: Event) => {
       focusIntent++
+      collapseOutside(event.target)
+    }
+    const leaveFocus = (event: FocusEvent) => {
+      const id = activeId
+      if (!id || !belongsToRow(id, event.target)) return
+      if (event.relatedTarget) collapseOutside(event.relatedTarget)
+      else
+        queueMicrotask(() => {
+          // Disabling a focused Save button can blur it without user navigation.
+          if (
+            !disposed &&
+            activeId === id &&
+            editing.drafts[id]?.expanded &&
+            editing.drafts[id].status !== 'pending'
+          )
+            collapseOutside(document.activeElement)
+        })
     }
     document.addEventListener('pointerdown', interruptFocus, true)
     document.addEventListener('focusin', interruptFocus, true)
+    document.addEventListener('focusout', leaveFocus, true)
     props.ready(model)
     return () => {
       disposed = true
       focusIntent++
       document.removeEventListener('pointerdown', interruptFocus, true)
       document.removeEventListener('focusin', interruptFocus, true)
+      document.removeEventListener('focusout', leaveFocus, true)
     }
   })
   const visibleIds = createMemo(() => new Set(table.getRowIds()))
@@ -62,6 +98,9 @@ export function App(props: {
     else filter.focus({ preventScroll: true })
   }
   function begin(id: string, column: EditColumn) {
+    if (editing.drafts[id]?.status === 'pending') return
+    if (activeId && activeId !== id) editing.collapse(activeId)
+    activeId = id
     editing.begin(id, column)
     const intent = ++focusIntent
     onSettled(() => {
@@ -122,20 +161,37 @@ export function App(props: {
             const column = cell.column.id
             if (column === 'id') return <th scope="row">{id}</th>
             const field = column as EditColumn
+            const changed = () => {
+              const draft = editing.drafts[id]
+              return Boolean(draft && draft[field] !== cell.getValue())
+            }
             return (
               <td data-column={field}>
                 <Show
-                  when={Boolean(editing.drafts[id])}
+                  when={editing.drafts[id]?.expanded}
                   fallback={
                     <button
                       class="cell-value"
                       data-edit={`${id}/${field}`}
                       aria-label={`Edit ${field} ${id}`}
+                      aria-describedby={`edited-${id}-${field} error-${id}-${field} message-${id}`}
+                      data-edited={changed() ? 'true' : undefined}
+                      disabled={editing.drafts[id]?.status === 'pending'}
                       ref={nativeEvents({ click: () => begin(id, field) })}
                     >
                       <span data-value>
-                        {String(cell.getValue()) || 'Add note'}
+                        {String(
+                          editing.drafts[id]?.[field] ?? cell.getValue(),
+                        ) || (field === 'note' ? 'Add note' : 'Empty value')}
                       </span>
+                      <Show when={changed()}>
+                        <span
+                          id={`edited-${id}-${field}`}
+                          class="edited-marker"
+                        >
+                          Edited
+                        </span>
+                      </Show>
                     </button>
                   }
                 >
@@ -193,18 +249,26 @@ export function App(props: {
                       })}
                     />
                   )}
-                  <p id={`error-${id}-${field}`} class="message">
-                    {editing.drafts[id]?.fieldErrors[field]}
-                  </p>
                 </Show>
+                <p id={`error-${id}-${field}`} class="message">
+                  {editing.drafts[id]?.fieldErrors[field]}
+                </p>
               </td>
             )
           }}
         </For>
         <td class="row-actions">
           <Show
-            when={Boolean(editing.drafts[id])}
-            fallback={<span class="muted">No changes</span>}
+            when={editing.drafts[id]?.expanded}
+            fallback={
+              <span class="muted">
+                {editing.drafts[id]?.status === 'pending'
+                  ? 'Saving…'
+                  : editing.drafts[id]
+                    ? 'Unsaved changes'
+                    : 'No changes'}
+              </span>
+            }
           >
             <div class="buttons">
               <button
@@ -247,8 +311,9 @@ export function App(props: {
         its draft. In text fields, Enter saves and Escape cancels.
       </p>
       <p>
-        Tab and clicks preserve drafts. Filtering uses saved values. This table
-        renders every matching row.
+        Leaving a row closes its editors and keeps your draft. Changed cells
+        show an Edited marker. Click a cell to resume. Filtering uses saved
+        values.
       </p>
       <p>
         The priority dropdown uses its native keys. Choosing an option does not

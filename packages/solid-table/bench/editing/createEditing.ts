@@ -36,6 +36,7 @@ type Draft = {
   fieldErrors: Partial<Record<EditColumn, string>>
   validationAttempted: boolean
   activeColumn: EditColumn
+  expanded: boolean
 }
 
 /** Fixture policy, separate from Table and from each rendered row's lifetime. */
@@ -70,10 +71,30 @@ export function createEditing(options: {
       fieldErrors: {},
       validationAttempted: false,
       activeColumn: column,
+      expanded: true,
     }
     setDrafts((all) => {
       all[id] ??= initial
       all[id].activeColumn = column
+      all[id].expanded = true
+    })
+  }
+  function collapse(id: string) {
+    if (disposed) return
+    const row = options.get(id)
+    setDrafts((all) => {
+      const draft = all[id]
+      if (!draft) return
+      if (
+        !pending.has(id) &&
+        draft.status === 'editing' &&
+        row?.revision === draft.revision &&
+        row.name === draft.name &&
+        row.note === draft.note &&
+        row.priority === draft.priority
+      )
+        delete all[id]
+      else draft.expanded = false
     })
   }
   function focus(id: string, column: EditColumn) {
@@ -206,5 +227,5 @@ export function createEditing(options: {
       pending.delete(id)
     }
   }
-  return { drafts, begin, focus, change, cancel, save }
+  return { drafts, begin, collapse, focus, change, cancel, save }
 }

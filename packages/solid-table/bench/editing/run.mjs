@@ -153,6 +153,118 @@ try {
     )
   }
   await record(
+    'focus exit collapses editors and marks only changed cells without saving',
+    async () => {
+      await start()
+      await edit().click()
+      await input().fill('Draft on display')
+      await input('R0001', 'note').click()
+      assert.equal(await input().count(), 1)
+      await page.getByRole('heading', { name: 'Inline editing' }).click()
+      await settle()
+      assert.equal(await input().count(), 0)
+      assert.equal(await save().count(), 0)
+      assert.equal(
+        await edit().locator('[data-value]').innerText(),
+        'Draft on display',
+      )
+      assert.equal(await edit().getAttribute('data-edited'), 'true')
+      assert.equal(
+        await edit('R0001', 'note').getAttribute('data-edited'),
+        null,
+      )
+      assert.equal(await page.locator('.edited-marker').count(), 1)
+      assert.equal((await read()).sample[0].name, 'Record 0001')
+      assert.equal((await read()).counts.requests, 0)
+      await edit('R0001', 'note').click()
+      assert.equal(await input().inputValue(), 'Draft on display')
+      assert.ok(await focused(input('R0001', 'note')))
+      await page
+        .getByRole('button', { name: 'Cancel R0001', exact: true })
+        .click()
+      await settle()
+      assert.equal(await edit().getAttribute('data-edited'), null)
+      assert.equal(
+        await edit().locator('[data-value]').innerText(),
+        'Record 0001',
+      )
+    },
+  )
+  await record(
+    'Tab leaves a row without saving and Shift+Tab can return to its collapsed cell',
+    async () => {
+      await start()
+      await edit('R0001', 'priority').click()
+      await select().selectOption('high')
+      await page.keyboard.press('Tab')
+      assert.ok(await focused(save()))
+      await page.keyboard.press('Tab')
+      assert.ok(
+        await focused(
+          page.getByRole('button', { name: 'Cancel R0001', exact: true }),
+        ),
+      )
+      await page.keyboard.press('Tab')
+      await settle()
+      assert.ok(await focused(edit('R0002')))
+      assert.equal(await select().count(), 0)
+      assert.equal(
+        await edit('R0001', 'priority').getAttribute('data-edited'),
+        'true',
+      )
+      await page.keyboard.press('Shift+Tab')
+      assert.ok(await focused(edit('R0001', 'priority')))
+      await page.keyboard.press('Enter')
+      assert.equal(await select().inputValue(), 'high')
+      assert.equal((await read()).counts.requests, 0)
+    },
+  )
+  await record(
+    'unchanged visits and reverted edits leave no draft or marker',
+    async () => {
+      await start()
+      await edit().click()
+      await page.getByRole('heading', { name: 'Inline editing' }).click()
+      await settle()
+      assert.deepEqual((await read()).drafts, {})
+      await edit().click()
+      await input().fill('Temporary')
+      await input().fill('Record 0001')
+      await input().evaluate((node) => node.blur())
+      await settle()
+      assert.equal(await input().count(), 0)
+      assert.deepEqual((await read()).drafts, {})
+      assert.equal(await page.locator('.edited-marker').count(), 0)
+      assert.equal((await read()).counts.requests, 0)
+    },
+  )
+  await record(
+    'invalid drafts retain errors while collapsed and resume for correction',
+    async () => {
+      await start()
+      await edit().click()
+      await input().fill('')
+      await save().click()
+      await idle()
+      await page.getByRole('heading', { name: 'Inline editing' }).click()
+      await settle()
+      assert.equal(await input().count(), 0)
+      assert.equal(await edit().getAttribute('data-edited'), 'true')
+      assert.match(
+        await page.locator('#error-R0001-name').innerText(),
+        /Enter a name/,
+      )
+      await edit().click()
+      assert.equal(await input().inputValue(), '')
+      assert.equal(await input().getAttribute('aria-invalid'), 'true')
+      await input().fill('Corrected')
+      await input().press('Enter')
+      await idle()
+      assert.equal(await edit().getAttribute('data-edited'), null)
+      assert.equal((await read()).sample[0].name, 'Corrected')
+    },
+  )
+  await record(
     'keyboard entry, native Tab and Shift+Tab, Escape, and no navigation saves',
     async () => {
       await start()
@@ -299,22 +411,23 @@ try {
     },
   )
   await record(
-    'dropdown drafts and editor identity survive sorting and filter removal',
+    'dropdown drafts and row identity survive sorting and filter removal',
     async () => {
       await start()
       await edit('R0001', 'priority').click()
       await select().selectOption('low')
-      await select().evaluate((node) => {
-        window.originalSelect = new WeakRef(node)
+      await page.locator('[data-row="R0001"]').evaluate((node) => {
+        window.originalRow = new WeakRef(node)
       })
       await page.getByRole('button', { name: /^Sort names/ }).click()
       await page.getByRole('button', { name: /^Sort names/ }).click()
       await settle()
       assert.equal((await read()).ids.at(-1), 'R0001')
+      assert.equal(await select().count(), 0)
       assert.ok(
-        await select().evaluate(
-          (node) => window.originalSelect.deref() === node,
-        ),
+        await page
+          .locator('[data-row="R0001"]')
+          .evaluate((node) => window.originalRow.deref() === node),
       )
       await page
         .getByRole('textbox', { name: 'Filter saved names', exact: true })
@@ -396,6 +509,9 @@ try {
       await edit('R0002').click()
       await input('R0002').fill('Second name')
       assert.equal((await read()).counts.requests, 0)
+      assert.equal(await input().count(), 0)
+      await edit('R0001', 'priority').click()
+      assert.equal(await input('R0002').count(), 0)
       await save().click()
       await idle()
       const value = await read()
@@ -432,10 +548,13 @@ try {
       assert.equal((await read()).counts.requests, 1)
       await edit('R0002').click()
       await input('R0002').fill('Second draft')
+      assert.equal(await input().count(), 0)
+      assert.equal(await edit().isDisabled(), true)
       await call('release')
       await idle()
       assert.ok(await focused(input('R0002')))
       assert.equal((await read()).sample[0].name, 'Held name')
+      assert.equal(await edit().getAttribute('data-edited'), null)
     },
   )
   await record(
@@ -449,6 +568,7 @@ try {
       await page
         .getByRole('heading', { name: 'Inline editing', exact: true })
         .click()
+      assert.equal(await input().count(), 0)
       await call('release')
       await idle()
       assert.equal(await focused(edit()), false)
@@ -558,6 +678,16 @@ try {
         assert.equal(value.sample[0].name, 'Record 0001')
         assert.ok(value.drafts.R0001.message)
         assert.equal(await save().isEnabled(), true)
+        await page.getByRole('heading', { name: 'Inline editing' }).click()
+        await settle()
+        assert.equal(await input().count(), 0)
+        assert.equal(await edit().getAttribute('data-edited'), 'true')
+        assert.equal(
+          await page.locator('#message-R0001').innerText(),
+          value.drafts.R0001.message,
+        )
+        await edit('R0001', 'priority').click()
+        assert.equal(await select().inputValue(), 'high')
         await page
           .getByRole('button', { name: 'Cancel R0001', exact: true })
           .click()
@@ -627,21 +757,17 @@ try {
     },
   )
   await record(
-    'sorting preserves editor nodes, drafts, and logical focus after save',
+    'sorting collapses editors and preserves drafts and logical focus after save',
     async () => {
       await start()
       await edit().click()
       await input().fill('ZZZ moved')
-      await input().evaluate((node) => {
-        window.originalEditor = new WeakRef(node)
-      })
       await page.getByRole('button', { name: /^Sort names/ }).click()
       await settle()
-      assert.ok(
-        await input().evaluate(
-          (node) => window.originalEditor.deref() === node,
-        ),
-      )
+      assert.equal(await input().count(), 0)
+      assert.equal(await edit().getAttribute('data-edited'), 'true')
+      await edit().click()
+      assert.equal(await input().inputValue(), 'ZZZ moved')
       await input().press('Enter')
       await idle()
       assert.equal((await read()).ids.at(-1), 'R0001')
@@ -799,6 +925,38 @@ try {
       await metrics()
       secondRecordObjects = await heap('second-record-edit')
     }
+    // Preserve the earlier heap workload before exercising collapse and resume.
+    // Collapse and resume only one row. Dataset size must not multiply cell reads.
+    const beforeCollapse = await read()
+    await edit('R0001', 'note').click()
+    await input('R0001', 'note').fill('Collapsed draft')
+    await page.getByRole('heading', { name: 'Inline editing' }).click()
+    await settle()
+    const collapsed = await read()
+    const collapseReads =
+      collapsed.counts.name +
+      collapsed.counts.note +
+      collapsed.counts.priority -
+      beforeCollapse.counts.name -
+      beforeCollapse.counts.note -
+      beforeCollapse.counts.priority
+    assert.ok(
+      collapseReads <= 9,
+      `Collapsing a draft reread ${collapseReads} cells at size ${size}`,
+    )
+    assert.equal(collapsed.counts.views, size)
+    assert.equal(collapsed.counts.cells, size * 4)
+    assert.equal(
+      collapsed.counts.validations,
+      beforeCollapse.counts.validations,
+    )
+    assert.equal(collapsed.counts.requests, beforeCollapse.counts.requests)
+    assert.equal(await page.locator('.edited-marker').count(), 1)
+    await edit('R0001', 'note').click()
+    await page
+      .getByRole('button', { name: 'Cancel R0001', exact: true })
+      .click()
+    await settle()
     await call('stop')
     const disposed = await metrics()
     let disposedObjects
@@ -830,6 +988,7 @@ try {
       counts: value.counts,
       editAccessorReads: reads,
       selectAccessorReads: selectReads,
+      collapseAccessorReads: collapseReads,
       selectCounts: selected.counts,
       elapsedMs,
       before,
@@ -843,7 +1002,7 @@ try {
       hostLoad: loadavg(),
     })
     console.log(
-      `PASS ${size} fully rendered rows; text reads ${reads}; select reads ${selectReads}; zero replacement views/cells`,
+      `PASS ${size} fully rendered rows; text reads ${reads}; select reads ${selectReads}; collapse reads ${collapseReads}; zero replacement views/cells`,
     )
   }
   report.diagnostics = await call('diagnostics')

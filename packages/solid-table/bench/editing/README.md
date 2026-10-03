@@ -9,7 +9,13 @@ The measured editing subsets contain 25, 250, and 999 records. These sizes are n
 Activate a name, note, or priority button to open a row draft.
 All three fields belong to that draft and share one revision.
 Tab and Shift+Tab follow the browser's normal control order without saving.
-Clicking another row preserves the first draft. Multiple rows can have drafts.
+
+Moving between controls in the same row keeps its editors open.
+Leaving the row closes its editors and preserves its draft.
+Collapsed cells show draft values with an Edited marker on each changed field.
+Clicking a cell resumes that row draft. Multiple rows can have drafts, but only the active row shows inputs.
+An unchanged visit or a reverted edit leaves no draft when the row closes.
+Save and Cancel appear while the row is open. Errors and pending status remain visible after it closes.
 
 Save saves the row. Cancel discards its draft.
 In text inputs, Enter saves and Escape cancels.
@@ -58,6 +64,11 @@ Popup integration needs additional keyboard, focus, and lifecycle tests against 
 Its synchronous request map prevents duplicate submissions before Solid commits a pending-state write.
 An accepted save preserves the record's public identity and changes its fields.
 The controller does not copy the dataset or replace unaffected rows.
+
+Each draft records whether its editors are open. Cell markers compare draft values with saved values through Solid property tracking.
+The markers do not add dirty flags to Table or a second record store.
+Document listeners close the active row on outside pointer or focus movement.
+Disabling a focused Save button during a request does not count as user navigation.
 Solid's property tracking can retain an older record value internally. The heap tests measure that cost and its disposal.
 
 The save transport is a deterministic local simulation with refusal, conflict, delay, and failure controls.

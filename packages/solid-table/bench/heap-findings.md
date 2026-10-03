@@ -662,3 +662,33 @@ Thirty Maps and 192 V8 allocation templates remain. There are no virtualizer ins
 Raw reports are `/tmp/table-editing-select-{source,distribution,development}.json`.
 Actual snapshots and summaries are under `/tmp/table-editing-select-heaps` with the same four snapshot names.
 The browser reports record host load. Timings remain advisory on this shared machine.
+
+### Collapsed row drafts
+
+Leaving a row now closes its editors and preserves changed draft values with cell markers.
+Thirty-one browser scenarios pass against source, built, and development entries in Chromium `151.0.7922.34` on Linux.
+The runs report no browser errors or Solid diagnostics. The five validation unit tests also pass.
+Focus movement during row cleanup defers the draft update until that cleanup ends.
+
+The source and built runs render 25, 250, and 999 records. The development run renders 25 records.
+Each text or dropdown save reads three cell values and applies the schema to one row.
+Closing a changed draft reads six cell values at each size, with no schema application or save request.
+These operations replace no Table row views or cells.
+The harness measures closing and reopening after the existing record snapshots to preserve the earlier workload for comparison.
+
+The built heap uses 23.636 MiB after loading 999 records and 23.827 MiB after both saves.
+The premount heap uses 3.558 MiB. The disposed heap uses 3.593 MiB after the additional draft exercise.
+The loaded heap exceeds the previous native dropdown result by 6.722 MiB.
+The extra bindings for draft values, markers, disabled controls, and persistent errors increase reactive display resources across the rendered table.
+This cost belongs to the fixture UI. The Table engine and record store implementation do not change.
+
+The snapshot contains 47,004 computations and 53,995 dependency links, compared with 27,024 and 30,019 in the earlier fixture.
+It retains 999 row views, 3,996 cells, 10,996 owners, and 1,006 store targets.
+The record counts remain 1,000 after both saves and after 20 further updates, then reach 1,001 after another record changes.
+Disposal removes all classified records, views, cells, store targets, computations, owners, and dependency links.
+Thirty Maps and 196 V8 allocation templates remain.
+
+Raw reports are `/tmp/table-editing-collapse-{source,distribution,development}.json`.
+Actual snapshots and summaries are under `/tmp/table-editing-collapse-heaps` with the same four snapshot names.
+The served preview also passes a browser smoke test for two collapsed drafts with separate cell markers.
+Timings remain advisory on this shared machine.
