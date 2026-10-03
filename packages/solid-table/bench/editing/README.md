@@ -48,6 +48,9 @@ They also cover pointer entry, option changes, invalid values, concurrent update
 The fixture does not provide a custom popup, searchable choices, remote options, or multiple selection.
 Other browsers and operating systems need separate interaction tests.
 
+The [Zaidan and Kobalte review](./select-guidance.md) records WAMN controls and upstream Solid 2 branch status.
+Popup integration needs additional keyboard, focus, and lifecycle tests against the pinned Table runtime.
+
 ## Ownership and scope
 
 `model.ts` owns one Solid record store. Table reads records through IDs.
