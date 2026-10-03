@@ -33,8 +33,6 @@ export async function resizeCases({
 }) {
   const handle = (label = 'Name') =>
     page.getByRole('separator', { name: `Resize ${label} column`, exact: true })
-  const reset = (label = 'Name') =>
-    page.getByRole('button', { name: `Reset ${label} width`, exact: true })
   async function begin(label = 'Name', beforeDown = async () => {}) {
     await handle(label).scrollIntoViewIfNeeded()
     const box = await handle(label).boundingBox()
@@ -99,7 +97,7 @@ export async function resizeCases({
       assert.ok(Math.abs(width - layout.width) <= 1)
   }
   await record(
-    'pointer resizing previews without changing state and commits once without scanning records',
+    'pointer resizing moves headers and cells together before release without scanning records',
     async () => {
       await start()
       await call('remember', 'R0001')
@@ -112,8 +110,12 @@ export async function resizeCases({
       await page.mouse.move(point.x + 87, point.y, { steps: 8 })
       await settle()
       const preview = await read()
-      assert.equal(preview.widths.name, before.widths.name)
-      assert.equal(preview.counts.sizingChanges, before.counts.sizingChanges)
+      assert.equal(preview.widths.name, before.widths.name + 87)
+      assert.equal(
+        preview.counts.sizingChanges - before.counts.sizingChanges,
+        8,
+      )
+      await aligned()
       assert.equal(preview.counts.resizeListeners, 4)
       assert.equal(
         Number(await handle().getAttribute('aria-valuenow')),
@@ -131,7 +133,7 @@ export async function resizeCases({
       const after = await read()
       assert.equal(after.widths.name, before.widths.name + 87)
       assert.equal(after.widths.note, before.widths.note)
-      assert.equal(after.counts.sizingChanges - before.counts.sizingChanges, 1)
+      assert.equal(after.counts.sizingChanges - before.counts.sizingChanges, 8)
       assert.equal(after.counts.resizeListeners, 0)
       assert.equal(after.identity, true)
       assert.deepEqual(work(after), work(before))
@@ -145,7 +147,7 @@ export async function resizeCases({
     },
   )
   await record(
-    'keyboard resizing honors bounds and reset without sorting columns',
+    'keyboard resizing honors bounds without reset controls or column sorting',
     async () => {
       await start()
       const before = await read()
@@ -162,16 +164,90 @@ export async function resizeCases({
       assert.equal((await read()).widths.name, 140)
       await page.keyboard.press('End')
       assert.equal((await read()).widths.name, 640)
-      await reset().click()
-      assert.equal((await read()).widths.name, 220)
-      assert.equal(Object.hasOwn((await read()).columnSizing, 'name'), false)
-      await drag('Name', 60)
       await handle().dblclick()
-      assert.equal((await read()).widths.name, 220)
+      assert.equal((await read()).widths.name, 640)
+      assert.equal(
+        await page.getByRole('button', { name: /Reset .*width/ }).count(),
+        0,
+      )
       assert.deepEqual((await read()).ids, before.ids)
       assert.equal(await page.locator('th[aria-sort]').count(), 0)
       assert.deepEqual(work(await read()), work(before))
       await aligned()
+    },
+  )
+  await record(
+    'fixed-width resizing transfers space to the adjacent column and respects both bounds',
+    async () => {
+      await start()
+      await page.getByText('Display options', { exact: true }).click()
+      await page
+        .getByRole('combobox', { name: 'Resize behavior', exact: true })
+        .selectOption('fixed')
+      const before = await read()
+      const tableWidth = async () =>
+        page
+          .locator('table')
+          .evaluate((node) => node.getBoundingClientRect().width)
+      const total = await tableWidth()
+      const point = await begin()
+      await page.mouse.move(point.x + 87, point.y, { steps: 8 })
+      await settle()
+      assert.equal((await read()).widths.name, 307)
+      assert.equal((await read()).widths.note, 173)
+      assert.equal(await tableWidth(), total)
+      await aligned()
+      await page.mouse.up()
+      await handle().focus()
+      await page.keyboard.press('End')
+      assert.equal((await read()).widths.name, 340)
+      assert.equal((await read()).widths.note, 140)
+      await page.keyboard.press('ArrowRight')
+      assert.equal((await read()).widths.name, 340)
+      await page.keyboard.press('Home')
+      assert.equal((await read()).widths.name, 140)
+      assert.equal((await read()).widths.note, 340)
+      assert.equal(await tableWidth(), total)
+      assert.equal(await handle('Due date').count(), 0)
+      assert.deepEqual(work(await read()), work(before))
+      await aligned()
+      await page
+        .getByRole('combobox', { name: 'Resize behavior', exact: true })
+        .selectOption('grow')
+      await drag('Name', 20)
+      assert.equal((await read()).widths.note, 340)
+      assert.equal(await tableWidth(), total + 20)
+      await page
+        .getByRole('combobox', { name: 'Resize behavior', exact: true })
+        .selectOption('fixed')
+      await drag('Name', 20)
+      assert.equal(await tableWidth(), total + 20)
+      await aligned()
+    },
+  )
+  await record(
+    'fixed-width mode uses the next visible column and unmounting the table discards widths',
+    async () => {
+      await start()
+      await call('controls', { resizeBehavior: 'fixed' })
+      await call('visibility', 'note', false)
+      const total = await page
+        .locator('table')
+        .evaluate((node) => node.getBoundingClientRect().width)
+      await drag('Name', 100)
+      assert.equal((await read()).widths.name, 240)
+      assert.equal((await read()).widths.priority, 120)
+      assert.equal((await read()).widths.note, 260)
+      assert.equal(
+        await page
+          .locator('table')
+          .evaluate((node) => node.getBoundingClientRect().width),
+        total,
+      )
+      await aligned()
+      await start()
+      assert.equal((await read()).widths.name, 220)
+      assert.deepEqual((await read()).columnSizing, {})
     },
   )
   await record(
@@ -202,7 +278,7 @@ export async function resizeCases({
     },
   )
   await record(
-    'Escape, pointer cancellation, lost capture and window blur discard resize previews',
+    'Escape, pointer cancellation, lost capture and blur end live resizing at the current width',
     async () => {
       await start()
       const before = await read()
@@ -212,6 +288,7 @@ export async function resizeCases({
         'lostpointercapture',
         'blur',
       ]) {
+        const width = (await read()).widths.name
         const point = await begin()
         await page.mouse.move(point.x + 45, point.y)
         if (event === 'escape') await page.keyboard.press('Escape')
@@ -220,14 +297,13 @@ export async function resizeCases({
         else await handle().dispatchEvent(event, { pointerId: 1 })
         await page.mouse.up()
         await settle()
-        assert.equal((await read()).widths.name, before.widths.name)
+        assert.equal((await read()).widths.name, width + 45)
         assert.equal((await read()).counts.resizeListeners, 0)
-        assert.equal(await page.locator('[data-resizing]').count(), 0)
       }
       assert.deepEqual(work(await read()), work(before))
       assert.equal(
         (await read()).counts.sizingChanges,
-        before.counts.sizingChanges,
+        before.counts.sizingChanges + 4,
       )
     },
   )
@@ -239,18 +315,10 @@ export async function resizeCases({
       await page.mouse.move(point.x + 80, point.y)
       await call('sizing', { name: 310, note: 360 })
       await settle()
-      assert.equal(await page.locator('[data-resizing]').count(), 0)
       assert.equal((await read()).counts.resizeListeners, 0)
       await page.mouse.up()
       assert.equal((await read()).widths.name, 310)
       assert.equal((await read()).widths.note, 360)
-      await reset().click()
-      assert.equal((await read()).widths.name, 220)
-      assert.equal((await read()).widths.note, 360)
-      await page
-        .getByRole('button', { name: 'Reset column widths', exact: true })
-        .click()
-      assert.deepEqual((await read()).columnSizing, {})
       await aligned()
     },
   )
@@ -298,55 +366,65 @@ export async function resizeCases({
     },
   )
   await record(
-    'touch resizing commits once and touch cancellation restores the prior width',
+    'touch resizing changes the whole column live and cancellation keeps the current width',
     async () => {
-      await start()
-      await handle().scrollIntoViewIfNeeded()
-      const box = await handle().boundingBox()
-      const touch = { x: box.x + box.width / 2, y: box.y + 20, id: 1 }
-      await cdp.send('Emulation.setTouchEmulationEnabled', {
-        enabled: true,
-        maxTouchPoints: 1,
-      })
-      try {
-        await cdp.send('Input.dispatchTouchEvent', {
-          type: 'touchStart',
-          touchPoints: [touch],
+      for (const behavior of ['grow', 'fixed']) {
+        await start()
+        await call('controls', { resizeBehavior: behavior })
+        await handle().scrollIntoViewIfNeeded()
+        const box = await handle().boundingBox()
+        const touch = { x: box.x + box.width / 2, y: box.y + 20, id: 1 }
+        await cdp.send('Emulation.setTouchEmulationEnabled', {
+          enabled: true,
+          maxTouchPoints: 1,
         })
-        await cdp.send('Input.dispatchTouchEvent', {
-          type: 'touchMove',
-          touchPoints: [{ ...touch, x: touch.x + 60 }],
-        })
-        assert.equal((await read()).widths.name, 220)
-        await cdp.send('Input.dispatchTouchEvent', {
-          type: 'touchEnd',
-          touchPoints: [],
-        })
-        await settle()
-        assert.equal((await read()).widths.name, 280)
-        const next = { ...touch, x: touch.x + 60 }
-        await cdp.send('Input.dispatchTouchEvent', {
-          type: 'touchStart',
-          touchPoints: [next],
-        })
-        await cdp.send('Input.dispatchTouchEvent', {
-          type: 'touchMove',
-          touchPoints: [{ ...next, x: next.x + 40 }],
-        })
-        await cdp.send('Input.dispatchTouchEvent', {
-          type: 'touchCancel',
-          touchPoints: [],
-        })
-        await settle()
-        assert.equal((await read()).widths.name, 280)
-        assert.equal((await read()).counts.resizeListeners, 0)
-      } finally {
-        await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: false })
+        try {
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [touch],
+          })
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: [{ ...touch, x: touch.x + 60 }],
+          })
+          assert.equal((await read()).widths.name, 280)
+          await aligned()
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchEnd',
+            touchPoints: [],
+          })
+          await settle()
+          assert.equal((await read()).widths.name, 280)
+          const next = { ...touch, x: touch.x + 60 }
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchStart',
+            touchPoints: [next],
+          })
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchMove',
+            touchPoints: [{ ...next, x: next.x + 40 }],
+          })
+          await cdp.send('Input.dispatchTouchEvent', {
+            type: 'touchCancel',
+            touchPoints: [],
+          })
+          await settle()
+          assert.equal((await read()).widths.name, 320)
+          assert.equal(
+            (await read()).widths.note,
+            behavior === 'fixed' ? 160 : 260,
+          )
+          assert.equal((await read()).counts.resizeListeners, 0)
+        } finally {
+          await cdp.send('Emulation.setTouchEmulationEnabled', {
+            enabled: false,
+          })
+        }
       }
     },
   )
   await record(
-    'horizontal scrolling during a drag adjusts the preview without page overflow',
+    'horizontal scrolling during live resizing keeps cells aligned without page overflow',
     async () => {
       await page.setViewportSize({ width: 390, height: 844 })
       try {
@@ -359,7 +437,7 @@ export async function resizeCases({
           return node.scrollLeft - previous
         })
         await settle()
-        assert.equal((await read()).widths.name, before.widths.name)
+        assert.equal((await read()).widths.name, before.widths.name + shift)
         assert.equal(
           Number(await handle().getAttribute('aria-valuenow')),
           before.widths.name + shift,
@@ -428,17 +506,15 @@ export async function resizeWorkload({ page, cdp, read, settle }) {
     const preview = await read()
     assert.equal(
       preview.counts.sizingChanges - before.counts.sizingChanges,
-      cycle,
+      (cycle + 1) * 5,
     )
+    assert.equal(preview.widths.name, before.widths.name + (cycle % 2 ? 0 : 25))
     await page.mouse.up()
     await settle()
   }
   await handle.focus()
   await page.keyboard.press('ArrowRight')
   await page.keyboard.press('ArrowLeft')
-  await page
-    .getByRole('button', { name: 'Reset Name width', exact: true })
-    .click()
   await settle()
   const elapsedMs = performance.now() - begin
   const after = await read()
@@ -446,8 +522,8 @@ export async function resizeWorkload({ page, cdp, read, settle }) {
   assert.deepEqual(after.widths, before.widths)
   assert.equal(after.identity, true)
   assert.equal(after.counts.resizeStarts - before.counts.resizeStarts, 6)
-  assert.equal(after.counts.resizeCommits - before.counts.resizeCommits, 8)
-  assert.equal(after.counts.sizingChanges - before.counts.sizingChanges, 9)
+  assert.equal(after.counts.resizeChanges - before.counts.resizeChanges, 32)
+  assert.equal(after.counts.sizingChanges - before.counts.sizingChanges, 32)
   assert.equal(after.counts.resizeListeners, 0)
   await cdp.send('HeapProfiler.collectGarbage')
   const retainedListeners =

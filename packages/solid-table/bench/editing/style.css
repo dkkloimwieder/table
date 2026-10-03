@@ -343,11 +343,6 @@ thead .table-filter {
   min-height: 22px;
 }
 .column-layout {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 12px;
   margin: 12px 0;
   font-size: 0.875rem;
   color: #546174;
@@ -372,39 +367,11 @@ thead .table-filter {
   background: #8793a5;
 }
 .column-resize:hover .resize-grip,
-.column-resize[data-resizing] .resize-grip {
+.column-resize:active .resize-grip {
   background: #285cce;
   width: 3px;
 }
 .column-resize:focus-visible {
   outline: 3px solid #285cce;
   outline-offset: -2px;
-}
-.resize-preview {
-  position: absolute;
-  left: 5px;
-  top: 0;
-  bottom: 0;
-  border-left: 2px solid #285cce;
-  pointer-events: none;
-}
-.resize-preview span {
-  position: absolute;
-  top: 100%;
-  left: -28px;
-  white-space: nowrap;
-  font-size: 0.75rem;
-  font-weight: 500;
-  background: #285cce;
-  color: white;
-  padding: 3px 6px;
-  border-radius: 3px;
-}
-.column-reset {
-  font-size: 0.875rem;
-  padding: 0 4px;
-  margin-top: 4px;
-  border-color: transparent;
-  background: transparent;
-  color: #546174;
 }

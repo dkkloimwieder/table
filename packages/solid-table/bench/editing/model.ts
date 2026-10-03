@@ -75,7 +75,7 @@ export function createModel(size: number) {
     sizingChanges: 0,
     resizeStarts: 0,
     resizeMoves: 0,
-    resizeCommits: 0,
+    resizeChanges: 0,
     resizeCancels: 0,
     resizeListeners: 0,
   }

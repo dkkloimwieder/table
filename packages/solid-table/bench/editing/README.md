@@ -99,36 +99,37 @@ These comparisons do not remove membership scans or summary reads.
 
 ## Column resizing
 
-Each resizable column has a handle on its right header edge and a reset button.
-Dragging with a mouse or touch shows a width preview. Releasing the handle commits that width once.
-The table keeps its current layout during the preview.
-Column metadata supplies the default, minimum, and maximum widths.
+Dragging a header edge resizes its whole column immediately, including body cells.
+The table has no width Save or Reset controls. Double-clicking an edge does not reset it.
+Widths live only in the current Table state. Remounting the table restores its initial widths.
+Column metadata supplies each default, minimum, and maximum width.
 
-Double-clicking the handle or activating its reset button restores that column default.
-Reset column widths clears all width overrides.
+The Display options panel offers two resize behaviors.
+Grow table changes the total table width and shifts the following columns.
+Keep table width transfers space between the column and its next visible resizable neighbor.
+Both columns retain their width limits. A limit on either column stops the shared edge.
+
+The Actions column keeps its fixed width, so fixed-width mode has no handle after the last data column.
+Switching modes preserves the current widths. Fixed-width drags preserve the total at the start of each drag.
 
 The focused handle accepts Left and Right for 10-pixel changes, or 50 pixels with Shift.
-Home and End select the minimum and maximum widths.
-Escape cancels a drag. Lost pointer capture, window blur, a hidden document, and removal of the handle also cancel it.
-Caller changes to the active width or its bounds cancel a stale preview.
-
+Home and End select the available minimum and maximum widths.
+Escape ends a drag at its current width. Lost capture, window blur, a hidden document, and removal of the handle also end it.
+Caller changes to the active width or its bounds stop a stale gesture without overwriting the caller.
 The handle exposes its label and current pixel width through a vertical ARIA separator.
-Chromium tests cover keyboard, mouse, and emulated touch behavior. Other browsers and assistive technologies need separate qualification.
 
-Display options can hide resize controls independently of header filters and sorting. Hiding controls preserves saved widths.
+Display options can hide resize controls independently of header filters and sorting. Hiding controls preserves current widths.
 Resizing remains available when local record processing is disabled.
-
-`TableColumnResize.tsx` receives a width, bounds, and callbacks. It owns only the temporary preview and gesture listeners.
-The parent supplies callbacks that update Table `columnSizing` state.
+`TableColumnResize.tsx` receives a width, bounds, and a change callback. It owns the gesture listeners.
+The Table component updates one width in Grow table mode, or both adjacent widths in one update in Keep table width mode.
 Controlled Table state still requires the caller to accept width updates.
 
 The table uses one `colgroup` for header and body widths. Its total width includes the fixed Actions column.
 Group spans follow the same table geometry. A narrow viewport scrolls horizontally without horizontal virtualization.
+Pointer movement updates widths without reading records or replacing views, cells, or drafts.
+The browser recalculates layout as the width changes and can change cell wrapping and row heights.
 
-Pointer movement updates the preview without reading records or changing Table state.
-A committed width updates its column and the total width. Browser layout can then change cell wrapping and row heights.
-The internal sizing store preserves its container, so unrelated width subscribers remain unchanged.
-The change does not replace records, views, cells, drafts, or summaries.
+Chromium tests cover keyboard, mouse, and emulated touch behavior. Other browsers and assistive technologies need separate qualification.
 
 ## Editing behavior
 
@@ -352,13 +353,14 @@ Median allocates one temporary number array per observed group. The workload cou
 First and last each read four endpoint values across four groups. Count reads none.
 These changes must retain existing views, cells, membership, note reads, and date reads.
 The additional `summaries` snapshot measures retained resources after these changes.
-The resize workload repeats six drags, two keyboard changes, and a reset at each measured subset size.
-Each completed drag commits once. Pointer movement must leave Table width state unchanged.
+The resize workload repeats six drags and two keyboard changes in both width modes at each measured subset size.
+Thirty pointer moves update widths before release. Two keyboard changes bring the total to 32 sizing updates per mode.
 Record reads, grouping reads, summaries, views, cells, validation calls, and save requests must remain unchanged throughout this workload.
 Browser listener counts return to their initial value after garbage collection removes temporary automation listeners.
 The additional `resized` snapshot must retain the same records, views, cells, stores, computations, and owners as `summaries`.
 The first width writes can change the links between existing computations and their dependencies.
-The `resized-repeat` snapshot measures another nine workload cycles. Its retained dependency count must not exceed the first resize snapshot.
+The `resized-repeat` snapshot measures another nine cycles of both modes. The `resized-settled` snapshot follows ten further cycles.
+The later snapshot must not exceed the earlier one in retained Table or Solid resources, including dependency links.
 The disposed snapshot must contain no classified group views, group cells, or membership nodes.
 Timings include browser automation and remain advisory on the shared development machine.
 They do not establish a latency budget or a universal non-virtualized row limit.

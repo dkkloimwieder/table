@@ -18,6 +18,7 @@ export function App(props: {
     globalSearch: true,
     grouping: true,
     columnResizing: true,
+    resizeBehavior: 'grow',
   })
   const configure = (value: Partial<TableControls>) =>
     setControls((previous) => ({ ...previous, ...value }))
@@ -92,6 +93,22 @@ export function App(props: {
                 })}
               />
               Column resizing
+            </label>
+            <label>
+              Resize behavior
+              <select
+                value={controls().resizeBehavior}
+                ref={nativeEvents<HTMLSelectElement>({
+                  change: (event) =>
+                    configure({
+                      resizeBehavior: event.currentTarget
+                        .value as TableControls['resizeBehavior'],
+                    }),
+                })}
+              >
+                <option value="grow">Grow table</option>
+                <option value="fixed">Keep table width</option>
+              </select>
             </label>
           </div>
         </details>

@@ -179,8 +179,8 @@ An existing column with an active local filter or sort must provide the correspo
 ## Column widths
 
 Column definitions accept `size`, `minSize`, `maxSize`, and `enableResizing`.
-`column.getSize()` returns the configured width within its bounds. `column.setSize(width)` updates the existing `columnSizing` state.
-Clearing a saved width restores that column default. `table.setColumnSizing({})` clears all saved widths.
+`column.getSize()` returns the current width within its bounds. `column.setSize(width)` updates the existing `columnSizing` state.
+This state holds current widths in memory. Table does not persist them.
 Controlled state requires the caller to apply `onColumnSizingChange` updates.
 
 The internal sizing store preserves its container and updates individual properties.
@@ -189,7 +189,9 @@ Width changes do not read records or invalidate filtering, grouping, or summarie
 Browser layout still responds to new widths and can change wrapping or row heights.
 
 The [editing fixture](../../../../packages/solid-table/bench/editing/README.md#column-resizing) demonstrates optional pointer and keyboard resize controls.
-It shows a preview during a drag and commits one width on release.
+It resizes headers and body cells together during pointer movement.
+Its Grow table mode shifts following columns. Keep table width mode transfers space to or from the adjacent visible column.
+Both modes respect column bounds. The fixture offers no width persistence or reset controls.
 Its shared `colgroup` keeps headers, cells, and group spans aligned.
 The component cancels stale gestures and releases listeners when a header disappears.
 Column resizing remains independent of record processing and does not require horizontal virtualization.

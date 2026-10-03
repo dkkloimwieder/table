@@ -25,6 +25,7 @@ export type TableControls = {
   globalSearch: boolean
   grouping: boolean
   columnResizing: boolean
+  resizeBehavior: 'grow' | 'fixed'
 }
 
 function sameIds(left: ReadonlyArray<string>, right: ReadonlyArray<string>) {
@@ -78,6 +79,72 @@ export function Table(props: {
   const draftIds = createMemo(() => Object.keys(editing.drafts), {
     equals: sameIds,
   })
+  function ColumnResize(props: {
+    column: ReturnType<EditingModel['table']['getColumns']>[number]
+    fixed: boolean
+  }) {
+    const neighbor = createMemo(() => {
+      if (!props.fixed) return undefined
+      const columns = table.getVisibleColumns()
+      const next =
+        columns[
+          columns.findIndex((column) => column.id === props.column.id) + 1
+        ]
+      return next?.columnDef?.enableResizing === false ? undefined : next
+    })
+    const bounds = createMemo(
+      () => {
+        const column = props.column
+        const minimum = column.columnDef?.minSize ?? 20
+        const maximum = Math.max(
+          minimum,
+          column.columnDef?.maxSize ?? Number.MAX_SAFE_INTEGER,
+        )
+        const next = neighbor()
+        if (!next) return [minimum, maximum] as const
+        const nextMin = next.columnDef?.minSize ?? 20
+        const nextMax = Math.max(
+          nextMin,
+          next.columnDef?.maxSize ?? Number.MAX_SAFE_INTEGER,
+        )
+        const total = column.getSize() + next.getSize()
+        return [
+          Math.max(minimum, total - nextMax),
+          Math.min(maximum, total - nextMin),
+        ] as const
+      },
+      { equals: (left, right) => left[0] === right[0] && left[1] === right[1] },
+    )
+    return (
+      <Show when={!props.fixed || neighbor()}>
+        <TableColumnResize
+          label={String(props.column.columnDef?.header)}
+          size={props.column.getSize()}
+          min={bounds()[0]}
+          max={bounds()[1]}
+          onSizeChange={(size) => {
+            const column = props.column
+            const next = neighbor()
+            const nextSize = next
+              ? next.getSize() + column.getSize() - size
+              : undefined
+            table.setColumnSizing((old) => ({
+              ...old,
+              [column.id]: size,
+              ...(next ? { [next.id]: nextSize! } : {}),
+            }))
+          }}
+          onActivity={(event, listeners) => {
+            counts.resizeListeners += listeners
+            if (event === 'start') counts.resizeStarts++
+            if (event === 'move') counts.resizeMoves++
+            if (event === 'change') counts.resizeChanges++
+            if (event === 'cancel') counts.resizeCancels++
+          }}
+        />
+      </Show>
+    )
+  }
   function belongsToRow(id: string, target: EventTarget | null) {
     return (
       target instanceof Element &&
@@ -712,14 +779,7 @@ export function Table(props: {
         {notice()}
       </p>
       <Show when={props.controls?.columnResizing !== false}>
-        <div class="column-layout">
-          <span>Drag a header edge to resize. Widths apply on release.</span>
-          <button
-            ref={nativeEvents({ click: () => table.setColumnSizing({}) })}
-          >
-            Reset column widths
-          </button>
-        </div>
+        <p class="column-layout">Drag a header edge to resize the column.</p>
       </Show>
       <div class="table-scroll">
         <table
@@ -797,26 +857,9 @@ export function Table(props: {
                         column.columnDef?.enableResizing !== false
                       }
                     >
-                      <TableColumnResize
-                        label={String(column.columnDef?.header)}
-                        size={column.getSize()}
-                        min={column.columnDef?.minSize ?? 20}
-                        max={column.columnDef?.maxSize ?? 1000}
-                        onSizeChange={(size) => column.setSize(size)}
-                        onReset={() =>
-                          table.setColumnSizing((old) => {
-                            const next = { ...old }
-                            delete next[column.id]
-                            return next
-                          })
-                        }
-                        onActivity={(event, listeners) => {
-                          counts.resizeListeners += listeners
-                          if (event === 'start') counts.resizeStarts++
-                          if (event === 'move') counts.resizeMoves++
-                          if (event === 'commit') counts.resizeCommits++
-                          if (event === 'cancel') counts.resizeCancels++
-                        }}
+                      <ColumnResize
+                        column={column}
+                        fixed={props.controls?.resizeBehavior === 'fixed'}
                       />
                     </Show>
                   </th>

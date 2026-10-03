@@ -861,7 +861,9 @@ The initial evidence remains under `/tmp/table-aggregate-heaps` and `/tmp/table-
 Desktop and 390px mobile layouts were inspected. The mobile page has no horizontal overflow outside the table scroll area.
 The host runs other development workloads. Absolute timings remain advisory.
 
-## Column resizing
+## Column resizing with a preview
+
+This report describes commit `0338235e15`. The live resizing section below supersedes its preview and reset controls.
 
 The Table fixture adds mouse, touch, and keyboard resizing with bounds, reset, and cancellation.
 Pointer movement changes a temporary preview. Release commits one width through the existing Table state.
@@ -911,3 +913,48 @@ Interaction reports are `/tmp/table-resize-final-{source,distribution,developmen
 The complete heap report is `/tmp/table-resize-final-heaps.json`, with snapshots and classifications under `/tmp/table-resize-complete-heaps`.
 The initial dependency evidence remains under `/tmp/table-resize-final-heaps` and `/tmp/table-resize-repeat-*.heapsnapshot`.
 The combined interaction and heap process ended with SIGTERM before its last capture. Separate runs completed both sets of gates.
+
+## Live column resizing
+
+The Table fixture now resizes headers and body cells together during pointer movement.
+Grow table changes the total width. Keep table width transfers space between adjacent visible columns within both width limits.
+The Actions column remains fixed. Fixed-width mode omits the handle after the last data column.
+The fixture removes the preview, reset buttons, and double-click reset behavior.
+Widths remain in current Table state and do not persist after remounting. The future view plan also excludes width persistence.
+
+All 80 browser scenarios pass against source, built-package, development, and live Vite entries.
+Source and built workloads cover 25, 250, and 999 rows. Development and live workloads cover 25 rows.
+The cases cover mouse and touch, live header/body alignment, both width modes, bounds, hidden columns, mode changes, caller updates, drafts, and cleanup.
+Fixture TypeScript, scoped lint, formatting, and all three fixture builds pass.
+The published package source and its exports remain unchanged.
+
+Each mode performs six drags with 30 pointer moves and two keyboard changes.
+All 32 changes update the layout immediately. Fixed mode updates both widths in one Table state command.
+At every subset size, these operations read no record accessors and replace no row views or cells.
+They recalculate no groups or summaries and run no validation or save requests.
+Gesture listener counts return to their baseline after collection.
+Live Vite reports no unexpected diagnostics, with 98 expected scan-breadth entries and six advisory timing entries.
+
+The full built suite measures 4.373 MiB before mounting 999 rows and 26.449 MiB loaded.
+It measures 27.349 MiB after summaries, 27.656 MiB after both resize modes, and 4.400 MiB after disposal.
+Pointer movement now performs browser layout work and allocates small width configuration objects on each change.
+It does not copy records. Shared-host timings include automation and remain advisory.
+
+The separate 999-row heap run captures ten snapshots and performs 240 drags across both modes.
+Summary, resize, and later captures retain 999 row views, 5,994 cells, four group views, 24 group cells, and four membership nodes.
+Each capture contains 49,784 computations, 15,169 owners, 1,008 store targets, 7,037 property signals, and 1,002 data records.
+The three additional record objects match the prior edited values diagnosed earlier.
+Resizing adds no records, views, cells, computations, owners, or store targets.
+
+Dependency links number 75,906 before resizing, 75,935 after 12 drags, and 75,936 after both 120 and 240 drags.
+Snapshot IDs trace the final extra link to the existing `columnSizing` property and `tableWidth` memo.
+That source-reader pair has five links in the first resize capture and six in later captures, corresponding to the six column reads.
+The test compares the two longer workloads to distinguish initial linking from continued growth.
+A separate eight-row probe shows the same stable count between 120 and 240 drags.
+
+Disposal removes all classified records, Table views, group nodes, Solid stores, computations, owners, signals, and dependency links.
+Thirty JavaScript Maps and 178 V8 allocation templates remain in the final capture.
+Desktop and 390px mobile inspection show aligned live resizing and no page overflow outside the table scroll area.
+Reports are `/tmp/table-live-resize-{source,distribution,development,live}.json` and `/tmp/table-live-resize-final-heaps.json`.
+Final snapshots and classifications are under `/tmp/table-live-resize-final-heaps`.
+The initial link evidence remains under `/tmp/table-live-resize-heaps`, with the smaller probe at `/tmp/table-live-resize-repeat-*.heapsnapshot`.
