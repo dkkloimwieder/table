@@ -78,6 +78,32 @@ export function createNativeState(
                 else draft.sorting[index] = sort
               }
               draft.sorting.length = sorting.length
+            } else if (key === 'grouping') {
+              const grouping = next as NativeTableState['grouping']
+              for (let index = 0; index < grouping.length; index++)
+                draft.grouping[index] = grouping[index]!
+              draft.grouping.length = grouping.length
+            } else if (key === 'groupSorting') {
+              // Updaters can reorder live store entries. Capture their scalar
+              // fields before changing those same entries through the draft.
+              const sorting = (next as NativeTableState['groupSorting']).map(
+                ({ depth, id, desc }) => ({ depth, id, desc }),
+              )
+              for (let index = 0; index < sorting.length; index++) {
+                const sort = sorting[index]!
+                const current = draft.groupSorting[index]
+                if (current) {
+                  current.depth = sort.depth
+                  current.id = sort.id
+                  current.desc = sort.desc
+                } else draft.groupSorting[index] = sort
+              }
+              draft.groupSorting.length = sorting.length
+            } else if (key === 'groupExpanded') {
+              const expanded = next as NativeTableState['groupExpanded']
+              for (const id of Object.keys(draft.groupExpanded))
+                if (!(id in expanded)) delete draft.groupExpanded[id]
+              Object.assign(draft.groupExpanded, expanded)
             } else Object.assign(draft, { [key]: next })
           })
         }

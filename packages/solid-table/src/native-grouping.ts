@@ -45,6 +45,13 @@ function rowKey(id: string) {
   return JSON.stringify(['row', id])
 }
 
+function sameKeys(left: ReadonlyArray<string>, right: ReadonlyArray<string>) {
+  return (
+    left.length === right.length &&
+    left.every((key, index) => key === right[index])
+  )
+}
+
 export function getNativeDisplayItem(key: string): NativeDisplayItem {
   const parsed: unknown = JSON.parse(key)
   if (Array.isArray(parsed) && parsed.length === 2) {
@@ -175,7 +182,10 @@ export function createNativeGrouping<T, TMeta>(
     )
     return keyed.map((item) => item.key)
   }
-  const roots = createMemo(() => sortKeys(tree().roots, 0), { lazy: true })
+  const roots = createMemo(() => sortKeys(tree().roots, 0), {
+    lazy: true,
+    equals: sameKeys,
+  })
   // Hidden children have no ordering consumer and therefore read no aggregates.
   // A requested child sequence runs in its caller's reactive scope.
   const children = (key: string) => {
@@ -207,7 +217,7 @@ export function createNativeGrouping<T, TMeta>(
       append(roots())
       return result
     },
-    { lazy: true },
+    { lazy: true, equals: sameKeys },
   )
 
   function getGroup(key: string): NativeGroup {

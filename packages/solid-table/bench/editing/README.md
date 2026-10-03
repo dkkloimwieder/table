@@ -1,7 +1,8 @@
 # Table controls and inline editing
 
-This fixture tests column filters, search, and inline editing with Solid 2 and plain HTML controls.
-It renders every matching record. Virtualization is optional elsewhere and is not a dependency here.
+This fixture tests filters, search, grouping, and inline editing with Solid 2 and plain HTML controls.
+It renders records in expanded groups, or every matching record when grouping is off.
+Virtualization is optional elsewhere and is not a dependency here.
 The measured editing subsets contain 25, 250, and 999 records. These sizes are not product limits.
 
 ## Column filters and search
@@ -41,6 +42,42 @@ Search and filters use committed values. An unsaved draft does not change whethe
 Hidden drafts remain available through Show and Cancel. Show clears both filtering layers before reopening the row.
 Save all includes hidden drafts. An accepted save can move a row into or out of the current result.
 If a save removes the focused row from global search, focus returns to that search control.
+
+## Grouping and summaries
+
+The Group records bar adds, removes, and reorders grouping levels.
+The example offers Priority and Name initial. Name initial uses the first character of the trimmed name, in uppercase.
+An empty grouping value appears as `(none)`.
+Applications define these values through column grouping functions. Date buckets and time zone policy belong to those functions.
+
+New group paths start collapsed. Each group has an expand button and a record count.
+The bar can expand or collapse every group, or one nesting level.
+Expansion uses raw group paths, so changing labels or restoring the same layout preserves the correct groups.
+Reordering levels preserves each column's group ordering preference.
+Keyboard activation uses standard buttons and selects. Moving a level returns focus to its order control.
+
+Each level can follow record order, group-value order, or summary order.
+Header sorting controls records within each group and leaves group ordering independent.
+The Note summary selector demonstrates application-defined aggregations: filled notes, distinct nonblank notes, or Off.
+Turning the summary off suspends summary ordering and preserves its configuration.
+Summaries appear on each visible group, including collapsed groups, and use records that pass the active filters.
+The result count distinguishes displayed records from records that match filters.
+
+Grouping uses saved values. Editing a draft does not move its record until a save succeeds.
+A saved grouping field can move a record into a collapsed group. Focus then moves to that group's visible expand control.
+Collapsed groups preserve drafts, validation errors, and pending requests.
+Show clears filters and expands only the path to the selected draft. It preserves grouping and unrelated collapsed groups.
+Save all includes drafts inside collapsed groups. A completed request respects later focus movement and does not reopen a group.
+
+Display options can hide the grouping controls while preserving their configuration.
+The local-processing gate disables grouping and summaries and shows the caller-provided record order.
+Restoring local processing restores grouping and expansion.
+
+Group rows use Table group views within their rendered Solid owners.
+Collapsed descendants release their row and group views. Drafts remain in the editing controller.
+The source store retains one canonical record per ID. Group membership stores IDs, and summaries iterate over those IDs.
+Ordered key comparisons prevent unchanged group lists from notifying subscribers after an edit stays in the same group.
+These comparisons do not remove membership scans or summary reads.
 
 ## Editing behavior
 
@@ -228,7 +265,7 @@ BENCH_URL=http://127.0.0.1:7777/ BENCH_SIZES=25 BENCH_OUTPUT=/tmp/table-editing-
 
 The repeated-draft case creates eight drafts, changes filters, and saves the visible and hidden drafts together.
 The runner rejects page errors and unexpected console warnings or Solid diagnostics.
-It records the known broad-dependency diagnostics from the full-scan filter and sort separately.
+It records known broad-dependency diagnostics from filters, sorting, group membership, group ordering, and visible summaries separately.
 Those diagnostics describe the existing algorithms, which read candidate records on each relevant change.
 It also records `HOT_SCOPE_TIME` as advisory because this machine runs other development loads.
 Store replacement warnings and unstable memo results remain failures.
@@ -250,6 +287,12 @@ The equality comparison checks ordered IDs and prevents unchanged results from u
 It does not copy records or eliminate the filter scan.
 Heap captures classify records and reactive resources before and after disposal.
 They also measure 20 further edits to one record and an edit to a second record.
+The grouping workload adds two levels and repeats collapse, expansion, removal, and restoration.
+Initial grouping reads two grouping values per record. Expansion does not rescan grouping values.
+A note edit recalculates its two visible ancestor summaries and reads its displayed note, for `2 * (size - 1) + 1` reads.
+It does not rebuild membership or replace row or group views.
+The `grouped` and `regrouped` snapshots measure live group resources before and after repeated layout changes.
+The disposed snapshot must contain no classified group views, group cells, or membership nodes.
 Timings include browser automation and remain advisory on the shared development machine.
 They do not establish a latency budget or a universal non-virtualized row limit.
 

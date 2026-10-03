@@ -2,6 +2,7 @@ import { createSignal, createStore, onCleanup } from 'solid-js'
 import { createTable } from '@tanstack/solid-table/native'
 import { createEditing } from './createEditing'
 import { validateEdits } from './validation'
+import type { NativeAggregationFn } from '@tanstack/solid-table/native'
 import type {
   EditValues,
   RecordData,
@@ -16,6 +17,9 @@ const contains = (value: unknown, query: unknown) =>
 const compareText = (left: unknown, right: unknown) =>
   String(left).localeCompare(String(right))
 
+export type NoteSummary = 'filled' | 'distinct' | 'none'
+export type ColumnMeta = { groupingLabel?: string; summaryLabel?: string }
+
 export function createModel(size: number) {
   const initial = Array.from({ length: size }, (_, index): RecordData => ({
     id: `R${String(index + 1).padStart(4, '0')}`,
@@ -29,6 +33,7 @@ export function createModel(size: number) {
   >(Object.fromEntries(initial.map((row) => [row.id, row])))
   const [ids, setIds] = createSignal(initial.map((row) => row.id))
   const [localProcessing, setLocalProcessing] = createSignal(true)
+  const [noteSummary, setNoteSummary] = createSignal<NoteSummary>('filled')
   const counts = {
     name: 0,
     note: 0,
@@ -39,8 +44,30 @@ export function createModel(size: number) {
     requests: 0,
     aborted: 0,
     validations: 0,
+    groupReads: 0,
+    aggregates: 0,
+    groupViews: 0,
+    groupCells: 0,
+    groupsUnmounted: 0,
   }
-  const table = createTable({
+  const summaries: Record<Exclude<NoteSummary, 'none'>, NativeAggregationFn> = {
+    filled(values) {
+      counts.aggregates++
+      let total = 0
+      for (const value of values) if (String(value ?? '').trim()) total++
+      return total
+    },
+    distinct(values) {
+      counts.aggregates++
+      const notes = new Set<string>()
+      for (const value of values) {
+        const text = String(value ?? '').trim()
+        if (text) notes.add(text)
+      }
+      return notes.size
+    },
+  }
+  const table = createTable<RecordData, ColumnMeta>({
     source: { ids, get: (id) => records[id] },
     get manualProcessing() {
       return !localProcessing()
@@ -59,6 +86,11 @@ export function createModel(size: number) {
         header: 'Name',
         filterFn: contains,
         sortFn: compareText,
+        meta: { groupingLabel: 'Name initial' },
+        getGroupingValue: (row) => {
+          counts.groupReads++
+          return row.name.trim().charAt(0).toUpperCase() || null
+        },
         accessorFn: (row) => {
           counts.name++
           return row.name
@@ -68,7 +100,21 @@ export function createModel(size: number) {
         id: 'note',
         header: 'Note',
         filterFn: contains,
-        sortFn: compareText,
+        sortFn: (left, right) =>
+          typeof left === 'number' && typeof right === 'number'
+            ? left - right
+            : compareText(left, right),
+        get aggregationFn() {
+          const summary = noteSummary()
+          return summary === 'none' ? undefined : summaries[summary]
+        },
+        meta: {
+          get summaryLabel() {
+            return noteSummary() === 'filled'
+              ? 'Filled notes'
+              : 'Distinct notes'
+          },
+        },
         accessorFn: (row) => {
           counts.note++
           return row.note
@@ -77,6 +123,11 @@ export function createModel(size: number) {
       {
         id: 'priority',
         header: 'Priority',
+        meta: { groupingLabel: 'Priority' },
+        getGroupingValue: (row) => {
+          counts.groupReads++
+          return row.priority || null
+        },
         filterFn: (value, choice) => value === choice,
         sortFn: (left, right) =>
           ['low', 'normal', 'high'].indexOf(String(left)) -
@@ -88,6 +139,39 @@ export function createModel(size: number) {
       },
     ],
   })
+  function configureGrouping(next: Array<string>) {
+    const previous = table.state.grouping
+    const sorting = next.flatMap((id, depth) => {
+      const order = table.state.groupSorting.find(
+        (item) => item.depth === previous.indexOf(id),
+      )
+      return order ? [{ ...order, depth }] : []
+    })
+    table.setGrouping(next)
+    table.setGroupSorting(sorting)
+  }
+  function recordGroupKeys(id: string) {
+    const path: Array<string> = []
+    let keys = table.getRootGroupKeys()
+    while (keys.length) {
+      const key = keys.find((candidate) => {
+        for (const member of table.getGroup(candidate).getLeafRowIds())
+          if (member === id) return true
+        return false
+      })
+      if (!key) break
+      path.push(key)
+      keys = table.getGroup(key).getChildGroupKeys()
+    }
+    return path
+  }
+  function revealRecord(id: string) {
+    const keys = recordGroupKeys(id)
+    table.setGroupExpanded((old) => ({
+      ...old,
+      ...Object.fromEntries(keys.map((key) => [key, true])),
+    }))
+  }
   const sent: Array<SaveRequest> = []
   const waiting = new Set<() => void>()
   let fault: Fault = 'none'
@@ -159,6 +243,11 @@ export function createModel(size: number) {
     table,
     localProcessing,
     setLocalProcessing,
+    noteSummary,
+    setNoteSummary,
+    configureGrouping,
+    recordGroupKeys,
+    revealRecord,
     records,
     editing,
     counts,

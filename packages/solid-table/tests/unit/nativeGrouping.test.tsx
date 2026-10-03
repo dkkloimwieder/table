@@ -104,6 +104,120 @@ function setup(grouping = ['region']) {
   })
 }
 
+test('group state retains containers and unrelated entries across updates', () => {
+  const h = setup()
+  const grouping = h.table.state.grouping
+  const expanded = h.table.state.groupExpanded
+  const east = h.group('east')
+  const west = h.group('west')
+  let westReads = 0
+  const watched = observe(() => {
+    westReads++
+    return west.getIsExpanded()
+  })
+  try {
+    const before = westReads
+    east.toggleExpanded(true)
+    flush()
+    expect(h.table.state.groupExpanded).toBe(expanded)
+    expect(westReads).toBe(before)
+    h.table.setGrouping((old) => [...old, 'city'])
+    flush()
+    expect(h.table.state.grouping).toBe(grouping)
+    expect(h.table.state.grouping).toEqual(['region', 'city'])
+    h.table.setGroupSorting([
+      { depth: 0, id: 'region', desc: false },
+      { depth: 1, id: 'amount', desc: false },
+    ])
+    flush()
+    const sorting = h.table.state.groupSorting
+    const secondary = sorting[1]
+    h.table.setGroupSorting((old) =>
+      old.map((sort) => (sort.depth === 0 ? { ...sort, desc: true } : sort)),
+    )
+    h.table.setGroupExpanded((old) => ({ ...old, [west.key]: true }))
+    flush()
+    expect(h.table.state.groupSorting).toBe(sorting)
+    expect(h.table.state.groupSorting[1]).toBe(secondary)
+    expect(h.table.state.groupSorting[0]!.desc).toBe(true)
+    expect(watched.value()).toBe(true)
+    expect(east.getIsExpanded()).toBe(true)
+    h.table.setGroupSorting((old) => [...old].reverse())
+    flush()
+    expect(h.table.state.groupSorting).toEqual([
+      { depth: 1, id: 'amount', desc: false },
+      { depth: 0, id: 'region', desc: true },
+    ])
+    h.table.setGroupExpanded({})
+    h.table.setGrouping([])
+    flush()
+    expect(east.getIsExpanded()).toBe(false)
+    expect(watched.value()).toBe(false)
+    expect(Object.keys(h.table.state.groupExpanded)).toEqual([])
+    expect(h.table.state.grouping).toBe(grouping)
+    expect(h.table.state.grouping).toEqual([])
+  } finally {
+    watched.stop()
+    h.dispose()
+  }
+})
+
+test('unchanged group keys do not notify list subscribers while real nested path changes do', () => {
+  const h = setup(['region', 'city'])
+  h.setColumns(
+    h.definitions.map((column) =>
+      column.id === 'city'
+        ? {
+            ...column,
+            getGroupingValue: (record: Item) => record.city.charAt(0),
+          }
+        : column,
+    ),
+  )
+  flush()
+  h.table.toggleAllGroupsExpanded(true)
+  flush()
+  let rootReads = 0
+  let displayReads = 0
+  const roots = observe(() => {
+    rootReads++
+    return h.table.getRootGroupKeys()
+  })
+  const display = observe(() => {
+    displayReads++
+    return h.table.getDisplayKeys()
+  })
+  try {
+    const rootKeys = roots.value()
+    const displayKeys = display.value()
+    for (let index = 0; index < 5; index++) {
+      h.setRecords((draft) => {
+        draft.a!.city = `A${index}`
+      })
+      flush()
+    }
+    expect(roots.value()).toBe(rootKeys)
+    expect(display.value()).toBe(displayKeys)
+    expect(rootReads).toBe(1)
+    expect(displayReads).toBe(1)
+    h.setRecords((draft) => {
+      draft.a!.city = 'Z'
+    })
+    flush()
+    expect(roots.value()).toBe(rootKeys)
+    expect(displayReads).toBe(2)
+    expect(display.value()).not.toEqual(displayKeys)
+    expect(
+      h.table.getGroup(h.group('east').getChildGroupKeys()[0]!).path?.at(-1)
+        ?.value,
+    ).toBe('Z')
+  } finally {
+    roots.stop()
+    display.stop()
+    h.dispose()
+  }
+})
+
 test('nested groups expose raw paths, independent expansion, and leaf IDs without row wrappers', () => {
   const h = setup(['region', 'city'])
   const view = observe(h.table.getDisplayKeys)

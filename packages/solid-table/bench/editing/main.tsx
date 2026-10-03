@@ -56,6 +56,11 @@ const api = {
     ids: model!.table.getRowIds(),
     filters: snapshot(model!.table.state.columnFilters),
     search: model!.table.state.globalFilter,
+    grouping: snapshot(model!.table.state.grouping),
+    groupSorting: snapshot(model!.table.state.groupSorting),
+    display: model!.table
+      .getDisplayKeys()
+      .map((key) => model!.table.getDisplayItem(key)),
     sample: model!.table
       .getSourceIds()
       .slice(0, 8)
@@ -96,6 +101,14 @@ const api = {
   },
   localProcessing: (enabled: boolean) => {
     model!.setLocalProcessing(enabled)
+    flush()
+  },
+  grouping: (ids: Array<string>) => {
+    model!.configureGrouping(ids)
+    flush()
+  },
+  expandGroups: (expanded: boolean, depth?: number) => {
+    model!.table.toggleAllGroupsExpanded(expanded, depth)
     flush()
   },
   saveTwice: (id: string) => {

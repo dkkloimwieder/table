@@ -16,6 +16,7 @@ export function App(props: {
     filters: 'external',
     headerSorting: true,
     globalSearch: true,
+    grouping: true,
   })
   const configure = (value: Partial<TableControls>) =>
     setControls((previous) => ({ ...previous, ...value }))
@@ -68,6 +69,17 @@ export function App(props: {
                 })}
               />
               Global search
+            </label>
+            <label class="check-option">
+              <input
+                type="checkbox"
+                checked={controls().grouping}
+                ref={nativeEvents<HTMLInputElement>({
+                  change: (event) =>
+                    configure({ grouping: event.currentTarget.checked }),
+                })}
+              />
+              Grouping controls
             </label>
           </div>
         </details>

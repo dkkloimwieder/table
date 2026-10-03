@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { chromium } from '@playwright/test'
+import { groupingCases } from './grouping-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -67,13 +68,17 @@ const report = {
   expectedDiagnostics: [],
   timingDiagnostics: [],
 }
-// Local filtering and sorting observe candidate records. Keep this
-// known full-scan cost visible; every other diagnostic remains a failure.
+// Local filters, sorting, grouping and summaries scan candidate records.
+// Record the breadth at these exact nodes; other diagnostics still fail.
 const expectedFanIn = (event) =>
   ['WIDE_SCOPE_DEPS', 'HUGE_FAN_IN'].includes(event.code) &&
-  ['createNativeFiltering.filteredIds', 'createNativeTable.sortedIds'].includes(
-    event.nodeName,
-  )
+  [
+    'createNativeFiltering.filteredIds',
+    'createNativeTable.sortedIds',
+    'createNativeGrouping.tree',
+    'createNativeGrouping.roots',
+    'createGroupView.value',
+  ].includes(event.nodeName)
 try {
   browser = await chromium.launch({
     executablePath: process.env.BENCH_EXECUTABLE_PATH,
@@ -86,12 +91,14 @@ try {
   })
   page.on('console', (message) => {
     if (['warning', 'error'].includes(message.type())) {
+      const breadth = /^\[(WIDE_SCOPE_DEPS|HUGE_FAN_IN)\] memo "([^"]+)"/.exec(
+        message.text(),
+      )
       if (message.text().startsWith('[HOT_SCOPE_TIME]'))
         report.timingDiagnostics.push(message.text())
       else if (
-        /^\[(WIDE_SCOPE_DEPS|HUGE_FAN_IN)\] memo "(createNativeFiltering\.filteredIds|createNativeTable\.sortedIds)"/.test(
-          message.text(),
-        )
+        breadth &&
+        expectedFanIn({ code: breadth[1], nodeName: breadth[2] })
       )
         report.expectedDiagnostics.push(message.text())
       else report.errors.push(message.text())
@@ -193,6 +200,20 @@ try {
     page.getByRole('status', { name: 'Filter results', exact: true })
   const clearFilters = () =>
     page.getByRole('button', { name: 'Clear all filters', exact: true })
+  await groupingCases({
+    page,
+    start,
+    call,
+    read,
+    record,
+    settle,
+    idle,
+    edit,
+    input,
+    save,
+    select,
+    focused,
+  })
   await record(
     'external column filters compose and clear independently',
     async () => {
@@ -1607,6 +1628,72 @@ try {
     assert.equal(searched.counts.requests, global.counts.requests)
     assert.equal(searched.counts.validations, global.counts.validations)
     assert.equal(searched.identity, true)
+    await clearFilters().click()
+    const beforeGrouping = await read()
+    await call('grouping', ['priority', 'name'])
+    const collapsedGroups = await read()
+    const groupingReads =
+      collapsedGroups.counts.groupReads - beforeGrouping.counts.groupReads
+    assert.equal(groupingReads, size * 2)
+    assert.equal(await page.locator('[data-row]').count(), 0)
+    assert.equal(await page.locator('[data-group]').count(), 2)
+    await call('expandGroups', true)
+    const grouped = await read()
+    assert.equal(grouped.counts.views - grouped.counts.unmounted, size)
+    assert.equal(grouped.counts.groupViews - grouped.counts.groupsUnmounted, 4)
+    const groupedMetrics = await metrics()
+    const groupedObjects =
+      size === sizes.at(-1) ? await heap('grouped') : undefined
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await call('expandGroups', false)
+      assert.equal(await page.locator('[data-row]').count(), 0)
+      await call('expandGroups', true)
+    }
+    const expandedGroups = await read()
+    assert.equal(expandedGroups.counts.groupReads, grouped.counts.groupReads)
+    assert.equal(
+      expandedGroups.counts.views - expandedGroups.counts.unmounted,
+      size,
+    )
+    // Removing and restoring an expanded layout keeps surviving row owners.
+    for (let cycle = 0; cycle < 3; cycle++) {
+      await call('grouping', [])
+      const cleared = await read()
+      assert.equal(cleared.counts.groupViews, cleared.counts.groupsUnmounted)
+      await call('grouping', ['priority', 'name'])
+    }
+    const regrouped = await read()
+    assert.equal(
+      regrouped.counts.groupReads - expandedGroups.counts.groupReads,
+      size * 6,
+    )
+    assert.equal(regrouped.counts.views, expandedGroups.counts.views)
+    assert.equal(
+      regrouped.counts.groupViews - regrouped.counts.groupsUnmounted,
+      4,
+    )
+    await call('patch', 'R0002', { note: '' })
+    const aggregated = await read()
+    const aggregateEditReads = aggregated.counts.note - regrouped.counts.note
+    assert.equal(aggregated.counts.groupReads, regrouped.counts.groupReads)
+    assert.equal(aggregated.counts.views, regrouped.counts.views)
+    assert.equal(aggregated.counts.groupViews, regrouped.counts.groupViews)
+    assert.equal(aggregated.counts.aggregates - regrouped.counts.aggregates, 2)
+    assert.equal(aggregateEditReads, 2 * (size - 1) + 1)
+    assert.equal(aggregated.counts.requests, global.counts.requests)
+    assert.equal(aggregated.counts.validations, global.counts.validations)
+    assert.equal(aggregated.identity, true)
+    const regroupedMetrics = await metrics()
+    const regroupedObjects =
+      size === sizes.at(-1) ? await heap('regrouped') : undefined
+    for (const objects of [groupedObjects, regroupedObjects]) {
+      if (!objects) continue
+      assert.equal(objects['Native row views'], size)
+      assert.equal(objects['Table cells'], size * 4)
+      assert.equal(objects['Native group views'], 4)
+      assert.equal(objects['Native group cells'], 16)
+      assert.equal(objects['Native group membership nodes'], 4)
+    }
     await call('stop')
     const disposed = await metrics()
     let disposedObjects
@@ -1622,6 +1709,9 @@ try {
       for (const category of [
         'Data records',
         'Native row views',
+        'Native group views',
+        'Native group cells',
+        'Native group membership nodes',
         'Table cells',
         'Solid store targets',
         'Solid owner scopes',
@@ -1642,6 +1732,12 @@ try {
       globalAccessorReads: globalReads,
       fiveColumnFilterAccessorReads: filterReads,
       fiveCombinedSearchAccessorReads: searchReads,
+      groupingReads,
+      aggregateEditReads,
+      groupedMetrics,
+      regroupedMetrics,
+      groupedObjects,
+      regroupedObjects,
       selectCounts: selected.counts,
       elapsedMs,
       before,
@@ -1656,6 +1752,9 @@ try {
     })
     console.log(
       `PASS ${size} fully rendered rows; text reads ${reads}; select reads ${selectReads}; collapse reads ${collapseReads}; Save all reads ${globalReads}; five filters ${filterReads}; five combined searches ${searchReads}; zero replacement views/cells`,
+    )
+    console.log(
+      `PASS ${size} grouped records; initial grouping reads ${groupingReads}; note edit reads ${aggregateEditReads}; zero grouping reads on collapse or summary edit; four live groups after regrouping`,
     )
   }
   const diagnostics = await call('diagnostics')

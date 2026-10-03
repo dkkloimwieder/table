@@ -3,6 +3,7 @@ import {
   Show,
   createMemo,
   createSignal,
+  flush,
   onCleanup,
   onSettled,
   untrack,
@@ -10,6 +11,7 @@ import {
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { createModel } from './model'
 import { TableFilter } from './TableFilter'
+import { TableGrouping } from './TableGrouping'
 import type { JSX } from '@solidjs/web'
 import type { EditingModel } from './model'
 import type { EditColumn } from './createEditing'
@@ -20,6 +22,7 @@ export type TableControls = {
   filters: 'external' | 'headers' | 'both' | 'none'
   headerSorting: boolean
   globalSearch: boolean
+  grouping: boolean
 }
 
 function sameIds(left: ReadonlyArray<string>, right: ReadonlyArray<string>) {
@@ -147,7 +150,15 @@ export function Table(props: {
       document.removeEventListener('focusout', leaveFocus, true)
     }
   })
-  const visibleIds = createMemo(() => new Set(table.getRowIds()))
+  const visibleIds = createMemo(
+    () =>
+      new Set(
+        table.getDisplayKeys().flatMap((key) => {
+          const item = table.getDisplayItem(key)
+          return item.kind === 'row' ? [item.id] : []
+        }),
+      ),
+  )
   const hiddenDrafts = createMemo(
     () => {
       const visible = visibleIds()
@@ -200,7 +211,18 @@ export function Table(props: {
       `[data-${input ? 'editor' : 'edit'}="${id}/${column}"]`,
     )
     if (target) target.focus({ preventScroll: true })
-    else focusFilter()
+    else {
+      const path = model.recordGroupKeys(id)
+      const groups = Array.from(
+        element.querySelectorAll<HTMLButtonElement>('[data-group-toggle]'),
+      )
+      const group = path
+        .reverse()
+        .map((key) => groups.find((node) => node.dataset.groupToggle === key))
+        .find(Boolean)
+      if (group) group.focus({ preventScroll: true })
+      else focusFilter()
+    }
   }
   function begin(id: string, column: EditColumn) {
     if (editing.drafts[id]?.status === 'pending') return
@@ -442,6 +464,62 @@ export function Table(props: {
       </tr>
     )
   }
+  function Group(key: string) {
+    const group = table.createGroupView(key)
+    counts.groupViews++
+    onCleanup(() => {
+      counts.groupsUnmounted++
+    })
+    const label = () =>
+      group.path
+        ?.map((entry) => {
+          const column = table.getColumn(entry.columnId)
+          return `${column?.columnDef?.meta?.groupingLabel ?? entry.columnId}: ${entry.value === null || entry.value === '' ? '(none)' : String(entry.value)}`
+        })
+        .join(' / ') ?? ''
+    return (
+      <tr data-group={key} class="group-row">
+        <th scope="row" colspan={table.getVisibleColumns().length + 1}>
+          <div
+            class="group-heading"
+            style={{ 'padding-left': `${Math.max(group.depth, 0) * 20}px` }}
+          >
+            <button
+              data-group-toggle={key}
+              aria-expanded={group.getIsExpanded() ? 'true' : 'false'}
+              aria-label={`${group.getIsExpanded() ? 'Collapse' : 'Expand'} ${label()}`}
+              ref={nativeEvents({ click: () => group.toggleExpanded() })}
+            >
+              <span aria-hidden="true">
+                {group.getIsExpanded() ? '▾' : '▸'}
+              </span>{' '}
+              {label()}
+            </button>
+            <span class="group-count">
+              {group.count} {group.count === 1 ? 'record' : 'records'}
+            </span>
+            <For each={group.getVisibleCells()}>
+              {(cell) => {
+                counts.groupCells++
+                return (
+                  <Show when={cell.column.columnDef?.aggregationFn}>
+                    <span
+                      class="group-summary"
+                      data-group-summary={cell.column.id}
+                    >
+                      {cell.column.columnDef?.meta?.summaryLabel ??
+                        String(cell.column.columnDef?.header)}
+                      : {String(cell.getValue() ?? '—')}
+                    </span>
+                  </Show>
+                )
+              }}
+            </For>
+          </div>
+        </th>
+      </tr>
+    )
+  }
   return (
     <main>
       <h1>Table</h1>
@@ -475,6 +553,9 @@ export function Table(props: {
             {(column) => columnFilter(column, 'external')}
           </For>
         </div>
+      </Show>
+      <Show when={props.controls?.grouping !== false}>
+        <TableGrouping model={model} />
       </Show>
       <div class="toolbar">
         <Show when={props.controls?.globalSearch !== false}>
@@ -554,11 +635,17 @@ export function Table(props: {
         </Show>
       </div>
       <p class="result-count" role="status" aria-label="Filter results">
-        Showing {table.getRowIds().length} of {table.getSourceIds().length}{' '}
-        records · {draftIds().length} drafts
+        Showing {visibleIds().size} of {table.getSourceIds().length} records ·{' '}
+        <Show when={model.localProcessing() && table.state.grouping.length > 0}>
+          {table.getFilteredRowIds().length} match filters ·{' '}
+        </Show>
+        {draftIds().length} drafts
       </p>
       <Show when={!model.localProcessing()}>
-        <p>Search and column filters are unavailable for this dataset.</p>
+        <p>
+          Search, filters, sorting, and grouping are unavailable for this
+          dataset.
+        </p>
       </Show>
       <Show when={saveMode() === 'table'}>
         <p id="save-all-description">
@@ -581,6 +668,10 @@ export function Table(props: {
                   ref={nativeEvents({
                     click: () => {
                       clearFilters()
+                      // This event commits the cleared filters before locating the group path.
+                      flush()
+                      if (disposed || !model.records[id]) return
+                      model.revealRecord(id)
                       begin(id, 'name')
                     },
                   })}
@@ -662,7 +753,12 @@ export function Table(props: {
             </tr>
           </thead>
           <tbody>
-            <For each={table.getRowIds()}>{Row}</For>
+            <For each={table.getDisplayKeys()}>
+              {(key) => {
+                const item = table.getDisplayItem(key)
+                return item.kind === 'row' ? Row(item.id) : Group(item.key)
+              }}
+            </For>
           </tbody>
         </table>
         <Show when={table.getRowIds().length === 0}>

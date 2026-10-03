@@ -763,3 +763,51 @@ Thirty Maps and 273 V8 allocation templates remain.
 
 Raw reports are `/tmp/table-filters-{source,distribution,development,live}.json`.
 Actual snapshots and summaries are under `/tmp/table-filters-heaps` with the same four snapshot names.
+
+### Grouping controls and summaries
+
+The Table fixture adds ordered grouping levels, independent group ordering, per-level expansion, and whole-table expansion controls.
+Priority and Name initial demonstrate application-defined grouping values. Filled and distinct note counts demonstrate configurable summaries.
+Group counts and summaries follow the active filters. Drafts use saved values for membership and remain available inside collapsed groups.
+Show expands only the draft's ancestor path. A save that enters a collapsed group moves focus to its visible expand control.
+Later focus movement takes precedence over a completed save.
+
+All 122 package unit tests pass.
+Sixty Chromium scenarios pass against source, built-package, development, and live Vite entries on Chromium `151.0.7922.34` for Linux.
+They cover nested grouping, reordering, keyboard expansion, summaries, group ordering, filters, empty groups, hidden columns, pending saves, validation, and global save.
+The source and built workloads render 25, 250, and 999 records. Development and live workloads render 25 records.
+
+Initial two-level grouping reads 50, 500, and 1,998 grouping values at those sizes.
+Repeated expansion and collapse read no grouping values. They release hidden descendant views and recreate views when those descendants become visible again.
+Removing and restoring an expanded layout retains surviving record views and creates group views for the restored groups.
+Each membership rebuild reads two grouping values per record.
+
+Changing one note reads 49, 499, and 1,997 note values.
+Each ancestor summary scans the Normal group, which contains `size - 1` records, including the changed record.
+The displayed row reads its note once. The separate one-record High group does not change.
+The edit reads no grouping values and creates no replacement row views, group views, or cells.
+The unchanged text, dropdown, collapse, and three-row Save all workloads retain their counts of 3, 3, 6, and 18 reads.
+Timings remain advisory because the host runs other development workloads.
+
+Grouping and expansion update existing Solid store containers.
+Group sorting captures its scalar configuration fields before updating store entries, so reordered entries cannot overwrite later input values.
+An ordered key comparison suppresses repeated equivalent root and display lists after edits within the same group.
+Membership still rebuilds when a grouping field changes. Group and summary calculations still scan their relevant record IDs.
+The live runner records broad-dependency diagnostics only for the identified filter, sort, grouping, group-order, and summary computations.
+It reports no browser errors, store replacement warnings, or unstable memo output. Bead `table-gd3.1.5` retains the scan profiling work.
+
+At 999 records, the built fixture uses 24.308 MiB loaded and 24.499 MiB after the earlier per-row saves.
+It uses 24.715 MiB with both grouping levels expanded and 24.696 MiB after repeated layout changes and the summary edit.
+Disposal reduces the heap to 4.114 MiB, compared with 4.087 MiB before mounting.
+These figures include the complete fixture and its controls. They do not isolate one grouping operation.
+
+Both grouped snapshots contain 999 row views, 3,996 cells, four group views, 16 group cells, and four membership nodes.
+They contain 47,331 computations, 11,062 owners, 1,006 store targets, and 1,002 classified records.
+The older-value counts match the earlier diagnosis after three records change through the global-save workload.
+Dependency links change from 61,421 to 61,416. The grouped controls and summaries add dependencies without increasing the live record-view count.
+Disposal removes all classified records, views, cells, membership nodes, store targets, owners, computations, and dependency links.
+Thirty Maps and 334 V8 allocation templates remain.
+
+Raw reports are `/tmp/table-grouping-{source,distribution,development,live}.json`.
+Snapshots and summaries are under `/tmp/table-grouping-heaps`.
+They include `loaded`, `repeated-edit`, `second-record-edit`, `grouped`, `regrouped`, and `disposed` captures.
