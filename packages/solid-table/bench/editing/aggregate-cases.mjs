@@ -157,13 +157,19 @@ export async function aggregateCases({
     async () => {
       await seed()
       await choice('Priority').selectOption('count')
-      assert.match(await group().innerText(), /Priority: normal/)
+      assert.equal(
+        await group().locator('[data-group-toggle]').innerText(),
+        '▸ normal',
+      )
       assert.equal(await value('priority'), '5')
       assert.equal(await header('priority'), 'group · count')
       await call('grouping', ['name'])
       await choice('Name').selectOption('first')
       await call('sorting', [{ id: 'name', desc: false }])
-      assert.match(await group().innerText(), /Name initial: A/)
+      assert.equal(
+        await group().locator('[data-group-toggle]').innerText(),
+        '▸ A',
+      )
       assert.equal(await value('name'), 'Ada')
       assert.equal(await header('name'), 'group · first')
     },
@@ -211,20 +217,32 @@ export async function aggregateCases({
         exact: true,
       })
       await order.selectOption('amount:desc')
-      assert.match(await group().innerText(), /Priority: high/)
+      assert.equal(
+        await group().locator('[data-group-toggle]').innerText(),
+        '▸ high',
+      )
       await choice('Amount').selectOption('range')
       await order.selectOption('amount:asc')
-      assert.match(await group().innerText(), /Priority: normal/)
+      assert.equal(
+        await group().locator('[data-group-toggle]').innerText(),
+        '▸ normal',
+      )
       await call('patch', 'R0001', { amount: 100 })
       await call('patch', 'R0002', { amount: 100 })
       await call('patch', 'R0005', { amount: 100 })
-      assert.match(await group().innerText(), /Priority: high/)
+      assert.equal(
+        await group().locator('[data-group-toggle]').innerText(),
+        '▸ high',
+      )
       await choice('Amount').selectOption('none')
       assert.equal(await summary('amount').count(), 0)
       assert.equal(await header('amount'), '-')
       assert.equal((await read()).groupSorting[0].id, 'amount')
       await choice('Amount').selectOption('sum')
-      assert.match(await group().innerText(), /Priority: high/)
+      assert.equal(
+        await group().locator('[data-group-toggle]').innerText(),
+        '▸ high',
+      )
     },
   )
   await record(

@@ -809,6 +809,10 @@ export function Table(props: {
           return `${column?.columnDef?.meta?.groupingLabel ?? entry.columnId}: ${entry.value === null || entry.value === '' ? '(none)' : String(entry.value)}`
         })
         .join(' / ') ?? ''
+    const valueLabel = () => {
+      const value = group.path?.at(-1)?.value
+      return value == null || value === '' ? '(none)' : String(value)
+    }
     return (
       <tbody>
         <tr data-group={key} class="group-row">
@@ -850,7 +854,7 @@ export function Table(props: {
                         <span aria-hidden="true">
                           {group.getIsExpanded() ? '▾' : '▸'}
                         </span>{' '}
-                        {label()}
+                        {valueLabel()}
                       </button>
                       <span class="group-count">
                         {group.count} {group.count === 1 ? 'record' : 'records'}

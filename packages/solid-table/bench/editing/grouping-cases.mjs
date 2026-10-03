@@ -100,14 +100,14 @@ export async function groupingCases({
     async () => {
       await seed()
       await order('Priority').selectOption('value:asc')
-      assert.match(
-        await page.locator('[data-group]').first().textContent(),
-        /Priority: low/,
+      assert.equal(
+        await page.locator('[data-group-toggle]').first().innerText(),
+        '▸ low',
       )
       await order('Priority').selectOption('note:desc')
-      assert.match(
-        await page.locator('[data-group]').first().textContent(),
-        /Priority: normal/,
+      assert.equal(
+        await page.locator('[data-group-toggle]').first().innerText(),
+        '▸ normal',
       )
       assert.equal(
         await group('Priority: high')
