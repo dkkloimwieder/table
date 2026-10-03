@@ -60,6 +60,9 @@ const api = {
     groupSorting: snapshot(model!.table.state.groupSorting),
     summaries: snapshot(model!.summaries),
     columnSizing: snapshot(model!.table.state.columnSizing),
+    columnOrder: snapshot(model!.table.state.columnOrder),
+    visibleColumns: model!.table.getVisibleColumns().map((column) => column.id),
+    columnPinning: snapshot(model!.table.state.columnPinning),
     widths: Object.fromEntries(
       model!.table.getColumns().map((column) => [column.id, column.getSize()]),
     ),
@@ -102,6 +105,14 @@ const api = {
   },
   sizing: (value: Record<string, number>) => {
     model!.table.setColumnSizing(value)
+    flush()
+  },
+  order: (value: Array<string>) => {
+    model!.setColumnOrder(value)
+    flush()
+  },
+  pinning: (value: { start: Array<string>; end: Array<string> }) => {
+    model!.table.setColumnPinning(value)
     flush()
   },
   controls: (value: Partial<TableControls>) => {

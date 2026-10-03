@@ -1,6 +1,6 @@
 # Table controls and inline editing
 
-This fixture tests filters, search, grouping, column summaries, resizing, and inline editing with Solid 2 and plain HTML controls.
+This fixture tests filters, search, grouping, column summaries, resizing, rearrangement, and inline editing with Solid 2 and plain HTML controls.
 It renders records in expanded groups, or every matching record when grouping is off.
 Virtualization is optional elsewhere and is not a dependency here.
 The measured editing subsets contain 25, 250, and 999 records. These sizes are not product limits.
@@ -130,6 +130,39 @@ Pointer movement updates widths without reading records or replacing views, cell
 The browser recalculates layout as the width changes and can change cell wrapping and row heights.
 
 Chromium tests cover keyboard, mouse, and emulated touch behavior. Other browsers and assistive technologies need separate qualification.
+
+## Column rearrangement
+
+Each movable header has a dotted handle. Drag the handle to show a drop marker, then release to move the column.
+Headers, body cells, group summaries, and width definitions follow the same column order.
+The browser scrolls the table when a drag reaches the left or right edge of its scroll area.
+
+The focused handle accepts Left and Right to move one visible place. Home and End move to the first and last available places.
+Clicking the handle opens four move buttons. Enter or Space opens the same controls, and Escape closes them.
+The move controls use a standard browser popover. They add no UI or drag library.
+Sorting and resizing have separate controls, so moving a column does not sort it or change its width.
+
+Actions stays last and has no move handle. Caller-pinned columns retain their positions at the configured edges.
+Movable columns stay between those pinned groups. A single movable column has a disabled handle.
+The move operation retains hidden IDs and the relative order of unaffected columns.
+Showing a hidden column restores its position in that order.
+
+The fixture owns `columnOrder` through a controlled Solid signal and accepts Table change callbacks.
+Caller changes to that signal update the display without a UI gesture. An empty order restores the definition order.
+Display options can hide move controls without discarding the order. Rearrangement remains available when local record processing is disabled.
+Order persistence belongs to the future parent view component.
+
+Width, filter, sorting, and aggregate configuration stays attached to each column ID.
+Rearrangement preserves cell and row identities, drafts, and pending requests.
+Caller changes preserve the active input and its text selection, including when the browser temporarily drops focus during a DOM move.
+Focus restoration runs after owned effects and respects later user interactions. It does not write draft state from an effect.
+Moving focus to a header still closes the row editors and preserves drafts, as other outside interactions do.
+
+Escape, pointer cancellation, lost capture, window blur, and a hidden document cancel a drag without changing the order.
+Changes to movable columns or removal of a handle also cancel its drag. Cleanup removes the marker, scroll frame, and gesture listeners.
+The pointer loop reads header geometry only. A completed move allocates column-ID arrays and moves existing DOM nodes.
+Solid also builds ordered cell lists for rendered rows. That list and DOM work scales with the number of rendered rows.
+It does not copy records, scan their values, rebuild groups, or replace row views and cells.
 
 ## Editing behavior
 
@@ -362,6 +395,11 @@ The first width writes can change the links between existing computations and th
 The `resized-repeat` snapshot measures another nine cycles of both modes. The `resized-settled` snapshot follows ten further cycles.
 The later snapshot must not exceed the earlier one in retained Table or Solid resources, including dependency links.
 The disposed snapshot must contain no classified group views, group cells, or membership nodes.
+The rearrangement workload performs six drags and nine keyboard moves at each measured subset size.
+Those 15 order changes must preserve widths and produce no record reads, replacement views or cells, summary calculations, validations, or requests.
+The `reordered` snapshot measures retained resources after those moves.
+The `reordered-repeat` and `reordered-settled` snapshots compare 150 and 300 moves for retained resource growth.
+Gesture listeners must return to their baseline. The disposed snapshot must contain no classified Table or Solid resources.
 Timings include browser automation and remain advisory on the shared development machine.
 They do not establish a latency budget or a universal non-virtualized row limit.
 

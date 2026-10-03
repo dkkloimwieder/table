@@ -18,6 +18,7 @@ export function App(props: {
     globalSearch: true,
     grouping: true,
     columnResizing: true,
+    columnReordering: true,
     resizeBehavior: 'grow',
   })
   const configure = (value: Partial<TableControls>) =>
@@ -109,6 +110,19 @@ export function App(props: {
                 <option value="grow">Grow table</option>
                 <option value="fixed">Keep table width</option>
               </select>
+            </label>
+            <label class="check-option">
+              <input
+                type="checkbox"
+                checked={controls().columnReordering}
+                ref={nativeEvents<HTMLInputElement>({
+                  change: (event) =>
+                    configure({
+                      columnReordering: event.currentTarget.checked,
+                    }),
+                })}
+              />
+              Column rearrangement
             </label>
           </div>
         </details>

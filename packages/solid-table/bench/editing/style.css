@@ -375,3 +375,39 @@ thead .table-filter {
   outline: 3px solid #285cce;
   outline-offset: -2px;
 }
+.column-move {
+  padding: 2px 4px;
+  margin-right: 4px;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  color: #546174;
+}
+.column-move:active {
+  cursor: grabbing;
+}
+.column-move-menu {
+  position: fixed;
+  inset: auto;
+  margin: 0;
+  padding: 6px;
+  width: 180px;
+  border: 1px solid #8793a5;
+  border-radius: 6px;
+  box-shadow: 0 6px 20px #20273230;
+}
+.column-move-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+}
+[data-column-moving] {
+  background: #e8eef8;
+}
+[data-column-drop='before'] {
+  box-shadow: inset 3px 0 #285cce;
+}
+[data-column-drop='after'] {
+  box-shadow: inset -3px 0 #285cce;
+}

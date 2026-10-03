@@ -958,3 +958,46 @@ Desktop and 390px mobile inspection show aligned live resizing and no page overf
 Reports are `/tmp/table-live-resize-{source,distribution,development,live}.json` and `/tmp/table-live-resize-final-heaps.json`.
 Final snapshots and classifications are under `/tmp/table-live-resize-final-heaps`.
 The initial link evidence remains under `/tmp/table-live-resize-heaps`, with the smaller probe at `/tmp/table-live-resize-repeat-*.heapsnapshot`.
+
+## Column rearrangement
+
+The Table fixture provides pointer dragging, keyboard moves, and a browser popover with move buttons.
+Dragging marks a destination and commits the order on release. The pointer loop reads header geometry without visiting records.
+Actions and caller-pinned columns stay fixed. Hidden columns remain in the controlled order.
+Column IDs retain their widths, filters, sorting, and summaries. Caller changes preserve editor focus and text selection.
+
+All 93 browser scenarios pass against source, built-package, development, and live Vite entries.
+Source and built workloads cover 25, 250, and 999 rows. Development and live workloads cover 25 rows.
+The 13 new scenarios include touch, keyboard limits, hidden columns, pinned boundaries, caller updates, pending saves, both resize modes, interruption, and scrolling.
+Desktop and 390-pixel mobile inspection show that move controls fit without page overflow.
+
+The live tests exposed `IMMUTABLE_UPDATE_IN_STORE` when several columns became hidden.
+The visibility setter now updates individual properties and removes absent overrides while preserving its store container.
+A regression test covers unrelated subscribers, consecutive updates before a flush, reserved IDs, and removal of overrides.
+All 134 package tests pass, along with package and fixture types, lint, builds, import audits, export audits, and server rendering.
+The final live run contains no unexpected diagnostics, 106 expected scan-breadth entries, and 24 advisory timing entries.
+
+Each subset workload performs six drags and nine keyboard moves, for 15 order changes.
+Those changes read no record accessors and create no replacement row views, cells, group views, or group cells.
+They perform no summary calculations, edit validations, or save requests. Gesture listener counts return to their baseline.
+Reordering still allocates column-ID arrays and ordered cell lists for rendered rows. DOM moves and layout work scale with those rows.
+
+The final built suite measures 4.517 MiB before mounting 999 rows and 26.672 MiB loaded.
+It measures 27.858 MiB after resizing, 28.017 MiB after rearrangement, and 4.547 MiB after disposal.
+Across source and built runs, the 999-row reorder workload records 236–291 ms of browser script and 908–1,078 ms of layout work.
+These totals cover all 15 moves. They include automation and remain advisory on the shared host.
+They do not establish a latency budget or a regression against an earlier rearrangement control.
+
+Interaction reports are `/tmp/table-reorder-{source,distribution,development,live}.json`.
+Desktop and mobile screenshots are `/tmp/table-reorder-desktop.png`, `/tmp/table-reorder-menu.png`, and `/tmp/table-reorder-mobile.png`.
+
+The separate 999-row run captures 13 actual heaps through editing, grouping, summaries, 240 resize drags, 300 column moves, and disposal.
+It uses Chromium 151.0.7922.34. Captures after 15, 150, and 300 moves contain identical Table, Solid, and record resource counts.
+Each contains 999 row views, 5,994 cells, four group views, 24 group cells, and four membership nodes.
+They retain 49,899 computations, 15,169 owners, 1,008 store targets, 7,035 property signals, and 11 plain signals.
+The 1,002 record objects include the three older edited values identified in the earlier heap diagnosis.
+The first 15 moves add 46 dependency links, from 76,048 to 76,094. The count stays at 76,094 after 150 and 300 moves.
+
+Disposal removes all classified Table, Solid, and record resources. The remaining classified categories contain 30 JavaScript Maps and 205 V8 allocation templates.
+The separate run starts with a cold baseline, so its absolute heap size differs from the complete interaction suite.
+Its report is `/tmp/table-reorder-heaps.json`, with snapshots and classifications under `/tmp/table-reorder-heaps`.

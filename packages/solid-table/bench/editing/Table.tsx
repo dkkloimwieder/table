@@ -1,6 +1,7 @@
 import {
   For,
   Show,
+  createEffect,
   createMemo,
   createSignal,
   flush,
@@ -13,6 +14,7 @@ import { createModel } from './model'
 import { TableFilter } from './TableFilter'
 import { TableGrouping } from './TableGrouping'
 import { TableColumnResize } from './TableColumnResize'
+import { TableColumnMove, moveColumn } from './TableColumnMove'
 import type { JSX } from '@solidjs/web'
 import type { EditingModel } from './model'
 import type { EditColumn } from './createEditing'
@@ -25,6 +27,7 @@ export type TableControls = {
   globalSearch: boolean
   grouping: boolean
   columnResizing: boolean
+  columnReordering: boolean
   resizeBehavior: 'grow' | 'fixed'
 }
 
@@ -67,6 +70,7 @@ export function Table(props: {
   let disposed = false
   let focusIntent = 0
   let activeId: string | undefined
+  let restoringColumnFocus: HTMLElement | undefined
   const [notice, setNotice] = createSignal('')
   const [saveMode, setSaveMode] = createSignal(
     untrack(() => props.saveMode ?? 'row'),
@@ -79,6 +83,107 @@ export function Table(props: {
   const draftIds = createMemo(() => Object.keys(editing.drafts), {
     equals: sameIds,
   })
+  const movableColumns = createMemo(
+    () =>
+      table
+        .getVisibleColumns()
+        .filter((column) => !column.getIsPinned())
+        .map((column) => column.id),
+    { equals: sameIds },
+  )
+  // Capture focus in the read phase, before keyed DOM moves. Restore only
+  // focus lost by that move, after owned effects finish, without changing drafts.
+  createEffect(
+    () => {
+      const columns = table.getVisibleColumns()
+      const focused = document.activeElement
+      return {
+        columns,
+        focused:
+          focused instanceof HTMLElement && focused.closest('table') === element
+            ? focused
+            : undefined,
+        selection:
+          focused instanceof HTMLInputElement && focused.type === 'text'
+            ? ([
+                focused.selectionStart,
+                focused.selectionEnd,
+                focused.selectionDirection,
+              ] as const)
+            : undefined,
+        intent: focusIntent,
+      }
+    },
+    ({ focused, selection, intent }) => {
+      if (
+        !focused?.isConnected ||
+        (document.activeElement !== document.body &&
+          document.activeElement !== focused)
+      )
+        return
+      if (document.activeElement !== focused) restoringColumnFocus = focused
+      queueMicrotask(() => {
+        restoringColumnFocus = undefined
+        if (
+          disposed ||
+          intent !== focusIntent ||
+          !focused.isConnected ||
+          (document.activeElement !== document.body &&
+            document.activeElement !== focused)
+        )
+          return
+        if (document.activeElement !== focused) {
+          focused.focus({ preventScroll: true })
+          if (selection && focused instanceof HTMLInputElement)
+            focused.setSelectionRange(
+              selection[0],
+              selection[1],
+              selection[2] ?? undefined,
+            )
+        }
+        focused.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+      })
+    },
+  )
+  function ColumnMove(props: {
+    column: ReturnType<EditingModel['table']['getColumns']>[number]
+  }) {
+    return (
+      <Show when={!props.column.getIsPinned()}>
+        <TableColumnMove
+          id={props.column.id}
+          label={String(props.column.columnDef?.header)}
+          ids={movableColumns()}
+          onMove={(destination) => {
+            const id = props.column.id
+            if (
+              !movableColumns().includes(id) ||
+              !movableColumns().includes(destination.id)
+            )
+              return
+            table.setColumnOrder((old) => {
+              const order = [
+                ...new Set([
+                  ...old,
+                  ...table.getColumns().map((column) => column.id),
+                ]),
+              ]
+              return [...moveColumn(order, id, destination)]
+            })
+            setNotice(
+              `${String(props.column.columnDef?.header)} column moved ${destination.side} ${String(table.getColumn(destination.id)?.columnDef?.header)}.`,
+            )
+          }}
+          onActivity={(event, listeners) => {
+            counts.reorderListeners += listeners
+            if (event === 'start') counts.reorderStarts++
+            if (event === 'move') counts.reorderMoves++
+            if (event === 'cancel') counts.reorderCancels++
+          }}
+        />
+      </Show>
+    )
+  }
   function ColumnResize(props: {
     column: ReturnType<EditingModel['table']['getColumns']>[number]
     fixed: boolean
@@ -196,6 +301,7 @@ export function Table(props: {
       if (event.relatedTarget) collapseOutside(event.relatedTarget)
       else
         queueMicrotask(() => {
+          if (restoringColumnFocus === event.target) return
           // Disabling a focused Save button can blur it without user navigation.
           if (
             !disposed &&
@@ -393,7 +499,12 @@ export function Table(props: {
           {(cell) => {
             counts.cells++
             const column = cell.column.id
-            if (column === 'id') return <th scope="row">{id}</th>
+            if (column === 'id')
+              return (
+                <th scope="row" data-column="id">
+                  {id}
+                </th>
+              )
             if (column === 'amount' || column === 'dueDate')
               return (
                 <td data-column={column} class="read-only-value">
@@ -781,6 +892,11 @@ export function Table(props: {
       <Show when={props.controls?.columnResizing !== false}>
         <p class="column-layout">Drag a header edge to resize the column.</p>
       </Show>
+      <Show when={props.controls?.columnReordering !== false}>
+        <p class="column-layout">
+          Drag a dotted handle to move a column, or click it for move buttons.
+        </p>
+      </Show>
       <div class="table-scroll">
         <table
           ref={element}
@@ -816,6 +932,9 @@ export function Table(props: {
                           : 'descending'
                     }
                   >
+                    <Show when={props.controls?.columnReordering !== false}>
+                      <ColumnMove column={column} />
+                    </Show>
                     <Show
                       when={props.controls?.headerSorting !== false}
                       fallback={

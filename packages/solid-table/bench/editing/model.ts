@@ -46,6 +46,7 @@ export function createModel(size: number) {
   >(Object.fromEntries(initial.map((row) => [row.id, row])))
   const [ids, setIds] = createSignal(initial.map((row) => row.id))
   const [localProcessing, setLocalProcessing] = createSignal(true)
+  const [columnOrder, setColumnOrder] = createSignal<Array<string>>([])
   const [summaries, setSummaries] = createStore<Record<string, Summary>>({
     id: 'none',
     name: 'none',
@@ -78,6 +79,11 @@ export function createModel(size: number) {
     resizeChanges: 0,
     resizeCancels: 0,
     resizeListeners: 0,
+    orderChanges: 0,
+    reorderStarts: 0,
+    reorderMoves: 0,
+    reorderCancels: 0,
+    reorderListeners: 0,
   }
   const aggregateFunctions: Record<
     string,
@@ -240,14 +246,24 @@ export function createModel(size: number) {
     })
     return configured
   })
+  const controlledState = Object.defineProperty(
+    Object.create(null) as { columnOrder: Array<string> },
+    'columnOrder',
+    { get: columnOrder },
+  )
   const table = createTable<RecordData, ColumnMeta>({
     source: { ids, get: (id) => records[id] },
     get manualProcessing() {
       return !localProcessing()
     },
     columns: configuredColumns,
+    state: controlledState,
     onColumnSizingChange: () => {
       counts.sizingChanges++
+    },
+    onColumnOrderChange: (updater) => {
+      counts.orderChanges++
+      setColumnOrder(updater)
     },
   })
   function setSummary(id: string, value: Summary) {
@@ -361,6 +377,7 @@ export function createModel(size: number) {
     table,
     localProcessing,
     setLocalProcessing,
+    setColumnOrder,
     summaries,
     setSummary,
     configureGrouping,

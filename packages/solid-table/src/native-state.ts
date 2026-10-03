@@ -99,6 +99,12 @@ export function createNativeState(
                 } else draft.groupSorting[index] = sort
               }
               draft.groupSorting.length = sorting.length
+            } else if (key === 'columnVisibility') {
+              const visibility = next as NativeTableState['columnVisibility']
+              for (const id of Object.keys(draft.columnVisibility))
+                if (!Object.hasOwn(visibility, id))
+                  delete draft.columnVisibility[id]
+              Object.assign(draft.columnVisibility, visibility)
             } else if (key === 'columnSizing') {
               const sizing = next as NativeTableState['columnSizing']
               for (const id of Object.keys(draft.columnSizing))

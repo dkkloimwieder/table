@@ -11,6 +11,7 @@ import { chromium } from '@playwright/test'
 import { groupingCases } from './grouping-cases.mjs'
 import { aggregateCases } from './aggregate-cases.mjs'
 import { resizeCases, resizeWorkload } from './resize-cases.mjs'
+import { reorderCases, reorderWorkload } from './reorder-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -203,6 +204,18 @@ try {
     page.getByRole('status', { name: 'Filter results', exact: true })
   const clearFilters = () =>
     page.getByRole('button', { name: 'Clear all filters', exact: true })
+  await reorderCases({
+    page,
+    cdp,
+    start,
+    call,
+    read,
+    record,
+    settle,
+    edit,
+    input,
+    idle,
+  })
   await resizeCases({
     page,
     cdp,
@@ -1856,6 +1869,46 @@ try {
         )
       }
     }
+    const reorderWork = await reorderWorkload({ page, cdp, read, settle })
+    const reorderedMetrics = await metrics()
+    const reorderedObjects =
+      size === sizes.at(-1) ? await heap('reordered') : undefined
+    let repeatedReorderObjects
+    let settledReorderObjects
+    if (reorderedObjects) {
+      for (const category of [
+        'Data records',
+        'Native row views',
+        'Table cells',
+        'Native group views',
+        'Native group cells',
+        'Native group membership nodes',
+        'Solid store targets',
+        'Solid owner scopes',
+        'Solid computations and effects',
+      ])
+        assert.equal(
+          reorderedObjects[category],
+          settledResizeObjects[category],
+          category,
+        )
+      for (let cycle = 0; cycle < 9; cycle++)
+        await reorderWorkload({ page, cdp, read, settle })
+      await metrics()
+      repeatedReorderObjects = await heap('reordered-repeat')
+      for (let cycle = 0; cycle < 10; cycle++)
+        await reorderWorkload({ page, cdp, read, settle })
+      await metrics()
+      settledReorderObjects = await heap('reordered-settled')
+      for (const category of Object.keys(repeatedReorderObjects)) {
+        if (['JavaScript Maps', 'V8 allocation templates'].includes(category))
+          continue
+        assert.ok(
+          settledReorderObjects[category] <= repeatedReorderObjects[category],
+          `Repeated rearrangement retains more ${category}`,
+        )
+      }
+    }
     await call('stop')
     const disposed = await metrics()
     let disposedObjects
@@ -1904,6 +1957,11 @@ try {
       resizedObjects,
       repeatedResizeObjects,
       settledResizeObjects,
+      reorderWork,
+      reorderedMetrics,
+      reorderedObjects,
+      repeatedReorderObjects,
+      settledReorderObjects,
       groupedMetrics,
       regroupedMetrics,
       groupedObjects,
@@ -1928,6 +1986,9 @@ try {
     )
     console.log(
       `PASS ${size} resized records; both width behaviors, six live drags and two keys each; zero record/view/summary work and zero retained gesture listeners`,
+    )
+    console.log(
+      `PASS ${size} rearranged records; six drags and nine key moves; zero record/view/summary work and zero retained gesture listeners`,
     )
   }
   const diagnostics = await call('diagnostics')

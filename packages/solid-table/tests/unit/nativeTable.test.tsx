@@ -668,3 +668,54 @@ test('controlled column widths honor caller approval, bounds and disabled resizi
     h.dispose()
   }
 })
+
+test('column visibility updates preserve unrelated subscribers and compose before flush', () => {
+  let reads = 0
+  const changed = vi.fn()
+  const h = createRoot((dispose) => {
+    const table = createTable({
+      source: { ids: () => [], get: () => undefined },
+      columns: [{ id: 'a' }, { id: 'b' }, { id: 'constructor' }],
+      onColumnVisibilityChange: changed,
+    })
+    createEffect(
+      () => {
+        reads++
+        return table.getColumn('b')!.getIsVisible()
+      },
+      () => {},
+    )
+    return { table, dispose }
+  })
+  flush()
+  const container = h.table.state.columnVisibility
+  const initialReads = reads
+  try {
+    for (const visible of [false, true, false, true]) {
+      h.table.getColumn('a')!.toggleVisibility(visible)
+      flush()
+    }
+    expect(h.table.state.columnVisibility).toBe(container)
+    expect(reads).toBe(initialReads)
+    h.table.getColumn('b')!.toggleVisibility(false)
+    h.table.getColumn('constructor')!.toggleVisibility(false)
+    flush()
+    expect(h.table.getVisibleColumns().map((column) => column.id)).toEqual([
+      'a',
+    ])
+    expect(reads).toBe(initialReads + 1)
+    h.table.setColumnVisibility({})
+    flush()
+    expect(h.table.state.columnVisibility).toBe(container)
+    expect(Object.keys(container)).toEqual([])
+    expect(h.table.getVisibleColumns().map((column) => column.id)).toEqual([
+      'a',
+      'b',
+      'constructor',
+    ])
+    expect(reads).toBe(initialReads + 2)
+    expect(changed).toHaveBeenCalledTimes(7)
+  } finally {
+    h.dispose()
+  }
+})
