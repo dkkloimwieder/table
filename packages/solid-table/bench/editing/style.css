@@ -317,6 +317,10 @@ thead .table-filter {
 .group-summary {
   overflow-wrap: anywhere;
 }
+.group-summary-label {
+  color: #526079;
+  font-size: 0.75rem;
+}
 
 .sub-table-row > td {
   padding: 16px;

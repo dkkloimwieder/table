@@ -862,7 +862,7 @@ export function Table(props: {
                       class="group-summary"
                       data-group-summary={cell.column.id}
                     >
-                      <span class="sr-only">
+                      <span class="group-summary-label">
                         {cell.column.columnDef?.meta?.summaryLabel ??
                           String(cell.column.columnDef?.header)}
                         :{' '}
