@@ -8,6 +8,8 @@ import { fileURLToPath } from 'node:url'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { chromium } from '@playwright/test'
+import { groupingProfile } from './grouping-profile.mjs'
+import { subtableCases, subtableWorkload } from './subtable-cases.mjs'
 import { groupingCases } from './grouping-cases.mjs'
 import { aggregateCases } from './aggregate-cases.mjs'
 import { resizeCases, resizeWorkload } from './resize-cases.mjs'
@@ -153,6 +155,11 @@ try {
   }
   async function record(name, test) {
     if (process.env.BENCH_SCENARIOS === '0') return
+    if (
+      process.env.BENCH_CASE_PATTERN &&
+      !new RegExp(process.env.BENCH_CASE_PATTERN).test(name)
+    )
+      return
     await test()
     assert.deepEqual(report.errors, [])
     report.cases.push(name)
@@ -204,6 +211,7 @@ try {
     page.getByRole('status', { name: 'Filter results', exact: true })
   const clearFilters = () =>
     page.getByRole('button', { name: 'Clear all filters', exact: true })
+  await subtableCases({ page, start, call, read, record, settle, idle })
   await reorderCases({
     page,
     cdp,
@@ -675,6 +683,8 @@ try {
         ),
       )
       await page.keyboard.press('Tab')
+      assert.ok(await focused(page.locator('[data-subtable-toggle="R0001"]')))
+      await page.keyboard.press('Tab')
       await settle()
       assert.ok(await focused(edit('R0002')))
       assert.equal(await select().count(), 0)
@@ -682,6 +692,8 @@ try {
         await edit('R0001', 'priority').getAttribute('data-edited'),
         'true',
       )
+      await page.keyboard.press('Shift+Tab')
+      assert.ok(await focused(page.locator('[data-subtable-toggle="R0001"]')))
       await page.keyboard.press('Shift+Tab')
       assert.ok(await focused(edit('R0001', 'priority')))
       await page.keyboard.press('Enter')
@@ -721,7 +733,7 @@ try {
       assert.equal(await input().count(), 0)
       assert.equal(await edit().getAttribute('data-edited'), 'true')
       assert.match(
-        await page.locator('#error-R0001-name').innerText(),
+        await page.locator('[id$="-error-R0001-name"]').innerText(),
         /Enter a name/,
       )
       await edit().click()
@@ -758,6 +770,8 @@ try {
       assert.ok(await focused(edit()))
       assert.equal(value.sample[0].note, 'Note 1')
       await edit('R0008', 'priority').focus()
+      await page.keyboard.press('Tab')
+      assert.ok(await focused(page.locator('[data-subtable-toggle="R0008"]')))
       await page.keyboard.press('Tab')
       assert.ok(
         await focused(
@@ -867,7 +881,7 @@ try {
         /error-R0001-priority/,
       )
       assert.match(
-        await page.locator('#error-R0001-priority').innerText(),
+        await page.locator('[id$="-error-R0001-priority"]').innerText(),
         /Choose Low/,
       )
       assert.ok(await focused(select()))
@@ -1057,7 +1071,7 @@ try {
       await idle()
       assert.equal((await read()).counts.requests, 0)
       assert.match(
-        await page.locator('#error-R0001-name').innerText(),
+        await page.locator('[id$="-error-R0001-name"]').innerText(),
         /Enter a name/,
       )
       assert.equal(await input().getAttribute('aria-invalid'), 'true')
@@ -1099,7 +1113,10 @@ try {
       await input().fill('Corrected name')
       await settle()
       assert.equal(await input().getAttribute('aria-invalid'), null)
-      assert.match(await page.locator('#error-R0001-note').innerText(), /240/)
+      assert.match(
+        await page.locator('[id$="-error-R0001-note"]').innerText(),
+        /240/,
+      )
       await page.keyboard.press('Enter')
       await idle()
       assert.ok(await focused(input('R0001', 'note')))
@@ -1151,7 +1168,7 @@ try {
         assert.equal(await input().count(), 0)
         assert.equal(await edit().getAttribute('data-edited'), 'true')
         assert.equal(
-          await page.locator('#message-R0001').innerText(),
+          await page.locator('[id$="-message-R0001"]').innerText(),
           value.drafts.R0001.message,
         )
         await edit('R0001', 'priority').click()
@@ -1400,7 +1417,7 @@ try {
         /Nothing saved. Correct 1 draft/,
       )
       assert.match(
-        await page.locator('#error-R0002-name').innerText(),
+        await page.locator('[id$="-error-R0002-name"]').innerText(),
         /Enter a name/,
       )
       await edit('R0002').click()
@@ -1521,7 +1538,17 @@ try {
     assert.equal((await call('lastCounts')).aborted, 1)
     assert.equal(await page.locator('[data-row]').count(), 0)
   })
-  const sizes = (process.env.BENCH_SIZES ?? '25,250,999').split(',').map(Number)
+  if (process.env.BENCH_ATTRIBUTION)
+    report.groupingAttribution = await groupingProfile({
+      page,
+      call,
+      start,
+      settle,
+    })
+  const sizes =
+    process.env.BENCH_WORKLOADS === '0'
+      ? []
+      : (process.env.BENCH_SIZES ?? '25,250,999').split(',').map(Number)
   for (const size of sizes) {
     await call('stop')
     const before = await metrics()
@@ -1694,7 +1721,7 @@ try {
       expandedGroups.counts.views - expandedGroups.counts.unmounted,
       size,
     )
-    // Removing and restoring an expanded layout keeps surviving row owners.
+    // Crossing the grouping boundary swaps editable and read-only row owners.
     for (let cycle = 0; cycle < 3; cycle++) {
       await call('grouping', [])
       const cleared = await read()
@@ -1706,7 +1733,7 @@ try {
       regrouped.counts.groupReads - expandedGroups.counts.groupReads,
       size * 6,
     )
-    assert.equal(regrouped.counts.views, expandedGroups.counts.views)
+    assert.equal(regrouped.counts.views - expandedGroups.counts.views, size * 6)
     assert.equal(
       regrouped.counts.groupViews - regrouped.counts.groupsUnmounted,
       4,
@@ -1991,6 +2018,15 @@ try {
       `PASS ${size} rearranged records; six drags and nine key moves; zero record/view/summary work and zero retained gesture listeners`,
     )
   }
+  if (process.env.BENCH_CHILD_WORKLOAD)
+    report.subtables = await subtableWorkload({
+      page,
+      call,
+      start,
+      settle,
+      metrics,
+      heap,
+    })
   const diagnostics = await call('diagnostics')
   report.expectedDiagnostics.push(...diagnostics.filter(expectedFanIn))
   report.timingDiagnostics.push(

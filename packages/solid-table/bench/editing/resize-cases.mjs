@@ -72,8 +72,15 @@ export async function resizeCases({
             offset: body ? header.left - body.left : 0,
           }
         }),
-        groups: [...table.querySelectorAll('[data-group] th')].map(
-          (cell) => cell.getBoundingClientRect().width,
+        groups: [...table.querySelectorAll('[data-group] [data-column]')].map(
+          (cell) => {
+            const header = headings.find(
+              (h) => h.dataset.columnHeader === cell.dataset.column,
+            )
+            const a = header.getBoundingClientRect()
+            const b = cell.getBoundingClientRect()
+            return { width: a.width - b.width, offset: a.left - b.left }
+          },
         ),
       }
     })
@@ -93,8 +100,11 @@ export async function resizeCases({
           JSON.stringify(column),
         )
     }
-    for (const width of layout.groups)
-      assert.ok(Math.abs(width - layout.width) <= 1)
+    for (const cell of layout.groups)
+      assert.ok(
+        Math.abs(cell.width) <= 1 && Math.abs(cell.offset) <= 1,
+        JSON.stringify(cell),
+      )
   }
   await record(
     'pointer resizing moves headers and cells together before release without scanning records',
@@ -323,14 +333,14 @@ export async function resizeCases({
     },
   )
   await record(
-    'resizing survives grouping, headers and draft saving with aligned cells and group spans',
+    'resizing survives grouping, headers and draft saving with aligned record and summary cells',
     async () => {
       await start(8, 'table')
-      await call('grouping', ['priority', 'name'])
-      await call('expandGroups', true)
       await call('controls', { filters: 'headers' })
       await edit('R0001', 'note').click()
       await input('R0001', 'note').fill('Retained resize draft')
+      await call('grouping', ['priority', 'name'])
+      await call('expandGroups', true)
       await drag('Note', 100)
       assert.equal((await read()).drafts.R0001.note, 'Retained resize draft')
       assert.equal((await read()).counts.requests, 0)
@@ -338,6 +348,7 @@ export async function resizeCases({
       await call('visibility', 'amount', false)
       await aligned()
       await call('visibility', 'amount', true)
+      await call('grouping', [])
       await page.getByRole('button', { name: 'Save all', exact: true }).click()
       await idle()
       assert.equal((await read()).sample[0].note, 'Retained resize draft')

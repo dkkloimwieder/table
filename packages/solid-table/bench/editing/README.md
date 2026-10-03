@@ -1,6 +1,6 @@
 # Table controls and inline editing
 
-This fixture tests filters, search, grouping, column summaries, resizing, rearrangement, and inline editing with Solid 2 and plain HTML controls.
+This fixture tests filters, search, grouping, column summaries, resizing, rearrangement, sub-tables, and inline editing with Solid 2 and plain HTML controls.
 It renders records in expanded groups, or every matching record when grouping is off.
 Virtualization is optional elsewhere and is not a dependency here.
 The measured editing subsets contain 25, 250, and 999 records. These sizes are not product limits.
@@ -44,6 +44,36 @@ Hidden drafts remain available through Show and Cancel. Show clears both filteri
 Save all includes hidden drafts. An accepted save can move a row into or out of the current result.
 If a save removes the focused row from global search, focus returns to that search control.
 
+## Sub-tables
+
+Each expanded parent record can render another Table with its own records, filters, grouping, summaries, widths, order, and drafts.
+The demo starts child tables in Whole table save mode. Each save button saves only its own table.
+The same logical row ID can exist in separate collections. Each rendered table uses distinct IDs for accessible messages.
+
+`App.loadChildren` accepts a parent ID, dataset scope, and abort signal. Replace this boundary with the application transport.
+The local loader returns five distinct records after a short delay. It never copies parent records.
+The browser harness also supplies held, late, empty, refused, and failed responses.
+
+The first expansion loads the child collection. Collapse removes its rendered row views and listeners while preserving its collection and configuration.
+Filtering or regrouping the parent also preserves child drafts. Opening the child again reuses its existing Solid store.
+The registry stores lookup functions under parent IDs. Each parent row subscribes only to its own lookup property.
+A row and its detail row share one keyed `tbody`. The outer insertion effect does not subscribe to every detail branch.
+
+Changing the dataset from the demo refuses the change while child drafts exist. Save or cancel those drafts first.
+An external dataset change or parent removal ends the child scope. The registry aborts pending work and rejects obsolete responses.
+A visible notice reports discarded drafts when an external removal ends their scope.
+Pending saves can finish while a child is collapsed. They cannot move focus back into the removed view.
+
+Use the built fixture to capture child heaps:
+
+```sh
+BENCH_DISTRIBUTION=1 BENCH_PROFILE=1 pnpm --filter @tanstack/solid-table exec vite build --config bench/editing/vite.config.ts
+BENCH_DISTRIBUTION=1 BENCH_SCENARIOS=0 BENCH_WORKLOADS=0 BENCH_CHILD_WORKLOAD=1 BENCH_HEAPS=/tmp/table-subtables-heaps node packages/solid-table/bench/editing/run.mjs
+```
+
+The workload compares retained resources after 10, 100, and 200 collapse cycles, then after expansion, parent removal, and disposal.
+`BENCH_WORKLOADS=0` skips the larger editing and column workloads. `BENCH_CASE_PATTERN` selects browser scenarios by regular expression.
+
 ## Grouping and summaries
 
 The Group records bar adds, removes, and reorders grouping levels.
@@ -78,14 +108,16 @@ A later parent view can persist these identifiers with the other table configura
 Caller changes update the selectors. Invalid choices for a column are ignored.
 Selecting None suspends summary ordering and preserves its configuration.
 A level can sort by its grouping value or another column summary. Ranges compare the minimum, then the maximum.
-Summaries appear on each visible group, including collapsed groups, and use records that pass the active filters.
+Summaries appear in their corresponding columns on each visible group row. They use saved records that pass the active filters.
+Grouped columns lead in grouping order. Clearing grouping restores the previous manual order.
+Grouped columns have no move handles. Reorder the grouping levels to change their positions.
 The result count distinguishes displayed records from records that match filters.
 
 Grouping uses saved values. Editing a draft does not move its record until a save succeeds.
-A saved grouping field can move a record into a collapsed group. Focus then moves to that group's visible expand control.
-Collapsed groups preserve drafts, validation errors, and pending requests.
-Show clears filters and expands only the path to the selected draft. It preserves grouping and unrelated collapsed groups.
-Save all includes drafts inside collapsed groups. A completed request respects later focus movement and does not reopen a group.
+Grouped records are read-only. They render saved values without edit controls or draft subscriptions.
+Clear grouping to edit records or save existing drafts. A save that started before grouping can finish without moving focus.
+Group summary rows have no edit or sub-table subscriptions.
+Individual records inside expanded groups can open sub-tables. Those child tables keep their own editing controls.
 
 Display options can hide the grouping controls while preserving their configuration.
 The local-processing gate disables grouping and summaries and shows the caller-provided record order.
@@ -340,8 +372,11 @@ NODE_ENV=development BENCH_DEVELOPMENT=1 pnpm --filter @tanstack/solid-table exe
 BENCH_DEVELOPMENT=1 BENCH_SIZES=25 BENCH_OUTPUT=/tmp/table-editing-development.json node packages/solid-table/bench/editing/run.mjs
 ```
 
-The live Vite server also enables performance diagnostics that this development build does not include.
-These diagnostics include `UNSTABLE_MEMO_OUTPUT`, which reports repeated equivalent memo results with new references.
+The live server keeps Solid development checks enabled. It does not record a timeline during ordinary review.
+Set `BENCH_TRACE=1` when starting Vite to enable timeline recording with a one-millisecond span threshold.
+Detailed recording adds measurable work to large render operations.
+Set `BENCH_ATTRIBUTION=1` on the browser runner to capture subscriptions and rerun causes for the grouping scenario.
+This capture proves that grouped records do not read drafts. It also tests that hidden child loads do not rerun group summaries.
 Start the fixture server before running the same suite against its URL:
 
 ```sh
@@ -380,6 +415,7 @@ Initial grouping reads two grouping values per record. Expansion does not rescan
 A note edit recalculates its two visible ancestor summaries and reads its displayed note, for `2 * (size - 1) + 1` reads.
 It does not rebuild membership or replace row or group views.
 The `grouped` and `regrouped` snapshots measure live group resources before and after repeated layout changes.
+Switching between grouped and ungrouped modes replaces read-only and editable row owners. Live owner counts remain bounded.
 The aggregate workload switches Amount through median, range, span, first, last, count, and sum, then repeats summary changes.
 With two grouping levels, scanning aggregates read two amount values per record across the observed groups.
 Median allocates one temporary number array per observed group. The workload counts the numbers placed into those arrays.

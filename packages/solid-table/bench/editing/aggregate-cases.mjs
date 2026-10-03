@@ -15,7 +15,7 @@ export async function aggregateCases({
     page.getByRole('combobox', { name: `${name} summary`, exact: true })
   const group = () => page.locator('[data-group]').first()
   const summary = (id) => group().locator(`[data-group-summary="${id}"]`)
-  const value = (id) => summary(id).innerText()
+  const value = (id) => summary(id).textContent()
   const day = 86_400_000
   async function seed() {
     await start(5, 'table')
@@ -168,9 +168,10 @@ export async function aggregateCases({
     'summary controls preserve drafts, caller choices and configuration when hidden or gated',
     async () => {
       await seed()
-      await call('expandGroups', true)
+      await call('grouping', [])
       await edit('R0001', 'note').click()
       await input('R0001', 'note').fill('')
+      await call('grouping', ['priority'])
       assert.match(await value('note'), /Filled notes: 5/)
       await choice('Note').selectOption('empty')
       assert.ok((await value('note')).endsWith(': 0'))
@@ -188,8 +189,10 @@ export async function aggregateCases({
       await call('localProcessing', false)
       assert.ok(await choice('Amount').isDisabled())
       await call('localProcessing', true)
+      await call('grouping', [])
       await page.getByRole('button', { name: 'Save all', exact: true }).click()
       await idle()
+      await call('grouping', ['priority'])
       assert.ok((await value('note')).endsWith(': 1'))
       assert.deepEqual((await read()).drafts, {})
     },

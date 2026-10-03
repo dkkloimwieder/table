@@ -81,6 +81,8 @@ select[aria-invalid='true'] {
   gap: 5px;
 }
 .table-scroll {
+  position: relative;
+  container-type: inline-size;
   overflow: auto;
   border: 1px solid #c8ced7;
   background: white;
@@ -299,7 +301,7 @@ thead .table-filter {
 .grouping-levels label {
   font-size: 0.875rem;
 }
-.group-row th {
+.group-row > td {
   background: #e8eef8;
   padding: 10px 12px;
 }
@@ -313,8 +315,31 @@ thead .table-filter {
   font-weight: 400;
 }
 .group-summary {
-  border-left: 1px solid #b5c0d0;
-  padding-left: 10px;
+  overflow-wrap: anywhere;
+}
+
+.sub-table-row > td {
+  padding: 16px;
+  background: #eef1f6;
+}
+.sub-table {
+  min-width: 0;
+  max-width: calc(100cqw - 32px);
+}
+.sub-table h2 {
+  font-size: 1.25rem;
+}
+.sub-table-toggle {
+  display: block;
+  margin-bottom: 8px;
+}
+.child-dataset {
+  display: grid;
+  gap: 6px;
+  max-width: 240px;
+}
+.child-drafts {
+  margin: 8px 0;
 }
 
 .summary-controls {

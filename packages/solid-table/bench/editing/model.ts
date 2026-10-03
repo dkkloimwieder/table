@@ -1,4 +1,4 @@
-import { createSignal, createStore, onCleanup } from 'solid-js'
+import { createMemo, createSignal, createStore, onCleanup } from 'solid-js'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
 import { createEditing } from './createEditing'
 import { validateEdits } from './validation'
@@ -30,10 +30,10 @@ export type ColumnMeta = {
   formatSummary?: (value: unknown) => string
 }
 
-export function createModel(size: number) {
-  const initial = Array.from({ length: size }, (_, index): RecordData => ({
+export function createRecords(size: number, prefix = '') {
+  return Array.from({ length: size }, (_, index): RecordData => ({
     id: `R${String(index + 1).padStart(4, '0')}`,
-    name: `Record ${String(index + 1).padStart(4, '0')}`,
+    name: `${prefix}Record ${String(index + 1).padStart(4, '0')}`,
     note: `Note ${index + 1}`,
     priority: 'normal',
     amount: index % 11 === 10 ? null : ((index * 37) % 500) + 10,
@@ -41,12 +41,38 @@ export function createModel(size: number) {
       index % 13 === 12 ? null : Date.UTC(2026, 9, 1) + (index % 31) * day,
     revision: '9007199254740993',
   }))
+}
+
+export function createModel(
+  data: number | Array<RecordData>,
+  mode: 'row' | 'table' = 'row',
+) {
+  const initial = typeof data === 'number' ? createRecords(data) : data
+  const [saveMode, setSaveMode] = createSignal(mode)
   const [records, setRecords] = createStore<
     Record<string, RecordData | undefined>
   >(Object.fromEntries(initial.map((row) => [row.id, row])))
   const [ids, setIds] = createSignal(initial.map((row) => row.id))
   const [localProcessing, setLocalProcessing] = createSignal(true)
   const [columnOrder, setColumnOrder] = createSignal<Array<string>>([])
+  const [grouping, setGrouping] = createSignal<Array<string>>([])
+  const [columnPinning, setColumnPinning] = createSignal<{
+    start: Array<string>
+    end: Array<string>
+  }>({ start: [], end: [] })
+  const effectiveColumnPinning = createMemo(() => {
+    const pinned = columnPinning()
+    if (!localProcessing() || !grouping().length) return pinned
+    return {
+      start: [...new Set([...grouping(), ...pinned.start])],
+      end: pinned.end.filter((id) => !grouping().includes(id)),
+    }
+  })
+  const effectiveColumnOrder = createMemo(() =>
+    localProcessing() && grouping().length
+      ? [...new Set([...grouping(), ...columnOrder()])]
+      : columnOrder(),
+  )
   const [summaries, setSummaries] = createStore<Record<string, Summary>>({
     id: 'none',
     name: 'none',
@@ -249,8 +275,12 @@ export function createModel(size: number) {
   const controlledState = Object.defineProperty(
     Object.create(null) as { columnOrder: Array<string> },
     'columnOrder',
-    { get: columnOrder },
+    { get: effectiveColumnOrder },
   )
+  Object.defineProperty(controlledState, 'grouping', { get: grouping })
+  Object.defineProperty(controlledState, 'columnPinning', {
+    get: effectiveColumnPinning,
+  })
   const table = createTable<RecordData, ColumnMeta>({
     source: { ids, get: (id) => records[id] },
     get manualProcessing() {
@@ -258,6 +288,8 @@ export function createModel(size: number) {
     },
     columns: configuredColumns,
     state: controlledState,
+    onGroupingChange: setGrouping,
+    onColumnPinningChange: setColumnPinning,
     onColumnSizingChange: () => {
       counts.sizingChanges++
     },
@@ -266,6 +298,9 @@ export function createModel(size: number) {
       setColumnOrder(updater)
     },
   })
+  const isGrouped = createMemo(
+    () => localProcessing() && table.state.grouping.length > 0,
+  )
   function setSummary(id: string, value: Summary) {
     const choices = table.getColumn(id)?.columnDef?.meta?.summaryChoices
     if (choices?.some((choice) => choice.value === value))
@@ -375,6 +410,10 @@ export function createModel(size: number) {
   })
   return {
     table,
+    columnIds: configuredColumns.map((column) => column.id),
+    isGrouped,
+    saveMode,
+    setSaveMode,
     localProcessing,
     setLocalProcessing,
     setColumnOrder,

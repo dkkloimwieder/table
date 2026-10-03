@@ -7,7 +7,13 @@ const path = (relative: string) =>
 export default defineConfig({
   root: path('.'),
   plugins: [
-    solid(),
+    // Timeline recording creates a span for every reactive binding. Enable
+    // it explicitly for profiling; ordinary review keeps dev checks enabled.
+    solid({
+      performanceTracks: process.env.BENCH_TRACE
+        ? { minMs: 1, rich: false }
+        : false,
+    }),
     {
       name: 'editing-fixture-module-audit',
       generateBundle(_options, bundle) {

@@ -1,11 +1,24 @@
 import { render } from '@solidjs/web'
 import { OBSERVE, action, flush, snapshot } from 'solid-js'
+import {
+  attribution,
+  costs,
+  graphSize,
+  subscriptions,
+} from 'solid-js/attribution'
 import { App } from './App'
+import { createChildLoader } from './childLoader'
+import type { ChildLoader } from './childLoader'
+import type { SubTables } from './createSubTables'
 import type { SaveMode, TableControls } from './Table'
 import type { EditingModel } from './model'
 
 const root = document.getElementById('root')!
 let model: EditingModel | undefined
+let children: SubTables | undefined
+let childLoader: ChildLoader | undefined
+let changeChildScope: ((value: string, force?: boolean) => boolean) | undefined
+let lastChildCounts: SubTables['counts'] | undefined
 let configureControls: ((value: Partial<TableControls>) => void) | undefined
 let dispose: (() => void) | undefined
 let remembered: WeakRef<object> | undefined
@@ -14,6 +27,10 @@ let capture:
   ReturnType<NonNullable<typeof OBSERVE>['diagnostics']['capture']> | undefined
 const events: Array<unknown> = []
 let lastCounts: EditingModel['counts'] | undefined
+let releaseTrace: (() => void) | undefined
+let unsubscribeTrace: (() => void) | undefined
+let unsubscribeCreations: (() => void) | undefined
+const traceRuns: Array<{ name: string; sources: Array<string> }> = []
 // Same rc.13 disposal workaround as the qualified WAMN fixture (table-gd3.6.5).
 // eslint-disable-next-line require-yield -- This synchronous action only disposes the root.
 const disposeRoot = action(function* () {
@@ -21,10 +38,15 @@ const disposeRoot = action(function* () {
 })
 function stop() {
   const counts = model?.counts
+  const childCounts = children?.counts
   disposeRoot()
   lastCounts = counts && { ...counts }
   dispose = undefined
   model = undefined
+  lastChildCounts = childCounts && { ...childCounts }
+  children = undefined
+  childLoader = undefined
+  changeChildScope = undefined
   configureControls = undefined
   remembered = undefined
   flush()
@@ -33,54 +55,126 @@ function start(size = 8, saveMode: SaveMode = 'row') {
   stop()
   events.push(...(capture?.stop() ?? []))
   capture = OBSERVE?.diagnostics.capture()
-  dispose = render(
-    () => (
+  dispose = render(() => {
+    childLoader = createChildLoader()
+    return (
       <App
         size={size}
         saveMode={saveMode}
-        ready={(value, configure) => {
+        loadChildren={childLoader.load}
+        ready={(value, configure, registry, changeScope) => {
+          children = registry
+          changeChildScope = changeScope
           model = value
           configureControls = configure
         }}
       />
-    ),
-    root,
-  )
+    )
+  }, root)
   flush()
+}
+function readModel(model: EditingModel) {
+  return {
+    ids: model.table.getRowIds(),
+    filters: snapshot(model.table.state.columnFilters),
+    search: model.table.state.globalFilter,
+    grouping: snapshot(model.table.state.grouping),
+    groupSorting: snapshot(model.table.state.groupSorting),
+    summaries: snapshot(model.summaries),
+    columnSizing: snapshot(model.table.state.columnSizing),
+    columnOrder: snapshot(model.table.state.columnOrder),
+    visibleColumns: model.table.getVisibleColumns().map((column) => column.id),
+    columnPinning: snapshot(model.table.state.columnPinning),
+    widths: Object.fromEntries(
+      model.table.getColumns().map((column) => [column.id, column.getSize()]),
+    ),
+    display: model.table
+      .getDisplayKeys()
+      .map((key) => model.table.getDisplayItem(key)),
+    sample: model.table
+      .getSourceIds()
+      .slice(0, 8)
+      .map((id) => ({ ...model.records[id] })),
+    drafts: snapshot(model.editing.drafts),
+    savingAll: model.editing.savingAll(),
+    counts: { ...model.counts },
+    sent: model.sent,
+    identity: remembered
+      ? remembered.deref() === model.records[rememberedId]
+      : null,
+  }
+}
+function childModel(id: string) {
+  const state = children!.get(id)!.state()
+  if (state.status !== 'ready') throw new Error('Sub-table is not ready')
+  return state.model
 }
 const api = {
   start,
   stop,
   ready: () => Boolean(model),
-  read: () => ({
-    ids: model!.table.getRowIds(),
-    filters: snapshot(model!.table.state.columnFilters),
-    search: model!.table.state.globalFilter,
-    grouping: snapshot(model!.table.state.grouping),
-    groupSorting: snapshot(model!.table.state.groupSorting),
-    summaries: snapshot(model!.summaries),
-    columnSizing: snapshot(model!.table.state.columnSizing),
-    columnOrder: snapshot(model!.table.state.columnOrder),
-    visibleColumns: model!.table.getVisibleColumns().map((column) => column.id),
-    columnPinning: snapshot(model!.table.state.columnPinning),
-    widths: Object.fromEntries(
-      model!.table.getColumns().map((column) => [column.id, column.getSize()]),
-    ),
-    display: model!.table
-      .getDisplayKeys()
-      .map((key) => model!.table.getDisplayItem(key)),
-    sample: model!.table
-      .getSourceIds()
-      .slice(0, 8)
-      .map((id) => ({ ...model!.records[id] })),
-    drafts: snapshot(model!.editing.drafts),
-    savingAll: model!.editing.savingAll(),
-    counts: { ...model!.counts },
-    sent: model!.sent,
-    identity: remembered
-      ? remembered.deref() === model!.records[rememberedId]
-      : null,
+  traceStart: () => {
+    releaseTrace?.()
+    unsubscribeTrace?.()
+    unsubscribeCreations?.()
+    traceRuns.length = 0
+    releaseTrace = attribution.enable({ log: false })
+    unsubscribeTrace = OBSERVE?.records.subscribe('rerun', (event, node) => {
+      traceRuns.push({ name: event.nodeName, sources: subscriptions(node) })
+    })
+    unsubscribeCreations = OBSERVE?.records.subscribe(
+      'create',
+      (event, node) => {
+        traceRuns.push({ name: event.nodeName, sources: subscriptions(node) })
+      },
+    )
+  },
+  traceRead: () => ({
+    runs: traceRuns.slice(),
+    costs: costs(),
+    graph: graphSize(),
   }),
+  traceStop: () => {
+    releaseTrace?.()
+    unsubscribeTrace?.()
+    unsubscribeCreations?.()
+    releaseTrace = undefined
+    unsubscribeTrace = undefined
+    unsubscribeCreations = undefined
+    traceRuns.length = 0
+  },
+  read: () => readModel(model!),
+  childStatus: (id: string) => children!.get(id)?.state().status,
+  childRead: (id: string) => {
+    const entry = children!.get(id)
+    if (!entry) return undefined
+    const state = entry.state()
+    return {
+      scope: entry.scope,
+      expanded: entry.expanded(),
+      status: state.status,
+      model: state.status === 'ready' ? readModel(state.model) : undefined,
+    }
+  },
+  childCounts: () =>
+    children
+      ? { ...children.counts, entries: children.entries().length }
+      : lastChildCounts,
+  childLoadFault: (value: Parameters<ChildLoader['fault']>[0]) =>
+    childLoader!.fault(value),
+  childLoadRelease: () => childLoader!.release(),
+  childFault: (id: string, value: Parameters<EditingModel['fault']>[0]) =>
+    childModel(id).fault(value),
+  childRelease: (id: string) => childModel(id).release(),
+  childToggle: (id: string) => {
+    children!.toggle(id)
+    flush()
+  },
+  childScope: (value: string, force = false) => {
+    const changed = changeChildScope!(value, force)
+    flush()
+    return changed
+  },
   fault: (value: Parameters<EditingModel['fault']>[0]) => model!.fault(value),
   release: () => model!.release(),
   patch: (id: string, value: Parameters<EditingModel['patch']>[1]) => {

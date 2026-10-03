@@ -412,16 +412,16 @@ export async function reorderCases({
         await start(8, 'table')
         await call('controls', { resizeBehavior, filters: 'both' })
         await call('sizing', { name: 280, note: 300 })
-        await call('grouping', ['priority', 'name'])
-        await call('expandGroups', true)
         await call('filter', 'note', 'Note')
         await call('search', 'Record')
         await call('sorting', [{ id: 'amount', desc: true }])
         await edit().click()
         await input().fill('Unsaved reordered name')
+        await call('grouping', ['priority'])
+        await call('expandGroups', true)
         await page.getByRole('heading', { name: 'Table', exact: true }).click()
         const before = await read()
-        await drag(page, 'name', 'priority', 'after')
+        await drag(page, 'name', 'note', 'after')
         await settle()
         const after = await read()
         for (const key of [
@@ -450,6 +450,7 @@ export async function reorderCases({
           resizeBehavior === 'fixed' ? 110 : 120,
         )
         assert.equal(resized.widths.note, 300)
+        await call('grouping', [])
         await page
           .getByRole('button', { name: 'Save all', exact: true })
           .click()
@@ -522,6 +523,7 @@ export async function reorderCases({
     'touch dragging reorders columns and secondary pointers cannot take a gesture',
     async () => {
       await start()
+      await handle(page).scrollIntoViewIfNeeded()
       const box = await handle(page).boundingBox()
       const point = await pointAt(page, 'priority', 'after')
       await cdp.send('Input.dispatchTouchEvent', {
@@ -589,22 +591,22 @@ export async function reorderCases({
 }
 
 export async function reorderWorkload({ page, cdp, read, settle }) {
-  await handle(page).scrollIntoViewIfNeeded()
+  await handle(page, 'note').scrollIntoViewIfNeeded()
   await cdp.send('HeapProfiler.collectGarbage')
   const listeners = (await cdp.send('Memory.getDOMCounters')).jsEventListeners
   const before = await read()
   const started = performance.now()
   for (let cycle = 0; cycle < 3; cycle++) {
-    await drag(page, 'name', 'priority', 'after')
-    await drag(page, 'name', 'note', 'before')
-    await handle(page).focus()
+    await drag(page, 'note', 'amount', 'after')
+    await drag(page, 'note', 'amount', 'before')
+    await handle(page, 'note').focus()
     await page.keyboard.press('End')
     await page.keyboard.press('Home')
     await page.keyboard.press('ArrowRight')
   }
   await settle()
   const after = await read()
-  assert.deepEqual(after.visibleColumns, initial)
+  assert.deepEqual(after.visibleColumns, before.visibleColumns)
   assert.deepEqual(work(after), work(before))
   assert.deepEqual(after.widths, before.widths)
   assert.equal(after.counts.orderChanges - before.counts.orderChanges, 15)

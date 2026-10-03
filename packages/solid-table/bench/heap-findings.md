@@ -1001,3 +1001,61 @@ The first 15 moves add 46 dependency links, from 76,048 to 76,094. The count sta
 Disposal removes all classified Table, Solid, and record resources. The remaining classified categories contain 30 JavaScript Maps and 205 V8 allocation templates.
 The separate run starts with a cold baseline, so its absolute heap size differs from the complete interaction suite.
 Its report is `/tmp/table-reorder-heaps.json`, with snapshots and classifications under `/tmp/table-reorder-heaps`.
+
+## Sub-tables and read-only grouped records
+
+The editing fixture now composes independent child Tables under individual parent records.
+Each child loads on first expansion and owns one Solid record store. Parent records are not copied into that store.
+Collapse removes the child DOM, row views, and listeners. The child collection, configuration, drafts, and pending saves remain owned by its dataset scope.
+Parent removal or a dataset change ends that scope. Late load responses cannot recreate it.
+Each table saves only its own drafts.
+
+Grouped records now render saved values without edit controls or draft subscriptions.
+Individual records inside expanded groups can open child tables. Group summary rows have no child controls or subscriptions.
+Aggregate values occupy their corresponding columns. Grouped columns lead in grouping order, ahead of other pinned columns.
+Clearing grouping restores the manual order. Moves of other columns do not accidentally persist the temporary grouping order.
+
+The first sub-table implementation used one entries signal for every row lookup.
+Opening a child notified 401 subscribers in the reported case. The implementation now uses a Solid store with a property per parent ID.
+The lookup properties contain functions that return child controllers. They do not wrap or duplicate child record stores.
+A keyed `tbody` contains each parent row and its detail row. This removes the shared insertion effect that subscribed to 100 detail branches.
+
+The grouping CPU profile also identified substantial overhead from automatic detailed timeline recording.
+The original development profile measured 0.9–2.6 seconds for a 500-record expansion on the loaded host.
+The largest sampled costs were timeline measurements, descriptions, and span construction.
+Ordinary review now keeps development checks enabled without automatic timeline recording. `BENCH_TRACE=1` enables recording explicitly.
+The separate `BENCH_ATTRIBUTION=1` scenario enables attribution without timeline painting and inspects actual subscriptions.
+These changes do not remove the candidate scans used by filters, sorting, group membership, and aggregates.
+
+The attribution scenario observes 16,017 creation and rerun records when expanding 500 grouped records.
+None reads the draft store. Loading a child while its parent group remains collapsed causes no group-summary or grouping computation to rerun.
+The live report contains no unexpected diagnostics. It records two known scan-breadth entries and two advisory timing entries.
+Machine load varies, so timing observations do not establish a latency budget.
+The final script is `editing/grouping-profile.mjs`. The evidence is `/tmp/table-subtables-live-final.json` and `/tmp/table-subtables-live-regressions.json`.
+
+All 134 package tests pass. Package types, fixture types, scoped lint, import audits, export audits, and server rendering pass.
+The initial 103 browser scenarios pass against source, built-package, development, and live entries.
+Source and built workloads cover 25, 250, and 999 records. Development and live workloads cover 25 records.
+The final 104-scenario suite also covers nested mobile containment and passes against the built package and live server.
+A final focused live run covers the manual-order repair and grouped parent-removal notice.
+Built module audits still exclude table-core, TanStack Store, virtual-core, Solid Form, Kobalte, Sonner, and Lucide.
+These changes affect the development fixture and require no published-package changeset.
+
+Six actual heap snapshots measure 100 parent records and one five-record child collection.
+The collapsed captures after 10, 100, and 200 cycles have identical classified Table, Solid, and record counts.
+Each retains 105 records, 100 row views, 600 cells, 118 store targets, 827 property signals, and 24 plain signals.
+Each also retains 7,500 computations, 1,551 owners, and 7,955 dependency links.
+Opening the child raises the row-view count to 105 and the cell count to 630. The record count stays at 105.
+Removing its parent leaves 99 records, 99 row views, and 594 cells. The five child records are released.
+Disposal leaves no classified Table, Solid, or record resources. The remaining categories contain 18 JavaScript Maps and 167 V8 allocation templates.
+The template count grows from 164 to 167 during warmup, but it retains no classified application resources after disposal.
+
+The cold run measures 5.804 MiB after 10 closed cycles, 6.082 MiB after 100, and 6.113 MiB after 200.
+It measures 6.457 MiB with the child open, 5.962 MiB after parent removal, and 2.450 MiB after disposal.
+These are whole-page heap measurements. The classified resource counts establish the bounded child lifetime.
+The report is `/tmp/table-subtables-heaps.json`. Snapshots and classifications are under `/tmp/table-subtables-heaps`.
+
+Interaction reports are `/tmp/table-subtables-{source,distribution,development,live}.json`.
+The final reports are `/tmp/table-subtables-distribution-final.json` and `/tmp/table-subtables-live-final.json`.
+Screenshots are `/tmp/table-subtables-grouped.png`, `/tmp/table-subtables-desktop.png`, and `/tmp/table-subtables-mobile.png`.
+The 390-pixel layout keeps child controls inside the parent viewport and table content inside its own scroll area.

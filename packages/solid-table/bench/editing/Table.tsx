@@ -4,13 +4,13 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  createUniqueId,
   flush,
   onCleanup,
   onSettled,
   untrack,
 } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import { createModel } from './model'
 import { TableFilter } from './TableFilter'
 import { TableGrouping } from './TableGrouping'
 import { TableColumnResize } from './TableColumnResize'
@@ -53,14 +53,23 @@ const priorityChoices = [
 ]
 
 export function Table(props: {
-  size: number
-  saveMode?: SaveMode
+  model: EditingModel
+  title?: string
+  scope?: string
   controls?: Partial<TableControls>
   settings?: JSX.Element
-  ready: (model: EditingModel) => void
+  details?: {
+    expanded: (id: string) => boolean
+    draftCount: (id: string) => number
+    toggle: (id: string) => void
+    render: (id: string) => JSX.Element
+  }
+  ready?: (model: EditingModel) => void
 }) {
-  const model = createModel(untrack(() => props.size))
-  const { table, editing, counts } = model
+  const model = untrack(() => props.model)
+  const { table, editing, counts, saveMode, setSaveMode, isGrouped } = model
+  const domPrefix = createUniqueId()
+  const domId = (value: string) => `${domPrefix}-${value}`
   let externalFilter: HTMLInputElement | undefined
   let headerFilter: HTMLInputElement | undefined
   let search: HTMLInputElement | undefined
@@ -72,22 +81,26 @@ export function Table(props: {
   let activeId: string | undefined
   let restoringColumnFocus: HTMLElement | undefined
   const [notice, setNotice] = createSignal('')
-  const [saveMode, setSaveMode] = createSignal(
-    untrack(() => props.saveMode ?? 'row'),
-  )
   const tableWidth = createMemo(() =>
     table
       .getVisibleColumns()
       .reduce((sum, column) => sum + column.getSize(), 230),
   )
-  const draftIds = createMemo(() => Object.keys(editing.drafts), {
-    equals: sameIds,
-  })
+  const draftIds = createMemo(
+    () => (isGrouped() ? [] : Object.keys(editing.drafts)),
+    {
+      equals: sameIds,
+    },
+  )
   const movableColumns = createMemo(
     () =>
       table
         .getVisibleColumns()
-        .filter((column) => !column.getIsPinned())
+        .filter(
+          (column) =>
+            !column.getIsPinned() &&
+            (!isGrouped() || !table.state.grouping.includes(column.id)),
+        )
         .map((column) => column.id),
     { equals: sameIds },
   )
@@ -149,7 +162,7 @@ export function Table(props: {
     column: ReturnType<EditingModel['table']['getColumns']>[number]
   }) {
     return (
-      <Show when={!props.column.getIsPinned()}>
+      <Show when={movableColumns().includes(props.column.id)}>
         <TableColumnMove
           id={props.column.id}
           label={String(props.column.columnDef?.header)}
@@ -162,12 +175,7 @@ export function Table(props: {
             )
               return
             table.setColumnOrder((old) => {
-              const order = [
-                ...new Set([
-                  ...old,
-                  ...table.getColumns().map((column) => column.id),
-                ]),
-              ]
+              const order = [...new Set([...old, ...model.columnIds])]
               return [...moveColumn(order, id, destination)]
             })
             setNotice(
@@ -254,7 +262,7 @@ export function Table(props: {
     return (
       target instanceof Element &&
       target.closest<HTMLTableRowElement>('tr[data-row]')?.dataset.row === id &&
-      element.contains(target)
+      target.closest('table') === element
     )
   }
   function collapseOutside(target: EventTarget | null) {
@@ -266,72 +274,81 @@ export function Table(props: {
       if (!disposed && activeId !== id) editing.collapse(id)
     })
   }
+  onCleanup(() => {
+    disposed = true
+    focusIntent++
+  })
   onSettled(() => {
-    let pointerActive = false
-    let pointerFrame = 0
-    const startPointer = () => {
-      focusIntent++
-      pointerActive = true
-      cancelAnimationFrame(pointerFrame)
-    }
-    const endPointer = () => {
-      pointerActive = false
-      // A collapse on pointerdown can move the clicked cell before pointerup.
-      pointerFrame = requestAnimationFrame(() => {
-        if (!disposed && document.activeElement !== document.body)
-          collapseOutside(document.activeElement)
-      })
-    }
-    const clickOutside = (event: Event) => {
-      const id = activeId
-      if (!id || belongsToRow(id, event.target)) return
-      // A click handler can open another row or replace its display button.
-      queueMicrotask(() => {
-        if (!disposed && activeId === id) collapseOutside(event.target)
-      })
-    }
-    const interruptFocus = (event: Event) => {
-      focusIntent++
-      if (!pointerActive) collapseOutside(event.target)
-    }
-    const leaveFocus = (event: FocusEvent) => {
-      if (pointerActive) return
-      const id = activeId
-      if (!id || !belongsToRow(id, event.target)) return
-      if (event.relatedTarget) collapseOutside(event.relatedTarget)
-      else
-        queueMicrotask(() => {
-          if (restoringColumnFocus === event.target) return
-          // Disabling a focused Save button can blur it without user navigation.
-          if (
-            !disposed &&
-            !pointerActive &&
-            activeId === id &&
-            editing.drafts[id]?.expanded &&
-            editing.drafts[id].status !== 'pending'
-          )
+    props.ready?.(model)
+  })
+  createEffect(
+    () => !isGrouped(),
+    (enabled) => {
+      if (!enabled) return
+      let pointerActive = false
+      let pointerFrame = 0
+      const startPointer = () => {
+        focusIntent++
+        pointerActive = true
+        cancelAnimationFrame(pointerFrame)
+      }
+      const endPointer = () => {
+        pointerActive = false
+        // A collapse on pointerdown can move the clicked cell before pointerup.
+        pointerFrame = requestAnimationFrame(() => {
+          if (!disposed && document.activeElement !== document.body)
             collapseOutside(document.activeElement)
         })
-    }
-    document.addEventListener('pointerdown', startPointer, true)
-    document.addEventListener('pointerup', endPointer, true)
-    document.addEventListener('pointercancel', endPointer, true)
-    document.addEventListener('click', clickOutside, true)
-    document.addEventListener('focusin', interruptFocus, true)
-    document.addEventListener('focusout', leaveFocus, true)
-    props.ready(model)
-    return () => {
-      disposed = true
-      focusIntent++
-      cancelAnimationFrame(pointerFrame)
-      document.removeEventListener('pointerdown', startPointer, true)
-      document.removeEventListener('pointerup', endPointer, true)
-      document.removeEventListener('pointercancel', endPointer, true)
-      document.removeEventListener('click', clickOutside, true)
-      document.removeEventListener('focusin', interruptFocus, true)
-      document.removeEventListener('focusout', leaveFocus, true)
-    }
-  })
+      }
+      const clickOutside = (event: Event) => {
+        const id = activeId
+        if (!id || belongsToRow(id, event.target)) return
+        // A click handler can open another row or replace its display button.
+        queueMicrotask(() => {
+          if (!disposed && activeId === id) collapseOutside(event.target)
+        })
+      }
+      const interruptFocus = (event: Event) => {
+        focusIntent++
+        if (!pointerActive) collapseOutside(event.target)
+      }
+      const leaveFocus = (event: FocusEvent) => {
+        if (pointerActive) return
+        const id = activeId
+        if (!id || !belongsToRow(id, event.target)) return
+        if (event.relatedTarget) collapseOutside(event.relatedTarget)
+        else
+          queueMicrotask(() => {
+            if (restoringColumnFocus === event.target) return
+            // Disabling a focused Save button can blur it without user navigation.
+            if (
+              !disposed &&
+              !pointerActive &&
+              activeId === id &&
+              editing.drafts[id]?.expanded &&
+              editing.drafts[id].status !== 'pending'
+            )
+              collapseOutside(document.activeElement)
+          })
+      }
+      document.addEventListener('pointerdown', startPointer, true)
+      document.addEventListener('pointerup', endPointer, true)
+      document.addEventListener('pointercancel', endPointer, true)
+      document.addEventListener('click', clickOutside, true)
+      document.addEventListener('focusin', interruptFocus, true)
+      document.addEventListener('focusout', leaveFocus, true)
+      return () => {
+        focusIntent++
+        cancelAnimationFrame(pointerFrame)
+        document.removeEventListener('pointerdown', startPointer, true)
+        document.removeEventListener('pointerup', endPointer, true)
+        document.removeEventListener('pointercancel', endPointer, true)
+        document.removeEventListener('click', clickOutside, true)
+        document.removeEventListener('focusin', interruptFocus, true)
+        document.removeEventListener('focusout', leaveFocus, true)
+      }
+    },
+  )
   const visibleIds = createMemo(
     () =>
       new Set(
@@ -389,15 +406,17 @@ export function Table(props: {
     return editing.drafts[id]?.activeColumn ?? 'name'
   }
   function focusCell(id: string, column: EditColumn, input: boolean) {
-    const target = element.querySelector<HTMLElement>(
-      `[data-${input ? 'editor' : 'edit'}="${id}/${column}"]`,
-    )
+    const target = Array.from(
+      element.querySelectorAll<HTMLElement>(
+        `[data-${input ? 'editor' : 'edit'}="${id}/${column}"]`,
+      ),
+    ).find((node) => node.closest('table') === element)
     if (target) target.focus({ preventScroll: true })
     else {
       const path = model.recordGroupKeys(id)
       const groups = Array.from(
         element.querySelectorAll<HTMLButtonElement>('[data-group-toggle]'),
-      )
+      ).filter((node) => node.closest('table') === element)
       const group = path
         .reverse()
         .map((key) => groups.find((node) => node.dataset.groupToggle === key))
@@ -446,7 +465,7 @@ export function Table(props: {
         `Saved ${result.saved.length} row${result.saved.length === 1 ? '' : 's'}. ${result.failed.length} failed. ${result.unchanged.length} unchanged.`,
       )
     onSettled(() => {
-      if (disposed || intent !== focusIntent) return
+      if (disposed || isGrouped() || intent !== focusIntent) return
       if (
         document.activeElement !== origin &&
         document.activeElement !== document.body
@@ -464,7 +483,7 @@ export function Table(props: {
     if (disposed) return
     if (saved) setNotice(`Saved ${id}.`)
     onSettled(() => {
-      if (disposed || intent !== focusIntent) return
+      if (disposed || isGrouped() || intent !== focusIntent) return
       // A finished request must not steal focus from a later user interaction.
       if (
         document.activeElement !== origin &&
@@ -481,180 +500,281 @@ export function Table(props: {
         origin.focus({ preventScroll: true })
     })
   }
+  function SubTableToggle(id: string) {
+    return (
+      <Show when={props.details}>
+        <button
+          class="sub-table-toggle"
+          data-subtable-toggle={id}
+          aria-label={`${props.details!.expanded(id) ? 'Collapse' : 'Expand'} sub-table ${id}`}
+          aria-expanded={props.details!.expanded(id) ? 'true' : 'false'}
+          aria-controls={
+            props.details!.expanded(id) ? domId(`child-${id}`) : undefined
+          }
+          ref={nativeEvents<HTMLButtonElement>({
+            click: (event) => {
+              event.currentTarget.focus({ preventScroll: true })
+              props.details!.toggle(id)
+            },
+          })}
+        >
+          {props.details!.expanded(id) ? '▾' : '▸'} Sub-table
+          <Show when={props.details!.draftCount(id)}>
+            {' '}
+            ({props.details!.draftCount(id)} drafts)
+          </Show>
+        </button>
+      </Show>
+    )
+  }
+  function SubTableDetail(
+    id: string,
+    setDetail: (node: HTMLTableRowElement) => void,
+  ) {
+    return (
+      <Show when={props.details?.expanded(id)}>
+        <tr
+          ref={setDetail}
+          id={domId(`child-${id}`)}
+          class="sub-table-row"
+          data-child-row={id}
+        >
+          <td colspan={table.getVisibleColumns().length + 1}>
+            {props.details!.render(id)}
+          </td>
+        </tr>
+      </Show>
+    )
+  }
+  function ReadOnlyRow(id: string) {
+    const row = table.createRowView(id)
+    counts.views++
+    let detail: HTMLTableRowElement | undefined
+    onCleanup(() => {
+      counts.unmounted++
+      if (detail?.contains(document.activeElement)) focusFilter()
+    })
+    return (
+      <tbody>
+        <tr data-row={id}>
+          <For each={row.getVisibleCells()}>
+            {(cell) => {
+              counts.cells++
+              return (
+                <td data-column={cell.column.id} class="read-only-value">
+                  {cell.column.columnDef?.meta?.formatValue?.(
+                    cell.getValue(),
+                  ) ?? String(cell.getValue() ?? '')}
+                </td>
+              )
+            }}
+          </For>
+          <td class="row-actions">{SubTableToggle(id)}</td>
+        </tr>
+        {SubTableDetail(id, (node) => {
+          detail = node
+        })}
+      </tbody>
+    )
+  }
   function Row(id: string) {
     const row = table.createRowView(id)
     counts.views++
     let node!: HTMLTableRowElement
+    let detail: HTMLTableRowElement | undefined
     onCleanup(() => {
       counts.unmounted++
-      if (node.contains(document.activeElement)) focusFilter()
+      if (
+        node.contains(document.activeElement) ||
+        detail?.contains(document.activeElement)
+      )
+        focusFilter()
     })
     return (
-      <tr
-        ref={node}
-        data-row={id}
-        aria-busy={editing.drafts[id]?.status === 'pending' ? 'true' : 'false'}
-      >
-        <For each={row.getVisibleCells()}>
-          {(cell) => {
-            counts.cells++
-            const column = cell.column.id
-            if (column === 'id')
+      <tbody>
+        <tr
+          ref={node}
+          data-row={id}
+          aria-busy={
+            editing.drafts[id]?.status === 'pending' ? 'true' : 'false'
+          }
+        >
+          <For each={row.getVisibleCells()}>
+            {(cell) => {
+              counts.cells++
+              const column = cell.column.id
+              if (column === 'id')
+                return (
+                  <th scope="row" data-column="id">
+                    {id}
+                  </th>
+                )
+              if (column === 'amount' || column === 'dueDate')
+                return (
+                  <td data-column={column} class="read-only-value">
+                    {cell.column.columnDef?.meta?.formatValue?.(
+                      cell.getValue(),
+                    )}
+                  </td>
+                )
+              const field = column as EditColumn
+              const changed = () => {
+                const draft = editing.drafts[id]
+                return Boolean(draft && draft[field] !== cell.getValue())
+              }
               return (
-                <th scope="row" data-column="id">
-                  {id}
-                </th>
-              )
-            if (column === 'amount' || column === 'dueDate')
-              return (
-                <td data-column={column} class="read-only-value">
-                  {cell.column.columnDef?.meta?.formatValue?.(cell.getValue())}
+                <td data-column={field}>
+                  <Show
+                    when={editing.drafts[id]?.expanded}
+                    fallback={
+                      <button
+                        class="cell-value"
+                        data-edit={`${id}/${field}`}
+                        aria-label={`Edit ${field} ${id}`}
+                        aria-describedby={`${domId(`edited-${id}-${field}`)} ${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
+                        data-edited={changed() ? 'true' : undefined}
+                        disabled={editing.drafts[id]?.status === 'pending'}
+                        ref={nativeEvents({ click: () => begin(id, field) })}
+                      >
+                        <span data-value>
+                          {String(
+                            editing.drafts[id]?.[field] ?? cell.getValue(),
+                          ) || (field === 'note' ? 'Add note' : 'Empty value')}
+                        </span>
+                        <Show when={changed()}>
+                          <span
+                            id={domId(`edited-${id}-${field}`)}
+                            class="edited-marker"
+                          >
+                            Edited
+                          </span>
+                        </Show>
+                      </button>
+                    }
+                  >
+                    {field === 'priority' ? (
+                      <select
+                        data-editor={`${id}/${field}`}
+                        aria-label={`Priority ${id}`}
+                        aria-describedby={`${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
+                        aria-invalid={
+                          editing.drafts[id]?.fieldErrors[field]
+                            ? 'true'
+                            : undefined
+                        }
+                        value={editing.drafts[id]?.priority ?? ''}
+                        disabled={editing.drafts[id]?.status === 'pending'}
+                        ref={nativeEvents<HTMLSelectElement>({
+                          focus: () => editing.focus(id, field),
+                          change: (event) =>
+                            editing.change(
+                              id,
+                              field,
+                              event.currentTarget.value,
+                            ),
+                        })}
+                      >
+                        <option value="" disabled>
+                          Choose priority
+                        </option>
+                        <option value="low">Low</option>
+                        <option value="normal">Normal</option>
+                        <option value="high">High</option>
+                      </select>
+                    ) : (
+                      <input
+                        data-editor={`${id}/${field}`}
+                        aria-label={`${field === 'name' ? 'Name' : 'Note'} ${id}`}
+                        aria-describedby={`${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
+                        aria-invalid={
+                          editing.drafts[id]?.fieldErrors[field]
+                            ? 'true'
+                            : undefined
+                        }
+                        value={editing.drafts[id]?.[field] ?? ''}
+                        readonly={editing.drafts[id]?.status === 'pending'}
+                        ref={nativeEvents<HTMLInputElement>({
+                          focus: () => editing.focus(id, field),
+                          input: (event) =>
+                            editing.change(
+                              id,
+                              field,
+                              event.currentTarget.value,
+                            ),
+                          keydown: (event) => {
+                            if (event.isComposing || event.keyCode === 229)
+                              return
+                            if (event.key === 'Enter') {
+                              event.preventDefault()
+                              if (saveMode() === 'table') finish(id, field)
+                              else void save(id, field)
+                            } else if (event.key === 'Escape') {
+                              event.preventDefault()
+                              cancel(id, field)
+                            }
+                          },
+                        })}
+                      />
+                    )}
+                  </Show>
+                  <p id={domId(`error-${id}-${field}`)} class="message">
+                    {editing.drafts[id]?.fieldErrors[field]}
+                  </p>
                 </td>
               )
-            const field = column as EditColumn
-            const changed = () => {
-              const draft = editing.drafts[id]
-              return Boolean(draft && draft[field] !== cell.getValue())
-            }
-            return (
-              <td data-column={field}>
-                <Show
-                  when={editing.drafts[id]?.expanded}
-                  fallback={
-                    <button
-                      class="cell-value"
-                      data-edit={`${id}/${field}`}
-                      aria-label={`Edit ${field} ${id}`}
-                      aria-describedby={`edited-${id}-${field} error-${id}-${field} message-${id}`}
-                      data-edited={changed() ? 'true' : undefined}
-                      disabled={editing.drafts[id]?.status === 'pending'}
-                      ref={nativeEvents({ click: () => begin(id, field) })}
-                    >
-                      <span data-value>
-                        {String(
-                          editing.drafts[id]?.[field] ?? cell.getValue(),
-                        ) || (field === 'note' ? 'Add note' : 'Empty value')}
-                      </span>
-                      <Show when={changed()}>
-                        <span
-                          id={`edited-${id}-${field}`}
-                          class="edited-marker"
-                        >
-                          Edited
-                        </span>
-                      </Show>
-                    </button>
-                  }
-                >
-                  {field === 'priority' ? (
-                    <select
-                      data-editor={`${id}/${field}`}
-                      aria-label={`Priority ${id}`}
-                      aria-describedby={`error-${id}-${field} message-${id}`}
-                      aria-invalid={
-                        editing.drafts[id]?.fieldErrors[field]
-                          ? 'true'
-                          : undefined
-                      }
-                      value={editing.drafts[id]?.priority ?? ''}
-                      disabled={editing.drafts[id]?.status === 'pending'}
-                      ref={nativeEvents<HTMLSelectElement>({
-                        focus: () => editing.focus(id, field),
-                        change: (event) =>
-                          editing.change(id, field, event.currentTarget.value),
-                      })}
-                    >
-                      <option value="" disabled>
-                        Choose priority
-                      </option>
-                      <option value="low">Low</option>
-                      <option value="normal">Normal</option>
-                      <option value="high">High</option>
-                    </select>
-                  ) : (
-                    <input
-                      data-editor={`${id}/${field}`}
-                      aria-label={`${field === 'name' ? 'Name' : 'Note'} ${id}`}
-                      aria-describedby={`error-${id}-${field} message-${id}`}
-                      aria-invalid={
-                        editing.drafts[id]?.fieldErrors[field]
-                          ? 'true'
-                          : undefined
-                      }
-                      value={editing.drafts[id]?.[field] ?? ''}
-                      readonly={editing.drafts[id]?.status === 'pending'}
-                      ref={nativeEvents<HTMLInputElement>({
-                        focus: () => editing.focus(id, field),
-                        input: (event) =>
-                          editing.change(id, field, event.currentTarget.value),
-                        keydown: (event) => {
-                          if (event.isComposing || event.keyCode === 229) return
-                          if (event.key === 'Enter') {
-                            event.preventDefault()
-                            if (saveMode() === 'table') finish(id, field)
-                            else void save(id, field)
-                          } else if (event.key === 'Escape') {
-                            event.preventDefault()
-                            cancel(id, field)
-                          }
-                        },
-                      })}
-                    />
-                  )}
+            }}
+          </For>
+          <td class="row-actions">
+            <Show
+              when={editing.drafts[id]?.expanded}
+              fallback={
+                <span class="muted">
+                  {editing.drafts[id]?.status === 'pending'
+                    ? 'Saving…'
+                    : editing.drafts[id]
+                      ? 'Unsaved changes'
+                      : 'No changes'}
+                </span>
+              }
+            >
+              <div class="buttons">
+                <Show when={saveMode() === 'row'}>
+                  <button
+                    aria-label={`Save ${id}`}
+                    disabled={editing.drafts[id]?.status === 'pending'}
+                    ref={nativeEvents({
+                      click: () => {
+                        void save(id, actionColumn(id))
+                      },
+                    })}
+                  >
+                    Save
+                  </button>
                 </Show>
-                <p id={`error-${id}-${field}`} class="message">
-                  {editing.drafts[id]?.fieldErrors[field]}
-                </p>
-              </td>
-            )
-          }}
-        </For>
-        <td class="row-actions">
-          <Show
-            when={editing.drafts[id]?.expanded}
-            fallback={
-              <span class="muted">
-                {editing.drafts[id]?.status === 'pending'
-                  ? 'Saving…'
-                  : editing.drafts[id]
-                    ? 'Unsaved changes'
-                    : 'No changes'}
-              </span>
-            }
-          >
-            <div class="buttons">
-              <Show when={saveMode() === 'row'}>
                 <button
-                  aria-label={`Save ${id}`}
+                  aria-label={`Cancel ${id}`}
                   disabled={editing.drafts[id]?.status === 'pending'}
                   ref={nativeEvents({
-                    click: () => {
-                      void save(id, actionColumn(id))
-                    },
+                    click: () => cancel(id, actionColumn(id)),
                   })}
                 >
-                  Save
+                  Cancel
                 </button>
-              </Show>
-              <button
-                aria-label={`Cancel ${id}`}
-                disabled={editing.drafts[id]?.status === 'pending'}
-                ref={nativeEvents({
-                  click: () => cancel(id, actionColumn(id)),
-                })}
-              >
-                Cancel
-              </button>
-              <Show when={editing.drafts[id]?.status === 'pending'}>
-                <span role="status">Saving…</span>
-              </Show>
-            </div>
-          </Show>
-          <p id={`message-${id}`} role="alert" class="message">
-            {editing.drafts[id]?.message}
-          </p>
-        </td>
-      </tr>
+                <Show when={editing.drafts[id]?.status === 'pending'}>
+                  <span role="status">Saving…</span>
+                </Show>
+              </div>
+            </Show>
+            <p id={domId(`message-${id}`)} role="alert" class="message">
+              {editing.drafts[id]?.message}
+            </p>
+            {SubTableToggle(id)}
+          </td>
+        </tr>
+        {SubTableDetail(id, (node) => {
+          detail = node
+        })}
+      </tbody>
     )
   }
   function Group(key: string) {
@@ -671,76 +791,111 @@ export function Table(props: {
         })
         .join(' / ') ?? ''
     return (
-      <tr data-group={key} class="group-row">
-        <th scope="row" colspan={table.getVisibleColumns().length + 1}>
-          <div
-            class="group-heading"
-            style={{ 'padding-left': `${Math.max(group.depth, 0) * 20}px` }}
-          >
-            <button
-              data-group-toggle={key}
-              aria-expanded={group.getIsExpanded() ? 'true' : 'false'}
-              aria-label={`${group.getIsExpanded() ? 'Collapse' : 'Expand'} ${label()}`}
-              ref={nativeEvents({ click: () => group.toggleExpanded() })}
-            >
-              <span aria-hidden="true">
-                {group.getIsExpanded() ? '▾' : '▸'}
-              </span>{' '}
-              {label()}
-            </button>
-            <span class="group-count">
-              {group.count} {group.count === 1 ? 'record' : 'records'}
-            </span>
-            <For each={group.getVisibleCells()}>
-              {(cell) => {
-                counts.groupCells++
+      <tbody>
+        <tr data-group={key} class="group-row">
+          <For each={group.getVisibleCells()}>
+            {(cell) => {
+              counts.groupCells++
+              const first = () => {
+                const columnId = group.path?.at(-1)?.columnId
+                const visible = table.getVisibleColumns()
                 return (
+                  cell.column.id ===
+                  (visible.some((column) => column.id === columnId)
+                    ? columnId
+                    : visible[0]?.id)
+                )
+              }
+              return (
+                <td
+                  data-column={cell.column.id}
+                  role={first() ? 'rowheader' : undefined}
+                >
+                  <Show when={first()}>
+                    <div
+                      class="group-heading"
+                      style={{
+                        'padding-left': `${Math.max(group.depth, 0) * 20}px`,
+                      }}
+                    >
+                      <button
+                        data-group-toggle={key}
+                        aria-expanded={group.getIsExpanded() ? 'true' : 'false'}
+                        aria-label={`${group.getIsExpanded() ? 'Collapse' : 'Expand'} ${label()}`}
+                        ref={nativeEvents({
+                          click: () => group.toggleExpanded(),
+                        })}
+                      >
+                        <span aria-hidden="true">
+                          {group.getIsExpanded() ? '▾' : '▸'}
+                        </span>{' '}
+                        {label()}
+                      </button>
+                      <span class="group-count">
+                        {group.count} {group.count === 1 ? 'record' : 'records'}
+                      </span>
+                    </div>
+                  </Show>
                   <Show when={cell.column.columnDef?.aggregationFn}>
                     <span
                       class="group-summary"
                       data-group-summary={cell.column.id}
                     >
-                      {cell.column.columnDef?.meta?.summaryLabel ??
-                        String(cell.column.columnDef?.header)}
-                      :{' '}
+                      <span class="sr-only">
+                        {cell.column.columnDef?.meta?.summaryLabel ??
+                          String(cell.column.columnDef?.header)}
+                        :{' '}
+                      </span>
                       {cell.column.columnDef?.meta?.formatSummary?.(
                         cell.getValue(),
                       ) ?? String(cell.getValue() ?? '—')}
                     </span>
                   </Show>
-                )
-              }}
-            </For>
-          </div>
-        </th>
-      </tr>
+                </td>
+              )
+            }}
+          </For>
+          <td />
+        </tr>
+      </tbody>
     )
   }
   return (
-    <main>
-      <h1>Table</h1>
+    <section
+      class="table-component"
+      data-table-scope={props.scope ?? 'root'}
+      aria-label={props.title ?? 'Table'}
+    >
+      <Show when={props.title}>
+        <h2>{props.title}</h2>
+      </Show>
       {props.settings}
-      <p>
-        Filter each column or search across columns. Click a name, note, or
-        priority to edit its saved value.
-      </p>
-      <details class="editing-help">
-        <summary>Editing help</summary>
+      <p>Filter each column or search across columns.</p>
+      <Show when={isGrouped()}>
         <p>
-          {saveMode() === 'row'
-            ? 'Edit a name, note, or priority. Save saves the row and Cancel discards its draft. In text fields, Enter saves and Escape cancels.'
-            : 'Save all saves every draft, including filtered rows. In text fields, Enter closes the editors and Escape discards that row draft.'}
+          Grouped records are read-only. Clear grouping to edit them. Existing
+          drafts are preserved. Expanded records can open their own sub-tables.
         </p>
-        <p>
-          Leaving a row closes its editors and keeps your draft. Changed cells
-          show an Edited marker. Click a cell to resume. Search and column
-          filters use saved values.
-        </p>
-        <p>
-          The priority dropdown uses its native keys. Choosing an option does
-          not save the row.
-        </p>
-      </details>
+      </Show>
+      <Show when={!isGrouped()}>
+        <details class="editing-help">
+          <summary>Editing help</summary>
+          <p>
+            {saveMode() === 'row'
+              ? 'Edit a name, note, or priority. Save saves the row and Cancel discards its draft. In text fields, Enter saves and Escape cancels.'
+              : 'Save all saves every draft, including filtered rows. In text fields, Enter closes the editors and Escape discards that row draft.'}
+          </p>
+          <p>
+            Leaving a row closes its editors and keeps your draft. Changed cells
+            show an Edited marker. Click a cell to resume. Search and column
+            filters use saved values.
+          </p>
+          <p>
+            The priority dropdown uses its native keys. Choosing an option does
+            not save the row.
+          </p>
+        </details>
+      </Show>
       <Show
         when={filterPlacement() === 'external' || filterPlacement() === 'both'}
       >
@@ -780,54 +935,58 @@ export function Table(props: {
         >
           Clear all filters
         </button>
-        <label>
-          Save mode
-          <select
-            aria-label="Save mode"
-            value={saveMode()}
-            disabled={editing.savingAll()}
-            ref={[
-              (node) => {
-                modeControl = node
-              },
-              nativeEvents<HTMLSelectElement>({
-                change: (event) => {
-                  if (!editing.savingAll()) {
-                    setSaveMode(event.currentTarget.value as SaveMode)
-                    setNotice('')
-                  }
+        <Show when={!isGrouped()}>
+          <label>
+            Save mode
+            <select
+              aria-label="Save mode"
+              value={saveMode()}
+              disabled={editing.savingAll()}
+              ref={[
+                (node) => {
+                  modeControl = node
                 },
-              }),
-            ]}
-          >
-            <option value="row">Per row</option>
-            <option value="table">Whole table</option>
-          </select>
-        </label>
-        <Show when={saveMode() === 'table'}>
-          <button
-            aria-label="Save all"
-            aria-describedby="save-all-description"
-            disabled={
-              editing.savingAll() ||
-              !draftIds().length ||
-              draftIds().some((id) => editing.drafts[id]?.status === 'pending')
-            }
-            ref={[
-              (node) => {
-                saveAllButton = node
-              },
-              nativeEvents<HTMLButtonElement>({
-                click: () => {
-                  void saveAll()
+                nativeEvents<HTMLSelectElement>({
+                  change: (event) => {
+                    if (!editing.savingAll()) {
+                      setSaveMode(event.currentTarget.value as SaveMode)
+                      setNotice('')
+                    }
+                  },
+                }),
+              ]}
+            >
+              <option value="row">Per row</option>
+              <option value="table">Whole table</option>
+            </select>
+          </label>
+          <Show when={saveMode() === 'table'}>
+            <button
+              aria-label="Save all"
+              aria-describedby={domId('save-all-description')}
+              disabled={
+                editing.savingAll() ||
+                !draftIds().length ||
+                draftIds().some(
+                  (id) => editing.drafts[id]?.status === 'pending',
+                )
+              }
+              ref={[
+                (node) => {
+                  saveAllButton = node
                 },
-              }),
-            ]}
-          >
-            {editing.savingAll()
-              ? 'Saving…'
-              : `Save all (${draftIds().length})`}
-          </button>
+                nativeEvents<HTMLButtonElement>({
+                  click: () => {
+                    void saveAll()
+                  },
+                }),
+              ]}
+            >
+              {editing.savingAll()
+                ? 'Saving…'
+                : `Save all (${draftIds().length})`}
+            </button>
+          </Show>
         </Show>
       </div>
       <p class="result-count" role="status" aria-label="Filter results">
@@ -835,7 +994,7 @@ export function Table(props: {
         <Show when={model.localProcessing() && table.state.grouping.length > 0}>
           {table.getFilteredRowIds().length} match filters ·{' '}
         </Show>
-        {draftIds().length} drafts
+        <Show when={!isGrouped()}>{draftIds().length} drafts</Show>
       </p>
       <Show when={!model.localProcessing()}>
         <p>
@@ -843,14 +1002,14 @@ export function Table(props: {
           dataset.
         </p>
       </Show>
-      <Show when={saveMode() === 'table'}>
-        <p id="save-all-description">
+      <Show when={!isGrouped() && saveMode() === 'table'}>
+        <p id={domId('save-all-description')}>
           All drafts must pass validation before saving starts. Each row saves
           separately. Failed rows keep their drafts. New edits during a save
-          wait for the next Save all.
+          wait for the next Save all. This button saves only this table.
         </p>
       </Show>
-      <Show when={hiddenDrafts().length > 0}>
+      <Show when={!isGrouped() && hiddenDrafts().length > 0}>
         <aside aria-label="Hidden drafts">
           <p>Drafts outside the current view are preserved.</p>
           <For each={hiddenDrafts()}>
@@ -903,7 +1062,9 @@ export function Table(props: {
           tabindex="-1"
           style={{ width: `${tableWidth()}px` }}
         >
-          <caption>Editable records</caption>
+          <caption>
+            {isGrouped() ? 'Grouped records' : 'Editable records'}
+          </caption>
           <colgroup>
             <For each={table.getVisibleColumns()}>
               {(column) => (
@@ -987,14 +1148,19 @@ export function Table(props: {
               <th scope="col">Row actions</th>
             </tr>
           </thead>
-          <tbody>
+          <Show
+            when={isGrouped()}
+            fallback={<For each={table.getRowIds()}>{(id) => Row(id)}</For>}
+          >
             <For each={table.getDisplayKeys()}>
               {(key) => {
                 const item = table.getDisplayItem(key)
-                return item.kind === 'row' ? Row(item.id) : Group(item.key)
+                return item.kind === 'row'
+                  ? ReadOnlyRow(item.id)
+                  : Group(item.key)
               }}
             </For>
-          </tbody>
+          </Show>
         </table>
         <Show when={table.getRowIds().length === 0}>
           <div class="empty-state">
@@ -1024,6 +1190,6 @@ export function Table(props: {
       >
         After table
       </button>
-    </main>
+    </section>
   )
 }

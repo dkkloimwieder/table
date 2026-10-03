@@ -11,7 +11,6 @@ export async function groupingCases({
   edit,
   input,
   save,
-  select,
   focused,
 }) {
   const add = () =>
@@ -57,7 +56,7 @@ export async function groupingCases({
       await seed()
       assert.equal(await page.locator('[data-row]').count(), 0)
       assert.equal(await page.locator('[data-group]').count(), 3)
-      assert.match(await group('Priority: high').innerText(), /2 records/)
+      assert.match(await group('Priority: high').textContent(), /2 records/)
       await group('Priority: high').evaluate((node) => {
         node.dataset.retained = 'yes'
       })
@@ -102,20 +101,23 @@ export async function groupingCases({
       await seed()
       await order('Priority').selectOption('value:asc')
       assert.match(
-        await page.locator('[data-group]').first().innerText(),
+        await page.locator('[data-group]').first().textContent(),
         /Priority: low/,
       )
       await order('Priority').selectOption('note:desc')
       assert.match(
-        await page.locator('[data-group]').first().innerText(),
+        await page.locator('[data-group]').first().textContent(),
         /Priority: normal/,
       )
-      assert.match(await group('Priority: high').innerText(), /Filled notes: 2/)
+      assert.match(
+        await group('Priority: high').textContent(),
+        /Filled notes: 2/,
+      )
       await page
         .getByRole('combobox', { name: 'Note summary', exact: true })
         .selectOption('distinct')
       assert.match(
-        await group('Priority: high').innerText(),
+        await group('Priority: high').textContent(),
         /Distinct notes: 1/,
       )
       await button('Expand all groups').click()
@@ -151,7 +153,7 @@ export async function groupingCases({
       })
       await search.fill('Shared note')
       assert.equal(await page.locator('[data-group]').count(), 1)
-      assert.match(await group('Priority: high').innerText(), /2 records/)
+      assert.match(await group('Priority: high').textContent(), /2 records/)
       assert.equal(
         await page
           .getByText('No records match your search or filters.', {
@@ -163,7 +165,7 @@ export async function groupingCases({
       await page
         .getByRole('textbox', { name: 'Filter saved names', exact: true })
         .fill('Alice')
-      assert.match(await group('Priority: high').innerText(), /1 record/)
+      assert.match(await group('Priority: high').textContent(), /1 record/)
       await search.fill('not found')
       assert.equal(await page.locator('[data-group]').count(), 0)
       assert.equal(
@@ -185,94 +187,109 @@ export async function groupingCases({
     },
   )
   await record(
-    'collapsed drafts can reopen only their group path after filters clear',
+    'grouping removes edit bindings and preserves drafts until grouping clears',
     async () => {
       await seed('table')
-      await add().selectOption('name')
-      await button('Expand all groups').click()
+      await call('grouping', [])
       await edit('R0001', 'note').click()
-      await input('R0001', 'note').fill('Draft inside group')
-      await button('Collapse all groups').click()
-      assert.equal(await page.locator('[data-row]').count(), 0)
-      assert.equal((await read()).drafts.R0001.note, 'Draft inside group')
-      await page
-        .getByRole('searchbox', { name: 'Search all columns', exact: true })
-        .fill('Fourth note')
-      await button('Show R0001').click()
-      await settle()
-      assert.deepEqual((await read()).grouping, ['priority', 'name'])
-      assert.equal((await read()).search, '')
+      await input('R0001', 'note').fill('Draft before grouping')
+      await call('grouping', ['priority', 'name'])
+      await button('Expand all groups').click()
+      assert.equal(await page.locator('[data-edit], [data-editor]').count(), 0)
+      assert.equal(await button('Save all').count(), 0)
+      assert.equal((await read()).drafts.R0001.note, 'Draft before grouping')
+      assert.match(
+        await page.locator('[data-row="R0001"]').textContent(),
+        /Shared note/,
+      )
+      await call('grouping', [])
+      await edit('R0001', 'note').click()
       assert.equal(
         await input('R0001', 'note').inputValue(),
-        'Draft inside group',
+        'Draft before grouping',
       )
-      assert.equal(await page.locator('[data-row]').count(), 2)
-      assert.equal(await button('Expand Priority: normal').count(), 1)
-      assert.equal(await button('Expand Priority: low').count(), 1)
-      assert.equal((await read()).counts.requests, 0)
+      await button('Save all').click()
+      await idle()
+      assert.equal((await read()).sample[0].note, 'Draft before grouping')
     },
   )
   await record(
-    'a saved grouped field moves the row and focuses its collapsed destination',
+    'source updates move read-only records between groups',
     async () => {
       await seed()
       await button('Expand Priority: normal').click()
-      await edit('R0004', 'priority').click()
-      await select('R0004').selectOption('high')
-      assert.match(await group('Priority: high').innerText(), /2 records/)
-      await save('R0004').click()
-      await idle()
-      assert.match(await group('Priority: high').innerText(), /3 records/)
-      assert.match(await group('Priority: normal').innerText(), /4 records/)
-      assert.match(await group('Priority: high').innerText(), /Filled notes: 3/)
-      assert.ok(await focused(button('Expand Priority: high')))
-      assert.deepEqual((await read()).drafts, {})
+      await call('patch', 'R0004', { priority: 'high' })
+      assert.match(await group('Priority: high').textContent(), /3 records/)
+      assert.match(await group('Priority: normal').textContent(), /4 records/)
       await button('Expand Priority: high').click()
-      assert.equal(await edit('R0004', 'priority').innerText(), 'high')
+      assert.match(
+        await page.locator('[data-row="R0004"]').textContent(),
+        /high/,
+      )
+      assert.equal(await page.locator('[data-edit], [data-editor]').count(), 0)
     },
   )
   await record(
-    'Save all validates hidden group drafts and retains failed drafts for retry',
+    'grouped columns lead in grouping order and clearing grouping restores the manual order',
     async () => {
-      await seed('table')
-      await button('Expand all groups').click()
-      await edit().click()
-      await input().fill('')
-      await button('Collapse all groups').click()
-      await button('Save all').click()
-      await idle()
-      assert.equal((await read()).counts.requests, 0)
-      assert.ok((await read()).drafts.R0001.fieldErrors.name)
-      await button('Show R0001').click()
-      await input().fill('Alicia')
-      await button('Collapse all groups').click()
-      await call('fault', 'refuse')
-      await button('Save all').click()
-      await idle()
-      assert.equal((await read()).drafts.R0001.name, 'Alicia')
-      assert.equal(await page.locator('[data-row]').count(), 0)
-      await button('Save all').click()
-      await idle()
-      assert.deepEqual((await read()).drafts, {})
-      assert.equal((await read()).sample[0].name, 'Alicia')
-      assert.equal(await page.locator('[data-row]').count(), 0)
+      await start(8)
+      const manual = ['amount', 'note', 'name', 'id', 'priority', 'dueDate']
+      await call('order', manual)
+      await call('grouping', ['priority', 'name'])
+      assert.deepEqual((await read()).visibleColumns, [
+        'priority',
+        'name',
+        'amount',
+        'note',
+        'id',
+        'dueDate',
+      ])
+      await call('grouping', ['name', 'priority'])
+      assert.deepEqual((await read()).visibleColumns.slice(0, 2), [
+        'name',
+        'priority',
+      ])
+      assert.equal(await button('Move Name column').count(), 0)
+      assert.equal(await button('Move Priority column').count(), 0)
+      await call('pinning', { start: ['id'], end: ['name'] })
+      assert.deepEqual((await read()).visibleColumns.slice(0, 3), [
+        'name',
+        'priority',
+        'id',
+      ])
+      await call('pinning', { start: [], end: [] })
+      await call('grouping', [])
+      assert.deepEqual((await read()).visibleColumns, manual)
+      await start(8)
+      await call('grouping', ['priority'])
+      await button('Move Note column').focus()
+      await page.keyboard.press('End')
+      await call('grouping', [])
+      assert.deepEqual((await read()).visibleColumns, [
+        'id',
+        'name',
+        'priority',
+        'amount',
+        'dueDate',
+        'note',
+      ])
     },
   )
   await record(
-    'a pending save respects later group collapse and keeps its focus',
+    'a save started before grouping finishes without moving focus',
     async () => {
       await seed()
-      await button('Expand all groups').click()
+      await call('grouping', [])
       await edit('R0001', 'note').click()
-      await input('R0001', 'note').fill('Held group save')
+      await input('R0001', 'note').fill('Held before grouping')
       await call('fault', 'hold')
       await save().click()
+      await add().selectOption('priority')
       await button('Collapse all groups').click()
-      assert.equal(await page.locator('[data-row]').count(), 0)
       await call('release')
       await idle()
       assert.deepEqual((await read()).drafts, {})
-      assert.equal((await read()).sample[0].note, 'Held group save')
+      assert.equal((await read()).sample[0].note, 'Held before grouping')
       assert.equal(await page.locator('[data-row]').count(), 0)
       assert.ok(await focused(button('Collapse all groups')))
     },
