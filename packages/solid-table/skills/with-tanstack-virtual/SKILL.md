@@ -21,8 +21,10 @@ This skill builds on `@tanstack/table-core#core`, `getting-started`, and `table-
 
 ## Setup
 
+For Solid 2, copy `examples/solid/_shared/createVirtualizer.ts` into the application and install `@tanstack/virtual-core`. Use this helper until the published Solid Virtual adapter supports Solid 2.
+
 ```tsx
-import { createVirtualizer } from '@tanstack/solid-virtual'
+import { createVirtualizer } from './createVirtualizer'
 
 let scrollElement: HTMLDivElement | undefined
 const rows = () => table.getRowModel().rows
@@ -172,4 +174,4 @@ Source: `examples/solid/virtualized-rows`
 
 ## API Discovery
 
-Inspect `node_modules/@tanstack/solid-table/dist/index.d.ts` and installed `node_modules/@tanstack/solid-virtual/dist/`; use the maintained row, column, or infinite example for the matching CSS geometry contract.
+Inspect `node_modules/@tanstack/solid-table/dist/index.d.ts` and `examples/solid/_shared/createVirtualizer.ts` and installed `node_modules/@tanstack/virtual-core/dist/`; use the maintained row, column, or infinite example for the matching CSS geometry contract.

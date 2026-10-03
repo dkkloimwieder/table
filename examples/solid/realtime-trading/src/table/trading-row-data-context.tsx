@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'solid-js'
-import type { Accessor, JSX } from 'solid-js'
+import type { Accessor } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { MarketQuote } from '../feed/market-data'
 
 export interface TradingRowDataProviderProps {
@@ -11,9 +12,9 @@ const TradingRowDataContext = createContext<Accessor<MarketQuote>>()
 
 export function TradingRowDataProvider(props: TradingRowDataProviderProps) {
   return (
-    <TradingRowDataContext.Provider value={props.quote}>
+    <TradingRowDataContext value={props.quote}>
       {props.children}
-    </TradingRowDataContext.Provider>
+    </TradingRowDataContext>
   )
 }
 

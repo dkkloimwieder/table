@@ -1,7 +1,8 @@
-import { Index, Show, createMemo } from 'solid-js'
+import { For, Show, createMemo } from 'solid-js'
 import { createTradingGridSelectionHandlers } from './table-interactions'
 import { TradingTableRow } from './trading-table-row'
-import type { Accessor, JSX } from 'solid-js'
+import type { Accessor } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { TradingColumnSet } from './table-config/trading-columns'
 import type { TradingRowVirtualization } from './trading-row-virtualizer'
 import type { TradingRow, TradingTableInstance } from './trading-table-features'
@@ -30,7 +31,7 @@ export function TradingTableBody(props: TradingTableBodyProps) {
 
 function FullTableRows(props: TradingTableBodyProps) {
   return (
-    <Index each={props.rows()}>
+    <For keyed={false} each={props.rows()}>
       {(row) => (
         <TradingTableRow
           row={row()}
@@ -38,13 +39,13 @@ function FullTableRows(props: TradingTableBodyProps) {
           selectedSymbol={props.selectedSymbol()}
         />
       )}
-    </Index>
+    </For>
   )
 }
 
 function VirtualTableRows(props: TradingTableBodyProps) {
   return (
-    <Index each={props.virtualization.virtualRows()}>
+    <For keyed={false} each={props.virtualization.virtualRows()}>
       {(virtualRow) => {
         const row = createMemo(() => props.rows()[virtualRow().index])
         return (
@@ -56,7 +57,7 @@ function VirtualTableRows(props: TradingTableBodyProps) {
           />
         )
       }}
-    </Index>
+    </For>
   )
 }
 
@@ -70,7 +71,7 @@ function createTradingTableBodyProps(
 
   return {
     ...selectionHandlers,
-    get classList() {
+    get class() {
       return { 'virtual-table-body': options.virtualized() }
     },
     get style() {

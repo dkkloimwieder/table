@@ -1,4 +1,4 @@
-import { createMemo, createSignal, onCleanup, onMount } from 'solid-js'
+import { createMemo, createSignal, onCleanup, onSettled } from 'solid-js'
 import { TRADING_COLUMN_COUNT } from '../table/table-config/trading-columns'
 import {
   FORCED_VIRTUALIZATION_ROW_COUNT,
@@ -69,7 +69,7 @@ export function createTradingBenchmarkController(feed: MarketFeedController) {
     runtime.animationFrameId = requestAnimationFrame(benchmarkFrame)
   }
 
-  onMount(() => {
+  onSettled(() => {
     observeTableMutations()
     if (longAnimationFramesSupported) {
       runtime.longAnimationFrameObserver = new PerformanceObserver(

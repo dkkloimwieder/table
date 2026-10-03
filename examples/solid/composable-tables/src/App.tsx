@@ -1,5 +1,4 @@
 import { For, createSignal } from 'solid-js'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { createAppColumnHelper, createAppTable } from './hooks/table'
 import { IndeterminateCheckbox } from './components/indeterminate-checkbox'
 import { makeData, makeProductData } from './makeData'
@@ -89,8 +88,6 @@ function UsersTable() {
     // more table options
   })
 
-  useTanStackTableDevtools(table)
-
   return (
     <table.AppTable>
       {(() => {
@@ -117,7 +114,7 @@ function UsersTable() {
                             <table.AppHeader header={h}>
                               {(header) => (
                                 <th
-                                  colSpan={header.colSpan}
+                                  colspan={header.colSpan}
                                   class={
                                     header.column.getCanSort()
                                       ? 'sortable-header'
@@ -187,7 +184,7 @@ function UsersTable() {
                                   )
 
                                 return (
-                                  <td colSpan={footer.colSpan}>
+                                  <td colspan={footer.colSpan}>
                                     {footer.isPlaceholder ? null : (
                                       <>
                                         {/* Use FooterSum for numeric columns, FooterColumnId for others */}
@@ -308,8 +305,6 @@ function ProductsTable() {
     enableRowSelection: true,
   })
 
-  useTanStackTableDevtools(table)
-
   return (
     <table.AppTable>
       {(() => {
@@ -336,7 +331,7 @@ function ProductsTable() {
                             <table.AppHeader header={h}>
                               {(header) => (
                                 <th
-                                  colSpan={header.colSpan}
+                                  colspan={header.colSpan}
                                   class={
                                     header.column.getCanSort()
                                       ? 'sortable-header'
@@ -405,7 +400,7 @@ function ProductsTable() {
                                   )
 
                                 return (
-                                  <td colSpan={footer.colSpan}>
+                                  <td colspan={footer.colSpan}>
                                     {footer.isPlaceholder ? null : (
                                       <>
                                         {/* Use FooterSum for numeric columns, FooterColumnId for others */}

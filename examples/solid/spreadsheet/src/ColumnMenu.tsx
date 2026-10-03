@@ -1,5 +1,5 @@
-import { onCleanup, onMount } from 'solid-js'
-import { Portal } from 'solid-js/web'
+import { onSettled } from 'solid-js'
+import { Portal } from '@solidjs/web'
 import type {
   SpreadsheetTable,
   SpreadsheetTableColumn,
@@ -14,7 +14,7 @@ interface Props {
 
 export function ColumnMenu(props: Props) {
   let menuRef: HTMLDivElement | undefined
-  onMount(() => {
+  onSettled(() => {
     const pointer = (event: PointerEvent) => {
       if (!menuRef?.contains(event.target as Node)) props.onClose()
     }
@@ -23,10 +23,10 @@ export function ColumnMenu(props: Props) {
     }
     document.addEventListener('pointerdown', pointer)
     document.addEventListener('keydown', key)
-    onCleanup(() => {
+    return () => {
       document.removeEventListener('pointerdown', pointer)
       document.removeEventListener('keydown', key)
-    })
+    }
   })
   const filterValue = () => String(props.column.getFilterValue() ?? '')
   const left = () => Math.min(props.anchorRect.left, window.innerWidth - 286)

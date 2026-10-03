@@ -1,6 +1,6 @@
 import { createSignal } from 'solid-js'
 import { reorderColumnIds } from './table-interactions'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { TradingTableInstance } from './trading-table-features'
 
 export function createColumnDrag(table: TradingTableInstance) {
@@ -42,7 +42,7 @@ export function createColumnDrag(table: TradingTableInstance) {
     JSX.IntrinsicElements['button'],
     'draggable' | 'aria-label' | 'onDragStart' | 'onDragEnd'
   > => ({
-    draggable: true,
+    draggable: 'true',
     'aria-label': `Move ${columnId} column`,
     onDragStart(event) {
       setSourceColumnId(columnId)

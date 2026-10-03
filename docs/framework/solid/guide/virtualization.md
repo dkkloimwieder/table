@@ -16,7 +16,7 @@ Use getters for reactive inputs such as `data` when passing Solid signals to `cr
 
 Here's how you set up your table to use virtualization with TanStack Table. Virtualization is a rendering strategy, so TanStack Table does not need a feature or row model for it.
 
-Install and import the Solid virtualizer adapter from `@tanstack/solid-virtual`. TanStack Table still owns rows, columns, and table state; the virtualizer owns scroll indexes and measurements.
+The Solid 2 examples use a local helper around `@tanstack/virtual-core`. Copy `examples/solid/_shared/createVirtualizer.ts` into your application. The helper connects scroll measurements to Solid signals.
 Also see the [TanStack Virtual table example](https://tanstack.com/virtual/latest/docs/framework/react/examples/table) (a React example, but the virtualizer options translate directly to `createVirtualizer`).
 
 ## Virtualization (Solid) Guide
@@ -39,13 +39,13 @@ For small tables, normal rendering is simpler and usually preferable.
 
 ### Install TanStack Virtual
 
-Install the Solid virtualizer adapter:
+Install the core library:
 
 ```sh
-npm install @tanstack/solid-virtual
+npm install @tanstack/virtual-core
 ```
 
-The Solid examples use `createVirtualizer` from `@tanstack/solid-virtual`. TanStack Table still owns rows, columns, headers, cells, sizing, sorting, filtering, and other table state; TanStack Virtual decides which item indexes should render for the current scroll position.
+Import `createVirtualizer` from your copy of the example helper. TanStack Table owns table state. TanStack Virtual selects the visible items.
 
 The table itself is set up like any other v9 table. Declare your features with `tableFeatures()` and create the table with `createTable`; nothing about virtualization changes the table setup.
 
@@ -58,7 +58,7 @@ import {
   tableFeatures,
   createTable,
 } from '@tanstack/solid-table'
-import { createVirtualizer } from '@tanstack/solid-virtual'
+import { createVirtualizer } from './createVirtualizer'
 
 const features = tableFeatures({
   columnSizingFeature,

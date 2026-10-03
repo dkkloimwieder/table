@@ -10,8 +10,8 @@ import {
   sortFn_text,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createAtom } from '@tanstack/store'
+import { useSelector } from '../../_shared/useSelector'
 import { For, createSignal } from 'solid-js'
 import { makeData } from './makeData'
 import type { Person } from './makeData'
@@ -89,8 +89,6 @@ function App() {
     debugTable: true,
   })
 
-  useTanStackTableDevtools(table)
-
   return (
     <div class="demo-root">
       <div>
@@ -104,7 +102,7 @@ function App() {
               <tr>
                 <For each={headerGroup.headers}>
                   {(header) => (
-                    <th colSpan={header.colSpan}>
+                    <th colspan={header.colSpan}>
                       {header.isPlaceholder ? null : (
                         <div
                           class={

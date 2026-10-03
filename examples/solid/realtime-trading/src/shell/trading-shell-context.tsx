@@ -1,5 +1,5 @@
 import { createContext, useContext } from 'solid-js'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { MarketFeedController } from '../feed/market-feed-controller'
 import type { TradingBenchmarkController } from '../benchmark/trading-benchmark-controller'
 
@@ -11,9 +11,9 @@ export function MarketFeedProvider(props: {
   children: JSX.Element
 }) {
   return (
-    <MarketFeedContext.Provider value={props.controller}>
+    <MarketFeedContext value={props.controller}>
       {props.children}
-    </MarketFeedContext.Provider>
+    </MarketFeedContext>
   )
 }
 
@@ -23,9 +23,9 @@ export function TradingShellProvider(props: {
 }) {
   return (
     <MarketFeedProvider controller={props.controller.feed}>
-      <TradingShellContext.Provider value={props.controller}>
+      <TradingShellContext value={props.controller}>
         {props.children}
-      </TradingShellContext.Provider>
+      </TradingShellContext>
     </MarketFeedProvider>
   )
 }

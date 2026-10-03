@@ -1,14 +1,15 @@
 import { constructTable } from '@tanstack/table-core'
 import {
-  createComputed,
+  createMemo,
+  createRenderEffect,
   getOwner,
-  mergeProps,
-  onCleanup,
+  merge,
+  onSettled,
   untrack,
 } from 'solid-js'
-import { FlexRender } from './FlexRender'
+import { FlexRender, SolidDefaultCell } from './FlexRender'
 import { solidReactivity } from './reactivity'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type {
   RowData,
   Table,
@@ -62,54 +63,67 @@ export function createTable<
   TFeatures extends TableFeatures,
   TData extends RowData,
 >(tableOptions: TableOptions<TFeatures, TData>): SolidTable<TFeatures, TData> {
-  const owner = getOwner()!
+  const owner = getOwner()
+  if (!owner) {
+    throw new Error('Create the table inside a Solid component or createRoot.')
+  }
   const reactivity = solidReactivity(owner)
 
-  const mergedOptions = mergeProps(tableOptions, {
+  const defaultColumn = createMemo(() =>
+    merge({ cell: SolidDefaultCell }, tableOptions.defaultColumn ?? {}),
+  )
+  const mergedOptions = merge(tableOptions, {
+    get defaultColumn() {
+      return defaultColumn()
+    },
     features: {
       coreReactivityFeature: reactivity,
       ...tableOptions.features,
     },
   }) as any
 
-  const resolvedOptions = mergeProps(
+  const resolvedOptions = merge(
     {
       mergeOptions: (
         defaultOptions: TableOptions<TFeatures, TData>,
         options: TableOptions<TFeatures, TData>,
       ) => {
-        return mergeProps(defaultOptions, options)
+        return merge(defaultOptions, options)
       },
     },
     mergedOptions,
   ) as TableOptions<TFeatures, TData>
 
-  const table = constructTable(resolvedOptions) as unknown as SolidTable<
-    TFeatures,
-    TData
-  >
+  const table = untrack(() =>
+    constructTable(resolvedOptions),
+  ) as unknown as SolidTable<TFeatures, TData>
 
-  createComputed(() => {
-    const userState = tableOptions.state
-    if (userState) {
-      for (const key in userState) {
-        void (userState as Record<string, unknown>)[key]
+  createRenderEffect(
+    () => {
+      const userState = tableOptions.state
+      if (userState) {
+        for (const key in userState) {
+          void (userState as Record<string, unknown>)[key]
+        }
       }
-    }
-
-    untrack(() => {
-      table.setOptions((prev) => {
-        return mergeProps(prev, mergedOptions) as TableOptions<TFeatures, TData>
+    },
+    () => {
+      untrack(() => {
+        table.setOptions((prev) => {
+          return merge(prev, mergedOptions) as TableOptions<TFeatures, TData>
+        })
       })
-    })
-  })
+    },
+  )
 
-  onCleanup(() => reactivity.unmount?.())
+  onSettled(() => () => reactivity.unmount?.())
 
   table.Subscribe = (props: {
     children: (atoms: Table<TFeatures, TData>['atoms']) => JSX.Element
   }) => {
-    return props.children(table.atoms as Table<TFeatures, TData>['atoms'])
+    return createMemo(() =>
+      props.children(table.atoms as Table<TFeatures, TData>['atoms']),
+    ) as unknown as JSX.Element
   }
 
   table.FlexRender = FlexRender

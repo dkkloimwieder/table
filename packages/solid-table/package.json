@@ -26,26 +26,40 @@
   "module": "./dist/index.js",
   "exports": {
     ".": {
-      "solid": "./dist/index.js",
+      "types": "./dist/index.d.ts",
+      "solid": "./dist/solid/index.jsx",
+      "node": "./dist/server/index.js",
       "import": "./dist/index.js"
     },
     "./static-functions": {
-      "solid": "./dist/static-functions.js",
+      "types": "./dist/static-functions.d.ts",
+      "solid": "./dist/solid/static-functions.js",
+      "node": "./dist/server/static-functions.js",
       "import": "./dist/static-functions.js"
     },
     "./experimental-worker-plugin": {
-      "solid": "./dist/experimental-worker-plugin.js",
+      "types": "./dist/experimental-worker-plugin.d.ts",
+      "solid": "./dist/solid/experimental-worker-plugin.js",
+      "node": "./dist/server/experimental-worker-plugin.js",
       "import": "./dist/experimental-worker-plugin.js"
     },
     "./flex-render": {
-      "solid": "./dist/flex-render.js",
+      "types": "./dist/flex-render.d.ts",
+      "solid": "./dist/solid/flex-render.jsx",
+      "node": "./dist/server/flex-render.js",
       "import": "./dist/flex-render.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./native": {
+      "types": "./dist/native.d.ts",
+      "solid": "./dist/solid/native.js",
+      "node": "./dist/server/native.js",
+      "import": "./dist/native.js"
+    }
   },
   "sideEffects": false,
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12.0"
   },
   "files": [
     "dist",
@@ -57,19 +71,22 @@
     "test:lib": "vitest --passWithNoTests",
     "test:lib:dev": "pnpm test:lib --watch",
     "test:types": "tsc",
-    "test:build": "publint --strict",
-    "build": "tsdown"
+    "test:build": "publint --strict && node ./scripts/test-native-imports.mjs",
+    "build": "rimraf ./dist && tsdown && node ./scripts/build-solid.mjs",
+    "test:ssr": "node ./scripts/test-ssr.mjs"
   },
   "dependencies": {
     "@tanstack/store": "^0.11.1",
     "@tanstack/table-core": "workspace:*"
   },
   "devDependencies": {
-    "@solidjs/testing-library": "^0.8.10",
-    "solid-js": "^1.9.15",
-    "vite-plugin-solid": "^2.11.14"
+    "@solidjs/testing-library": "1.0.0-beta.3",
+    "solid-js": "2.0.0-rc.13",
+    "@solidjs/vite-plugin": "3.0.0-next.47",
+    "@solidjs/web": "2.0.0-rc.13"
   },
   "peerDependencies": {
-    "solid-js": ">=1.3"
+    "solid-js": ">=2.0.0-rc.13 <3.0.0",
+    "@solidjs/web": ">=2.0.0-rc.13 <3.0.0"
   }
 }

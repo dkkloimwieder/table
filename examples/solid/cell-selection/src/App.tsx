@@ -1,4 +1,4 @@
-import { For, Show, createEffect, createSignal, on } from 'solid-js'
+import { For, Show, createEffect, createSignal } from 'solid-js'
 import { faker } from '@faker-js/faker'
 import {
   FlexRender,
@@ -15,8 +15,7 @@ import {
   sortFn_text,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
-import { createHotkeys } from '@tanstack/solid-hotkeys'
+import { createHotkeys } from '../../_shared/createHotkeys'
 import { makeData } from './makeData'
 import type { Cell } from '@tanstack/solid-table'
 import type { Person } from './makeData'
@@ -168,8 +167,6 @@ function App() {
     debugTable: true,
   })
 
-  useTanStackTableDevtools(table)
-
   const randomizeColumns = () => {
     table.setColumnOrder(
       faker.helpers.shuffle(table.getAllLeafColumns().map((d) => d.id)),
@@ -181,16 +178,14 @@ function App() {
   // customize this to your needs. `defer: true` skips the first run so an
   // initialState selection survives mount.
   createEffect(
-    on(
-      () => [
-        table.atoms.columnOrder.get(),
-        table.atoms.columnPinning.get(),
-        table.atoms.columnVisibility.get(),
-        table.atoms.sorting.get(),
-      ],
-      () => table.resetCellSelection(true),
-      { defer: true },
-    ),
+    () => [
+      table.atoms.columnOrder.get(),
+      table.atoms.columnPinning.get(),
+      table.atoms.columnVisibility.get(),
+      table.atoms.sorting.get(),
+    ],
+    () => { table.resetCellSelection(true) },
+    { defer: true },
   )
 
   let gridRef!: HTMLDivElement
@@ -349,7 +344,7 @@ function App() {
                 <tr>
                   <For each={headerGroup.headers}>
                     {(header) => (
-                      <th colSpan={header.colSpan}>
+                      <th colspan={header.colSpan}>
                         <Show when={!header.isPlaceholder}>
                           <button
                             type="button"
@@ -437,7 +432,7 @@ function App() {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={20}>
+              <td colspan={20}>
                 Rows ({table.getRowModel().rows.length.toLocaleString()})
               </td>
             </tr>

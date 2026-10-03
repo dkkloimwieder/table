@@ -174,7 +174,7 @@ function App() {
           <tr>
             <For each={headerGroup.headers}>
               {(header) => (
-                <th colSpan={header.colSpan}>
+                <th colspan={header.colSpan}>
                   <button
                     type="button"
                     class="sortable-header header-sort-button"
@@ -325,8 +325,8 @@ function App() {
                           }
                         >
                           <td
-                            rowSpan={cell.getRowSpan()}
-                            colSpan={cell.getColSpan()}
+                            rowspan={cell.getRowSpan()}
+                            colspan={cell.getColSpan()}
                             class={getCellClassName(cell)}
                             onMouseDown={cell.getSelectionStartHandler()}
                             onMouseEnter={cell.getSelectionExtendHandler()}
@@ -377,7 +377,7 @@ function App() {
                   <tr>
                     <For each={headerGroup.headers}>
                       {(header) => (
-                        <th colSpan={header.colSpan}>
+                        <th colspan={header.colSpan}>
                           <FlexRender header={header} />
                         </th>
                       )}
@@ -404,8 +404,8 @@ function App() {
                           }
                         >
                           <td
-                            rowSpan={cell.getRowSpan()}
-                            colSpan={cell.getColSpan()}
+                            rowspan={cell.getRowSpan()}
+                            colspan={cell.getColSpan()}
                           >
                             <FlexRender cell={cell} />
                           </td>

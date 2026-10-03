@@ -1,7 +1,7 @@
 import { FlexRender } from '@tanstack/solid-table'
-import { Index, createMemo } from 'solid-js'
+import { For, createMemo } from 'solid-js'
 import { TradingRowDataProvider } from './trading-row-data-context'
-import type { VirtualItem } from '@tanstack/solid-virtual'
+import type { VirtualItem } from '../../../_shared/createVirtualizer'
 import type { TradingColumnSet } from './table-config/trading-columns'
 import type { TradingCell, TradingRow } from './trading-table-features'
 
@@ -25,7 +25,6 @@ export function TradingTableRow(props: TradingTableRowProps) {
       columns: props.columnVersion,
       cells: currentCells(),
     }),
-    undefined,
     {
       equals: (previous, next) =>
         previous.rowId === next.rowId &&
@@ -37,7 +36,7 @@ export function TradingTableRow(props: TradingTableRowProps) {
   return (
     <TradingRowDataProvider quote={() => props.row.original}>
       <tr
-        classList={{ 'virtual-table-row': props.virtualItem !== undefined }}
+        class={{ 'virtual-table-row': props.virtualItem !== undefined }}
         style={
           props.virtualItem
             ? { transform: `translateY(${props.virtualItem.start}px)` }
@@ -52,16 +51,16 @@ export function TradingTableRow(props: TradingTableRowProps) {
             : undefined
         }
         title={props.virtualItem ? undefined : props.row.original.company}
-        aria-selected={props.row.getIsSelected()}
+        aria-selected={props.row.getIsSelected() ? 'true' : 'false'}
       >
-        <Index each={currentCells()}>
+        <For keyed={false} each={currentCells()}>
           {(cell, index) => (
             <TradingTableCell
               cell={cell()}
               renderCell={renderState().cells[index]}
             />
           )}
-        </Index>
+        </For>
       </tr>
     </TradingRowDataProvider>
   )
@@ -86,7 +85,7 @@ function TradingTableCell(props: TradingTableCellProps) {
       data-selection-right={selection().edges.right ? 'true' : undefined}
       data-selection-bottom={selection().edges.bottom ? 'true' : undefined}
       data-selection-left={selection().edges.left ? 'true' : undefined}
-      aria-selected={selection().selected}
+      aria-selected={selection().selected ? 'true' : 'false'}
       tabindex={selection().tabIndex}
     >
       <FlexRender cell={props.renderCell} />

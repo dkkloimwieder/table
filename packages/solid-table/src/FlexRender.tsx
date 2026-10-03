@@ -1,12 +1,22 @@
 import { Match, Show, Switch, createComponent } from 'solid-js'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type {
   Cell,
+  CellContext,
   CellData,
   Header,
   RowData,
   TableFeatures,
 } from '@tanstack/table-core'
+
+/** Renders default cell values inside a Solid tracking scope. */
+export function SolidDefaultCell<
+  TFeatures extends TableFeatures,
+  TData extends RowData,
+  TValue extends CellData,
+>(props: CellContext<TFeatures, TData, TValue>) {
+  return <>{props.renderValue<any>()?.toString?.() ?? null}</>
+}
 
 /**
  * Renders a Solid table template value with the provided context props.

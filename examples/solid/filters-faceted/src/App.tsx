@@ -14,7 +14,7 @@ import {
   rowPaginationFeature,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { createDebouncer } from '@tanstack/solid-pacer/debouncer'
+import { createDebouncer } from '../../_shared/createDebouncer'
 import { For, createSignal } from 'solid-js'
 import { makeData } from './makeData'
 import ColumnFilter from './ColumnFilter'
@@ -143,7 +143,7 @@ function App() {
               <tr>
                 <For each={headerGroup.headers}>
                   {(header) => (
-                    <th colSpan={header.colSpan}>
+                    <th colspan={header.colSpan}>
                       {header.isPlaceholder ? null : (
                         <>
                           <FlexRender header={header} />

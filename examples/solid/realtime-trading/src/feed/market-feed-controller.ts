@@ -1,4 +1,4 @@
-import { createSignal, onCleanup, onMount } from 'solid-js'
+import { createSignal, onCleanup, onSettled } from 'solid-js'
 import { normalizeFeedSampleRate } from './feed-sample-rates'
 import { initialMarketFeedConfig } from './market-feed-config'
 import { applyMarketUpdates, hydrateMarketQuotes } from './market-data'
@@ -108,12 +108,13 @@ export function createMarketFeedController() {
     console.error('Market feed worker failed', error)
   }
 
-  const reset = (): void => {
+  const resetCount = (rowCount: number): void => {
     setWorkerReady(false)
-    post({ type: 'reset', rowCount: instrumentCount() })
+    post({ type: 'reset', rowCount })
   }
+  const reset = (): void => resetCount(instrumentCount())
 
-  onMount(() => {
+  onSettled(() => {
     runtime.worker = new Worker(
       new URL('./worker/market-feed.worker.ts', import.meta.url),
       { type: 'module' },
@@ -147,7 +148,7 @@ export function createMarketFeedController() {
     },
     setInstrumentCount(count: number): void {
       setInstrumentCount(count)
-      reset()
+      resetCount(count)
     },
     setTargetRate(rate: number): void {
       const sampleRate = normalizeFeedSampleRate(rate)

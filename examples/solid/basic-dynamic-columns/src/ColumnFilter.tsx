@@ -1,4 +1,4 @@
-import { createDebouncer } from '@tanstack/solid-pacer/debouncer'
+import { createDebouncer } from '../../_shared/createDebouncer'
 import { For, Match, Show, Switch, createMemo } from 'solid-js'
 import type { DataType, DynamicRow, features } from './App'
 import type { Column, Table } from '@tanstack/solid-table'

@@ -1,4 +1,4 @@
-import { createDebouncer } from '@tanstack/solid-pacer/debouncer'
+import { createDebouncer } from '../../../_shared/createDebouncer'
 import { createEffect, createSignal } from 'solid-js'
 
 type DebouncedInputProps = {
@@ -12,11 +12,14 @@ type DebouncedInputProps = {
 }
 
 export function DebouncedInput(props: DebouncedInputProps) {
-  const [value, setValue] = createSignal<string | number>(props.value)
+  const [value, setValue] = createSignal<string | number>(() => props.value)
 
-  createEffect(() => {
-    setValue(() => props.value)
-  })
+  createEffect(
+    () => props.value,
+    (nextValue) => {
+      setValue(nextValue)
+    },
+  )
 
   const onChangeDebouncer = createDebouncer(
     (nextValue: string | number) => props.onChange(nextValue),
@@ -26,9 +29,7 @@ export function DebouncedInput(props: DebouncedInputProps) {
     },
   )
 
-  createEffect(() => {
-    onChangeDebouncer.maybeExecute(value())
-  })
+  createEffect(value, (nextValue) => { onChangeDebouncer.maybeExecute(nextValue) })
 
   return (
     <input

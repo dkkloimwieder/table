@@ -8,11 +8,11 @@ import {
   sortFns,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { createVirtualizer } from '@tanstack/solid-virtual'
+import { createVirtualizer } from '../../_shared/createVirtualizer'
 import { For, createEffect, createSignal } from 'solid-js'
 import { makeData } from './makeData'
 import type { Row, SolidTable } from '@tanstack/solid-table'
-import type { VirtualItem, Virtualizer } from '@tanstack/solid-virtual'
+import type { VirtualItem, Virtualizer } from '../../_shared/createVirtualizer'
 import type { Person } from './makeData'
 
 const features = tableFeatures({
@@ -123,7 +123,7 @@ function App() {
 
 // Important: Keep the virtualizer and the scroll container ref in the same component.
 // The ref must be undefined when createVirtualizer runs (before JSX return),
-// so that onMount can set up scroll observers after the element is in the DOM.
+// so that onSettled can set up scroll observers after the element is in the DOM.
 function VirtualizedTable(props: {
   table: SolidTable<typeof features, Person>
 }) {
@@ -269,11 +269,12 @@ function IndeterminateCheckbox(props: {
 }) {
   let ref: HTMLInputElement | undefined
 
-  createEffect(() => {
-    if (typeof props.indeterminate === 'boolean' && ref) {
-      ref.indeterminate = !props.checked && props.indeterminate
-    }
-  })
+  createEffect(
+    () => !props.checked && Boolean(props.indeterminate),
+    (value) => {
+      if (ref) ref.indeterminate = value
+    },
+  )
 
   return (
     <input

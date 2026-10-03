@@ -17,12 +17,13 @@
     "@rolldown/binding-wasm32-wasi": "~1.2.8",
     "typescript": "6.0.3",
     "vite": "^8.3.0",
-    "vite-plugin-solid": "^2.11.14"
+    "@solidjs/vite-plugin": "3.0.0-next.47"
   },
   "dependencies": {
     "@tanstack/match-sorter-utils": "^9.1.2",
-    "@tanstack/solid-pacer": "^0.22.0",
     "@tanstack/solid-table": "^9.2.4",
-    "solid-js": "^1.9.15"
+    "solid-js": "2.0.0-rc.13",
+    "@solidjs/web": "2.0.0-rc.13",
+    "@tanstack/pacer": "0.23.0"
   }
 }

@@ -2,7 +2,7 @@ import { FlexRender } from '@tanstack/solid-table'
 import { For, Show } from 'solid-js'
 import { createColumnDrag } from './create-column-drag'
 import { sortAriaValue, sortIndicator } from './table-interactions'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { ColumnDrag } from './create-column-drag'
 import type {
   TradingHeader,
@@ -82,10 +82,13 @@ function TradingLeafHeader(props: TradingHeaderCellProps) {
           </span>
           <Show when={props.header.column.getCanSort()}>
             <span
-              class="sort-indicator"
-              classList={{
-                'is-active': !!props.header.column.getIsSorted(),
-              }}
+              class={[
+                'sort-indicator',
+                {
+                  'is-active': !!props.header.column.getIsSorted(),
+                },
+              ]}
+
               aria-hidden="true"
             >
               {sortIndicator(props.header.column.getIsSorted())}
@@ -106,7 +109,7 @@ function createHeaderCellProps(
   columnDrag: ColumnDrag,
 ): JSX.IntrinsicElements['th'] {
   return {
-    get colSpan() {
+    get colspan() {
       return header().colSpan
     },
     get style() {
@@ -117,7 +120,7 @@ function createHeaderCellProps(
     get ['aria-sort']() {
       return isLeaf() ? sortAriaValue(header().column.getIsSorted()) : undefined
     },
-    get classList() {
+    get class() {
       const columnId = header().column.id
       return {
         'column-group-header': !isLeaf(),
@@ -134,9 +137,11 @@ function createSortButtonProps(
 ): JSX.IntrinsicElements['button'] {
   return {
     type: 'button',
-    class: 'sort-header-button',
-    get classList() {
-      return { 'is-sortable': header().column.getCanSort() }
+    get class() {
+      return [
+        'sort-header-button',
+        { 'is-sortable': header().column.getCanSort() },
+      ]
     },
     get disabled() {
       return !header().column.getCanSort()
@@ -149,9 +154,11 @@ function createResizeHandleProps(
   header: () => TradingHeader,
 ): JSX.IntrinsicElements['div'] {
   return {
-    class: 'column-resize-handle',
-    get classList() {
-      return { 'is-resizing': header().column.getIsResizing() }
+    get class() {
+      return [
+        'column-resize-handle',
+        { 'is-resizing': header().column.getIsResizing() },
+      ]
     },
     role: 'separator',
     'aria-orientation': 'vertical',

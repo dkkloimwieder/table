@@ -1,8 +1,9 @@
 import {
-  batch,
+  createEffect,
   createMemo,
+  createRoot,
   createSignal,
-  observable,
+  onCleanup,
   runWithOwner,
   untrack,
 } from 'solid-js'
@@ -12,81 +13,81 @@ import type {
   ReadonlyAtom,
   Subscription,
 } from '@tanstack/store'
-import type { Accessor, Owner, Setter } from 'solid-js'
+import type { Accessor, Owner } from 'solid-js'
 import type {
   TableAtomOptions,
   TableReactivityBindings,
 } from '@tanstack/table-core/reactivity'
 
-function signalToReadonlyAtom<T>(
-  signal: Accessor<T>,
-  owner: Owner,
-): ReadonlyAtom<T> {
-  return Object.assign(signal, {
-    get: () => signal(),
-    subscribe: (observer: Observer<T>) => {
-      return runWithOwner(owner, () => observable(signal))!.subscribe(observer)
+function bindAtom<T>(read: Accessor<T>, owner: Owner): ReadonlyAtom<T> {
+  return Object.assign(read, {
+    get: read,
+    subscribe(observer: Observer<T>): Subscription {
+      const notify =
+        typeof observer === 'function'
+          ? observer
+          : observer.next
+            ? (value: T) => observer.next!(value)
+            : undefined
+      let dispose = () => {}
+      if (notify) {
+        runWithOwner(owner, () => {
+          createRoot((stop) => {
+            dispose = stop
+            // Solid 2 effects deliver the initial committed value after settle.
+            createEffect(read, (value) => {
+              notify(value)
+            })
+          })
+        })
+      }
+      return { unsubscribe: () => dispose() }
     },
   })
 }
 
-function signalToWritableAtom<T>(
-  signalTuple: [Accessor<T>, Setter<T>],
-  owner: Owner,
-): Atom<T> {
-  const [signal, setSignal] = signalTuple
-  return Object.assign(signal, {
-    set: (updater: T | ((prevVal: T) => T)) => {
-      typeof updater === 'function'
-        ? setSignal(updater as unknown as (prev: T) => T)
-        : setSignal(updater as Exclude<T, Function>)
-    },
-    get: () => signal(),
-    subscribe: (observer: Observer<T>) => {
-      return runWithOwner(owner, () => observable(signal))!.subscribe(observer)
-    },
-  })
-}
-
-/**
- * Creates the table-core reactivity bindings used by the Solid adapter.
- *
- * Table state atoms are backed by TanStack Store atoms. The options store stays
- * framework-native because row-model APIs read `table.options` directly during
- * render. Readonly table atoms bridge Store dependency tracking into Solid memos.
- */
+/** Creates native Solid atoms for table-core. */
 export function solidReactivity(owner: Owner): TableReactivityBindings {
   const subscriptions = new Set<Subscription>()
+  const unmount = () => {
+    subscriptions.forEach((subscription) => subscription.unsubscribe())
+    subscriptions.clear()
+  }
+  onCleanup(unmount)
 
   return {
-    createOptionsStore: true,
+    // Getters keep option dependencies local to each reader.
+    createOptionsStore: false,
     wrapExternalAtoms: true,
-    addSubscription: (subscription) => {
-      subscriptions.add(subscription)
-    },
-    unmount: () => {
-      subscriptions.forEach((s) => s.unsubscribe())
-      subscriptions.clear()
-    },
-    schedule: (fn) => queueMicrotask(() => fn()),
-    createReadonlyAtom: <T>(fn: () => T, options?: TableAtomOptions<T>) => {
-      const signal = createMemo(() => fn(), {
-        equals: options?.compare,
-        name: options?.debugName,
-      })
-      return signalToReadonlyAtom(signal, owner)
-    },
+    addSubscription: (subscription) => subscriptions.add(subscription),
+    unmount,
+    schedule: (callback) => queueMicrotask(callback),
+    untrack,
+    // Solid 2 batches writes until the next microtask by default.
+    batch: (fn) => fn(),
+    createReadonlyAtom: <T>(fn: () => T, options?: TableAtomOptions<T>) =>
+      bindAtom(
+        createMemo(fn, {
+          equals: options?.compare,
+          name: options?.debugName,
+        }),
+        owner,
+      ),
     createWritableAtom: <T>(
       value: T,
       options?: TableAtomOptions<T>,
     ): Atom<T> => {
-      const writableSignal = createSignal(value, {
+      const [read, write] = createSignal(() => value, {
         equals: options?.compare,
         name: options?.debugName,
+        // Core synchronizes controlled state and external atoms in owned scopes.
+        ownedWrite: true,
       })
-      return signalToWritableAtom(writableSignal, owner)
+      return Object.assign(bindAtom(read, owner), {
+        set: (updater: T | ((previous: T) => T)) => {
+          write(updater as Parameters<typeof write>[0])
+        },
+      })
     },
-    untrack: untrack,
-    batch: batch,
   }
 }

@@ -1,4 +1,4 @@
-import { createMemo, onCleanup, onMount } from 'solid-js'
+import { createMemo, onCleanup, onSettled } from 'solid-js'
 import type {
   DepthCellProps,
   MoveCellProps,
@@ -75,7 +75,7 @@ export function recordCellRender<T>(
 function trackLifecycle(componentName: QuoteComponentName): void {
   quoteRenderDiagnostics.componentRenderCalls++
   quoteRenderDiagnostics.componentRenderCallsByName[componentName]++
-  onMount(() => {
+  onSettled(() => {
     quoteCellLifecycle.created++
   })
   onCleanup(() => {
@@ -87,11 +87,14 @@ export function PriceCell(props: PriceCellProps) {
   trackLifecycle('PriceCell')
   return (
     <button
-      class="price-button"
-      classList={{
-        'quote-up': props.move >= 0,
-        'quote-down': props.move < 0,
-      }}
+      class={[
+        'price-button',
+        {
+          'quote-up': props.move >= 0,
+          'quote-down': props.move < 0,
+        },
+      ]}
+
       onClick={props.onSelect}
     >
       {props.price.toFixed(2)}
@@ -103,11 +106,13 @@ export function StableMoveCell(props: MoveCellProps) {
   trackLifecycle('StableMoveCell')
   return (
     <span
-      class="move-cell"
-      classList={{
-        'quote-up': props.move >= 0,
-        'quote-down': props.move < 0,
-      }}
+      class={[
+        'move-cell',
+        {
+          'quote-up': props.move >= 0,
+          'quote-down': props.move < 0,
+        },
+      ]}
     >
       {formatSigned(props.move)}
     </span>
@@ -128,11 +133,13 @@ export function PercentChangeCell(props: PercentChangeCellProps) {
   trackLifecycle('PercentChangeCell')
   return (
     <span
-      class="percent-change-cell"
-      classList={{
-        'quote-up': props.value >= 0,
-        'quote-down': props.value < 0,
-      }}
+      class={[
+        'percent-change-cell',
+        {
+          'quote-up': props.value >= 0,
+          'quote-down': props.value < 0,
+        },
+      ]}
     >
       {props.value >= 0 ? '+' : ''}
       {props.value.toFixed(2)}%
@@ -149,7 +156,7 @@ export function SpreadCell(props: SpreadCellProps) {
   })
 
   return (
-    <span class="spread-cell" classList={{ 'spread-wide': basisPoints() >= 4 }}>
+    <span class={['spread-cell', { 'spread-wide': basisPoints() >= 4 }]}>
       {spread().toFixed(2)}
       <small>{basisPoints().toFixed(1)} bp</small>
     </span>
@@ -182,11 +189,13 @@ export function QuoteAgeCell(props: QuoteAgeCellProps) {
   trackLifecycle('QuoteAgeCell')
   return (
     <span
-      class="quote-age"
-      classList={{
-        'quote-age-warm': props.ageMs >= 500,
-        'quote-age-stale': props.ageMs >= 1_500,
-      }}
+      class={[
+        'quote-age',
+        {
+          'quote-age-warm': props.ageMs >= 500,
+          'quote-age-stale': props.ageMs >= 1_500,
+        },
+      ]}
     >
       {props.ageMs < 1_000
         ? `${Math.round(props.ageMs)} ms`
@@ -215,8 +224,8 @@ export function SparklineCell(props: SparklineCellProps) {
 
   return (
     <svg
-      class="sparkline"
-      classList={{ 'quote-up': rising(), 'quote-down': !rising() }}
+      class={['sparkline', { 'quote-up': rising(), 'quote-down': !rising() }]}
+
       viewBox="0 0 100 24"
       preserveAspectRatio="none"
     >

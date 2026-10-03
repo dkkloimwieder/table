@@ -1,0 +1,105 @@
+.native-demo {
+  font:
+    14px/20px system-ui,
+    sans-serif;
+  color: #17212b;
+  padding: 16px;
+}
+.native-demo * {
+  box-sizing: border-box;
+}
+.native-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.native-demo button {
+  font: inherit;
+  cursor: pointer;
+}
+.native-viewport {
+  position: relative;
+  width: 720px;
+  max-width: 100%;
+  height: 480px;
+  overflow: auto;
+  border: 1px solid #9aa9b8;
+  overflow-anchor: none;
+}
+.native-header {
+  display: flex;
+  position: sticky;
+  top: 0;
+  height: 36px;
+  z-index: 5;
+  background: #dce7f0;
+}
+.native-cell {
+  flex: none;
+  padding: 6px 10px;
+  border-right: 1px solid #d0dbe5;
+  overflow-wrap: anywhere;
+  background: inherit;
+}
+.native-row {
+  background: white;
+  border-bottom: 1px solid #d0dbe5;
+}
+.native-cells {
+  display: flex;
+  min-height: 47px;
+  background: inherit;
+}
+.native-group .native-cells {
+  min-height: 35px;
+}
+.native-group {
+  background: #ecf2f8;
+}
+.native-row.selected {
+  background: #dbeafe;
+}
+.native-detail {
+  min-height: 72px;
+  padding: 12px;
+  background: #f4f6f8;
+}
+.native-body {
+  position: relative;
+}
+.native-window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+.native-pinned {
+  position: sticky;
+  z-index: 4;
+  background: #f6f9fc;
+}
+.native-bottom {
+  bottom: 0;
+}
+.native-measure {
+  position: absolute;
+  visibility: hidden;
+  pointer-events: none;
+  top: 0;
+  left: 0;
+  contain: layout;
+}
+.native-cell[data-active] {
+  outline: 2px solid #2563eb;
+  outline-offset: -2px;
+}
+.native-cell input {
+  width: 100%;
+  font: inherit;
+}
+.native-editor-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 36px;
+}

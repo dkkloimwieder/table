@@ -22,7 +22,7 @@ This skill builds on `@tanstack/table-core#client-vs-server`, `getting-started`,
 
 ```tsx
 import { keepPreviousData, useQuery } from '@tanstack/solid-query'
-import { createAtom, useSelector } from '@tanstack/solid-store'
+import { createMemo, createSignal, deep } from 'solid-js'
 import {
   createTable,
   rowPaginationFeature,
@@ -31,23 +31,28 @@ import {
 
 const features = tableFeatures({ rowPaginationFeature })
 const emptyRows: Array<{ id: string }> = []
-const paginationAtom = createAtom({ pageIndex: 0, pageSize: 20 })
-const pagination = useSelector(paginationAtom)
+const [pagination, setPagination] = createSignal({ pageIndex: 0, pageSize: 20 })
 const result = useQuery(() => ({
   queryKey: ['people', pagination()],
   queryFn: () => fetchPeople(pagination()),
   placeholderData: keepPreviousData,
 }))
+const rows = createMemo(() => deep(result.data?.rows) ?? emptyRows)
 const table = createTable({
   features,
   columns,
   get data() {
-    return result.data?.rows ?? emptyRows
+    return rows()
   },
   get rowCount() {
     return result.data?.rowCount
   },
-  atoms: { pagination: paginationAtom },
+  state: {
+    get pagination() {
+      return pagination()
+    },
+  },
+  onPaginationChange: setPagination,
   manualPagination: true,
 })
 ```
@@ -65,12 +70,14 @@ const result = useQuery(() => ({
 
 ### Expose query results through getters
 
+Solid Query 6 reconciles results into a stable store. Use `createMemo(() => deep(result.data.rows))` to track nested changes and expose plain data to Table's identity cache. Use the native snapshot machinery instead of cloning every row manually. `snapshot()` alone does not track changes.
+
 ```tsx
 const table = createTable({
   features,
   columns,
   get data() {
-    return result.data?.rows ?? emptyRows
+    return rows()
   },
 })
 ```
@@ -109,7 +116,7 @@ useEffect(() => setRows(result.data?.rows ?? []), [result.data])
 Correct:
 
 ```tsx
-get data() { return result.data?.rows ?? emptyRows }
+get data() { return rows() }
 ```
 
 Solid getters connect the query result directly without a second synchronization layer.
@@ -131,7 +138,7 @@ createTable({
   features,
   columns,
   get data() {
-    return result.data?.rows ?? emptyRows
+    return rows()
   },
   get rowCount() {
     return result.data?.rowCount

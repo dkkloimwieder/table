@@ -1,3 +1,4 @@
+import { createMemo, deep } from 'solid-js'
 import { keepPreviousData, useQuery } from '@tanstack/solid-query'
 import { createFileRoute } from '@tanstack/solid-router'
 import { fetchUsers } from '../api/user'
@@ -24,6 +25,8 @@ function UsersPage() {
     placeholderData: keepPreviousData,
   }))
 
+  const rows = createMemo(() => deep(dataQuery.data?.result) ?? [])
+
   const paginationState = () => ({
     pageIndex: filters().pageIndex ?? DEFAULT_PAGE_INDEX,
     pageSize: filters().pageSize ?? DEFAULT_PAGE_SIZE,
@@ -35,7 +38,7 @@ function UsersPage() {
     <div class="router-root">
       <h1 class="page-title">TanStack Table + Query + Router</h1>
       <Table
-        data={dataQuery.data?.result ?? []}
+        data={rows()}
         columns={USER_COLUMNS}
         pagination={paginationState()}
         paginationOptions={{

@@ -1,5 +1,4 @@
 import { createTableHook } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { For, createSignal } from 'solid-js'
 import { makeData } from './makeData'
 import type { Person } from './makeData'
@@ -66,8 +65,6 @@ export function App() {
     },
     // add additional table options here or in the createTableHook call above
   })
-
-  useTanStackTableDevtools(table)
 
   // 8. Render your table markup from the table instance APIs
   return (

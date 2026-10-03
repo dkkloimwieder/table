@@ -2,7 +2,7 @@
 
 import { afterEach, describe, expect, test, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen } from '@solidjs/testing-library'
-import { createSignal } from 'solid-js'
+import { createSignal, flush } from 'solid-js'
 import { stockFeatures } from '@tanstack/table-core'
 import { FlexRender } from '../../src/FlexRender'
 import { createTable } from '../../src/createTable'
@@ -82,18 +82,24 @@ describe('FlexRender', () => {
       </>
     ))
 
+    flush()
+
     expect(
       screen.getByRole('status', { name: 'normal cell' }).textContent,
     ).toBe('cell:Ada')
+    flush()
     expect(
       screen.getByRole('status', { name: 'aggregate cell' }).textContent,
     ).toBe('aggregate:Ada')
+    flush()
     expect(
       screen.getByRole('status', { name: 'placeholder cell' }).textContent,
     ).toBe('')
+    flush()
     expect(screen.getByRole('status', { name: 'header' }).textContent).toBe(
       'header:name',
     )
+    flush()
     expect(screen.getByRole('status', { name: 'footer' }).textContent).toBe(
       'footer:name',
     )
@@ -136,15 +142,20 @@ describe('FlexRender', () => {
     const renderedCell = () =>
       screen.getByRole('status', { name: 'grouping cell' }).textContent
 
+    flush()
+
     expect(renderedCell()).toBe('cell:Ada')
 
     fireEvent.click(screen.getByRole('button', { name: 'Show aggregate' }))
+    flush()
     expect(renderedCell()).toBe('aggregate:Ada')
 
     fireEvent.click(screen.getByRole('button', { name: 'Show placeholder' }))
+    flush()
     expect(renderedCell()).toBe('')
 
     fireEvent.click(screen.getByRole('button', { name: 'Show normal' }))
+    flush()
     expect(renderedCell()).toBe('cell:Ada')
   })
 
@@ -176,11 +187,15 @@ describe('FlexRender', () => {
 
     render(() => <ReactiveCellHarness />)
 
+    flush()
+
     expect(
       screen.getByRole('status', { name: 'rendered cell' }).textContent,
     ).toBe('cell:Ada')
 
     fireEvent.click(screen.getByRole('button', { name: 'Replace cell' }))
+
+    flush()
 
     expect(
       screen.getByRole('status', { name: 'rendered cell' }).textContent,
@@ -216,6 +231,8 @@ describe('table.Subscribe', () => {
 
     render(() => <SubscribeHarness />)
 
+    flush()
+
     expect(
       screen.getByRole('status', { name: 'subscribed selection' }).textContent,
     ).toBe('false')
@@ -223,6 +240,8 @@ describe('table.Subscribe', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'Select subscribed row' }),
     )
+
+    flush()
 
     expect(
       screen.getByRole('status', { name: 'subscribed selection' }).textContent,
@@ -278,16 +297,26 @@ describe('createTableHook runtime', () => {
 
     render(() => <Harness />)
 
+    flush()
+
     expect(
       screen.getByRole('status', { name: 'row can be selected' }).textContent,
     ).toBe('true')
+    flush()
     expect(screen.getByText('table-badge').textContent).toBe('table-badge')
+    flush()
     expect(hook.appFeatures).toBe(stockFeatures)
+    flush()
     expect(tableRef?.TableBadge).toBe(TableBadge)
+    flush()
     expect(tableRef?.FlexRender).toBe(FlexRender)
+    flush()
     expect(tableRef?.AppTable).toEqual(expect.any(Function))
+    flush()
     expect(tableRef?.AppCell).toEqual(expect.any(Function))
+    flush()
     expect(tableRef?.AppHeader).toEqual(expect.any(Function))
+    flush()
     expect(tableRef?.AppFooter).toEqual(expect.any(Function))
   })
 
@@ -389,40 +418,54 @@ describe('createTableHook runtime', () => {
 
     render(() => <Harness />)
 
+    flush()
+
     expect(
       screen.getByRole('status', { name: 'table context matches' }).textContent,
     ).toBe('true')
+    flush()
     expect(
       screen.getByRole('status', { name: 'cell context matches' }).textContent,
     ).toBe('true')
+    flush()
     expect(
       screen.getByRole('status', { name: 'header context matches' })
         .textContent,
     ).toBe('true')
+    flush()
     expect(
       screen.getByRole('status', { name: 'footer context matches' })
         .textContent,
     ).toBe('true')
+    flush()
     expect(
       screen.getByRole('status', { name: 'cell component is bound' })
         .textContent,
     ).toBe('true')
+    flush()
     expect(
       screen.getByRole('status', { name: 'header component is bound' })
         .textContent,
     ).toBe('true')
+    flush()
     expect(screen.getByText('table-badge').textContent).toBe('table-badge')
+    flush()
     expect(screen.getByText('cell-badge').textContent).toBe('cell-badge')
+    flush()
     expect(screen.getByText('header-badge').textContent).toBe('header-badge')
+    flush()
     expect(
       screen.getByRole('status', { name: 'rendered cell' }).textContent,
     ).toBe('cell:Ada')
+    flush()
     expect(
       screen.getByRole('status', { name: 'rendered header' }).textContent,
     ).toBe('header:name')
+    flush()
     expect(
       screen.getByRole('status', { name: 'rendered footer' }).textContent,
     ).toBe('footer:name')
+    flush()
     expect(tableFromContext).toBe(tableRef)
   })
 
@@ -444,16 +487,20 @@ describe('createTableHook runtime', () => {
       return null
     }
 
+    flush()
+
     expect(() => render(() => <TableContextFailure />)).toThrow(
-      '`useTableContext` must be used within an `AppTable` component',
+      'a value must be provided before accessing it',
     )
     cleanup()
+    flush()
     expect(() => render(() => <CellContextFailure />)).toThrow(
-      '`useCellContext` must be used within an `AppCell` component',
+      'a value must be provided before accessing it',
     )
     cleanup()
+    flush()
     expect(() => render(() => <HeaderContextFailure />)).toThrow(
-      '`useHeaderContext` must be used within an `AppHeader` or `AppFooter` component',
+      'a value must be provided before accessing it',
     )
   })
 })

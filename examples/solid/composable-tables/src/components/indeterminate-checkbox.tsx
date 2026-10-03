@@ -18,11 +18,12 @@ export function IndeterminateCheckbox(props: {
 }) {
   let ref: HTMLInputElement | undefined
 
-  createEffect(() => {
-    if (typeof props.indeterminate === 'boolean' && ref) {
-      ref.indeterminate = !props.checked && props.indeterminate
-    }
-  })
+  createEffect(
+    () => !props.checked && Boolean(props.indeterminate),
+    (value) => {
+      if (ref) ref.indeterminate = value
+    },
+  )
 
   return (
     <input

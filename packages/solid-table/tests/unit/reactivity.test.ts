@@ -5,7 +5,8 @@ import {
   createRoot,
   createSignal,
   getOwner,
-  onCleanup,
+  flush,
+  onSettled,
 } from 'solid-js'
 import { createAtom } from '@tanstack/store'
 import { stockFeatures } from '@tanstack/table-core'
@@ -31,9 +32,13 @@ describe('solidReactivity', () => {
         debugName: 'doubled',
       })
 
+      flush()
+
       expect(doubled.get()).toBe(2)
 
       external.set(2)
+
+      flush()
 
       expect(doubled.get()).toBe(4)
       dispose()
@@ -55,9 +60,13 @@ describe('solidReactivity', () => {
         { debugName: 'store' },
       )
 
+      flush()
+
       expect(store.get()).toEqual({ slice: 1 })
 
       base.set(2)
+
+      flush()
 
       expect(store.get()).toEqual({ slice: 2 })
       dispose()
@@ -100,6 +109,7 @@ describe('Solid table reactivity integration', () => {
       dispose = rootDispose
       return setup()
     })
+    flush()
     return { dispose, value }
   }
 
@@ -115,10 +125,17 @@ describe('Solid table reactivity integration', () => {
       const row = createMemo(() => table.getRowModel().rows[0]!)
       const titleCell = createMemo(() => row().getAllCells()[1]!)
 
-      createEffect(() => captors.isSelectedRow1(row().getIsSelected()))
-      createEffect(() => captors.titleValue(titleCell().getValue()))
-      createEffect(() =>
-        captors.columnIsVisible(table.getColumn('id')!.getIsVisible()),
+      createEffect(
+        () => row().getIsSelected(),
+        (value) => captors.isSelectedRow1(value),
+      )
+      createEffect(
+        () => titleCell().getValue(),
+        (value) => captors.titleValue(value),
+      )
+      createEffect(
+        () => table.getColumn('id')!.getIsVisible(),
+        (value) => captors.columnIsVisible(value),
       )
 
       return { captors, setData, table }
@@ -126,27 +143,40 @@ describe('Solid table reactivity integration', () => {
     const { captors, setData, table } = value
 
     try {
+      flush()
       expect(captors.isSelectedRow1.mock.calls).toEqual([[false]])
+      flush()
       expect(captors.titleValue.mock.calls).toEqual([['Title']])
+      flush()
       expect(captors.columnIsVisible.mock.calls).toEqual([[true]])
 
       Object.values(captors).forEach((captor) => captor.mockClear())
       table.getRow('1').toggleSelected(true)
 
+      flush()
+
       expect(captors.isSelectedRow1.mock.calls).toEqual([[true]])
+      flush()
       expect(captors.titleValue).not.toHaveBeenCalled()
+      flush()
       expect(captors.columnIsVisible).not.toHaveBeenCalled()
 
       Object.values(captors).forEach((captor) => captor.mockClear())
       setData([{ id: '1', title: 'Title 3' }])
+
+      flush()
 
       expect(captors.titleValue.mock.lastCall).toEqual(['Title 3'])
 
       Object.values(captors).forEach((captor) => captor.mockClear())
       table.getColumn('id')!.toggleVisibility(false)
 
+      flush()
+
       expect(captors.columnIsVisible.mock.calls).toEqual([[false]])
+      flush()
       expect(captors.isSelectedRow1).not.toHaveBeenCalled()
+      flush()
       expect(captors.titleValue).not.toHaveBeenCalled()
     } finally {
       dispose()
@@ -159,11 +189,11 @@ describe('Solid table reactivity integration', () => {
       const tableStateCaptor =
         vi.fn<(state: ReturnType<typeof table.store.get>) => void>()
 
-      createEffect(() => {
+      onSettled(() => {
         const subscription = table.store.subscribe(() => {
           tableStateCaptor(table.store.get())
         })
-        onCleanup(() => subscription.unsubscribe())
+        return () => subscription.unsubscribe()
       })
 
       return { table, tableStateCaptor }
@@ -173,7 +203,10 @@ describe('Solid table reactivity integration', () => {
     try {
       table.toggleAllRowsSelected(true)
 
+      flush()
+
       expect(tableStateCaptor).toHaveBeenCalledTimes(2)
+      flush()
       expect(
         tableStateCaptor.mock.calls.map(([state]) => state.rowSelection),
       ).toEqual([{}, { 1: true }])
@@ -200,9 +233,10 @@ describe('Solid table reactivity integration', () => {
       })
       const tableStateCaptor = vi.fn<(value: RowSelectionState) => void>()
 
-      createEffect(() => {
-        tableStateCaptor(table.atoms.rowSelection.get())
-      })
+      createEffect(
+        () => table.atoms.rowSelection.get(),
+        (value) => tableStateCaptor(value),
+      )
 
       return { setRowSelection, tableStateCaptor }
     })
@@ -210,8 +244,13 @@ describe('Solid table reactivity integration', () => {
 
     try {
       setRowSelection({ 1: true })
+      flush()
       setRowSelection({ 1: true, 2: true })
+      flush()
       setRowSelection({ 2: true })
+      flush()
+
+      flush()
 
       expect(tableStateCaptor.mock.calls).toEqual([
         [{}],
@@ -241,25 +280,34 @@ describe('Solid table reactivity integration', () => {
       const pageSizeCaptor = vi.fn<(value: number) => void>()
       const storePageSizeCaptor = vi.fn<(value: number) => void>()
 
-      createEffect(() => {
-        pageSizeCaptor(table.atoms.pagination.get().pageSize)
-      })
-      createEffect(() => {
-        storePageSizeCaptor(table.store.get().pagination.pageSize)
-      })
+      createEffect(
+        () => table.atoms.pagination.get().pageSize,
+        (value) => pageSizeCaptor(value),
+      )
+      createEffect(
+        () => table.store.get().pagination.pageSize,
+        (value) => storePageSizeCaptor(value),
+      )
 
       return { pageSizeCaptor, storePageSizeCaptor, table }
     })
     const { pageSizeCaptor, storePageSizeCaptor, table } = value
 
     try {
+      flush()
       expect(pageSizeCaptor.mock.calls).toEqual([[20]])
+      flush()
       expect(storePageSizeCaptor.mock.calls).toEqual([[20]])
 
       table.setPageSize(50)
+      flush()
       table.setPageSize(100)
+      flush()
+
+      flush()
 
       expect(pageSizeCaptor.mock.calls).toEqual([[20], [50], [100]])
+      flush()
       expect(storePageSizeCaptor.mock.calls).toEqual([[20], [50], [100]])
     } finally {
       dispose()
@@ -283,12 +331,14 @@ describe('Solid table reactivity integration', () => {
       const pageSizeCaptor = vi.fn<(value: number) => void>()
       const stateJsonCaptor = vi.fn<(value: string) => void>()
 
-      createEffect(() => {
-        pageSizeCaptor(table.atoms.pagination.get().pageSize)
-      })
-      createEffect(() => {
-        stateJsonCaptor(JSON.stringify(table.store.get(), null, 2))
-      })
+      createEffect(
+        () => table.atoms.pagination.get().pageSize,
+        (value) => pageSizeCaptor(value),
+      )
+      createEffect(
+        () => JSON.stringify(table.store.get(), null, 2),
+        (value) => stateJsonCaptor(value),
+      )
 
       return { pageSizeCaptor, stateJsonCaptor, table }
     })
@@ -297,8 +347,12 @@ describe('Solid table reactivity integration', () => {
     try {
       table.toggleAllRowsSelected(true)
 
+      flush()
+
       expect(pageSizeCaptor.mock.calls).toEqual([[20]])
+      flush()
       expect(stateJsonCaptor).toHaveBeenCalledTimes(2)
+      flush()
       expect(
         JSON.parse(stateJsonCaptor.mock.calls.at(-1)![0]).rowSelection,
       ).toEqual({ 1: true })

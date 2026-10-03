@@ -11,11 +11,16 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "preserve",
-    "jsxImportSource": "solid-js",
+    "jsxImportSource": "@solidjs/web",
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@tanstack/match-sorter-utils": [
+        "../../../packages/match-sorter-utils/src/index.ts"
+      ]
+    }
   },
   "include": ["src", "tests/e2e", "vite.config.ts", "vite.config.js"]
 }

@@ -11,7 +11,7 @@ import {
   useTradingShellController,
 } from './trading-shell-context'
 import { configuratorOptions } from './configurator-options'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { FeedMetrics } from '../benchmark/benchmark-monitor'
 
 const integerFormatter = new Intl.NumberFormat('en-US', {
@@ -27,8 +27,7 @@ export function TradingShell(props: { children: JSX.Element }) {
 
   return (
     <main
-      class="trading-terminal"
-      classList={{ 'is-sidebar-collapsed': !sidebarOpen() }}
+      class={['trading-terminal', { 'is-sidebar-collapsed': !sidebarOpen() }]}
     >
       <div class="shell-header">
         <AppHeader
@@ -69,8 +68,8 @@ function AppHeader(props: {
       </div>
       <div class="header-actions">
         <span
-          class="feed-status"
-          classList={{ 'is-running': workerReady() && running() }}
+          class={['feed-status', { 'is-running': workerReady() && running() }]}
+
           data-testid="feed-status"
         >
           <span class="status-dot" aria-hidden="true" />
@@ -83,7 +82,7 @@ function AppHeader(props: {
         <button
           class="sidebar-toggle"
           type="button"
-          aria-expanded={props.sidebarOpen}
+          aria-expanded={props.sidebarOpen ? 'true' : 'false'}
           aria-controls="benchmark-configurator"
           aria-label={
             props.sidebarOpen ? 'Close configurator' : 'Open configurator'
@@ -368,7 +367,7 @@ function MetricsStrip() {
         >
           <strong
             data-testid="long-frame-count"
-            classList={{
+            class={{
               'metric-alert': metrics().longAnimationFrames > 0,
             }}
           >

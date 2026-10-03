@@ -1,23 +1,30 @@
 import { defineConfig } from 'tsdown'
-import solid from 'vite-plugin-solid'
+import solid from '@solidjs/vite-plugin'
 
-export default defineConfig({
-  plugins: [solid()],
+const shared = {
   entry: [
     './src/index.tsx',
+    './src/native.ts',
     './src/static-functions.ts',
     './src/experimental-worker-plugin.ts',
     './src/flex-render.tsx',
   ],
-  format: ['esm'],
+  format: ['esm'] as const,
   unbundle: true,
   dts: true,
   sourcemap: false,
-  clean: true,
+  clean: false,
   minify: false,
   fixedExtension: false,
   exports: false,
-  publint: {
-    strict: true,
+}
+
+export default defineConfig([
+  { ...shared, plugins: [solid()], outDir: 'dist' },
+  {
+    ...shared,
+    plugins: [solid({ solid: { generate: 'ssr' } })],
+    outDir: 'dist/server',
+    dts: false,
   },
-})
+])

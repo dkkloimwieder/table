@@ -7,7 +7,6 @@ import {
   rowSortingFeature,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { For, Show, createEffect } from 'solid-js'
 import { DebouncedInput } from './debouncedInput'
 import type {
@@ -76,13 +75,14 @@ export default function Table<T extends Record<string, string | number>>(
     },
   })
 
-  useTanStackTableDevtools(table)
-
   // Sync controlled state with table store
-  createEffect(() => {
-    table.baseAtoms.pagination.set(props.pagination)
-    table.baseAtoms.sorting.set(props.sorting)
-  })
+  createEffect(
+    () => ({ pagination: props.pagination, sorting: props.sorting }),
+    (state) => {
+      table.baseAtoms.pagination.set(state.pagination)
+      table.baseAtoms.sorting.set(state.sorting)
+    },
+  )
 
   return (
     <div>
@@ -95,7 +95,7 @@ export default function Table<T extends Record<string, string | number>>(
                   {(header) => {
                     const fieldMeta = header.column.columnDef.meta
                     return (
-                      <th colSpan={header.colSpan}>
+                      <th colspan={header.colSpan}>
                         <Show when={!header.isPlaceholder}>
                           <>
                             <div

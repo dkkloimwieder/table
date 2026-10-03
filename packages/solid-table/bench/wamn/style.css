@@ -1,0 +1,78 @@
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 20px;
+  font:
+    14px system-ui,
+    sans-serif;
+  color: #183041;
+  background: #f5f8fa;
+}
+button,
+input,
+select {
+  font: inherit;
+  padding: 5px;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}
+.toolbar,
+.actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.toolbar {
+  flex-wrap: wrap;
+}
+.viewport {
+  height: 440px;
+  overflow: auto;
+  background: white;
+  border: 1px solid #adbcca;
+}
+.row {
+  height: 44px;
+  display: flex;
+  border-bottom: 1px solid #d7e0e7;
+}
+.row > div {
+  flex-shrink: 0;
+  padding: 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row[aria-selected='true'] {
+  background: #e0efff;
+}
+.row input:not([type='checkbox']) {
+  width: 100%;
+}
+.row .actions {
+  width: 280px;
+  padding: 2px;
+  gap: 3px;
+}
+.header {
+  font-weight: 600;
+  background: #edf3f7;
+}
+.spacer {
+  position: relative;
+}
+.window {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+[role='alert'],
+[data-draft] {
+  color: #a32229;
+}

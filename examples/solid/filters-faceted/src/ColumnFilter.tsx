@@ -1,4 +1,4 @@
-import { createDebouncer } from '@tanstack/solid-pacer/debouncer'
+import { createDebouncer } from '../../_shared/createDebouncer'
 import { For, Show, createMemo } from 'solid-js'
 import type { Person } from './makeData'
 import type { features } from './App'

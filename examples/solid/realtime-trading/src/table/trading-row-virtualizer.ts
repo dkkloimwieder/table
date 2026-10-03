@@ -1,4 +1,4 @@
-import { createVirtualizer } from '@tanstack/solid-virtual'
+import { createVirtualizer } from '../../../_shared/createVirtualizer'
 import { createEffect, createMemo } from 'solid-js'
 import type { Accessor } from 'solid-js'
 import type { TradingRow } from './trading-table-features'
@@ -52,11 +52,12 @@ export function createTradingRowVirtualization(
       : undefined,
   )
 
-  createEffect(() => {
-    options.onRenderedRowCount(
-      options.enabled() ? virtualRows().length : options.rows().length,
-    )
-  })
+  createEffect(
+    () => (options.enabled() ? virtualRows().length : options.rows().length),
+    (count) => {
+      options.onRenderedRowCount(count)
+    },
+  )
 
   return { bodyHeight, virtualizer, virtualRows, visibleRange }
 }

@@ -2,6 +2,8 @@
 title: Migrating to TanStack Table V9 (Solid)
 ---
 
+This adapter targets Solid 2. Read the [Solid 2 guide](./solid-2.md) for runtime and toolchain changes.
+
 ## What's New in TanStack Table V9
 
 TanStack Table V9 delivers major performance improvements, hundreds of bug fixes, new and refreshed features, and optional helpers for composing and managing tables. Despite the scale of the release, the headless model, core table logic, column definitions, and rendering patterns remain familiar. Here are the key changes:

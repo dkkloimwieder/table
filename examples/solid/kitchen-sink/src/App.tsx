@@ -20,18 +20,10 @@ import {
   stockFeatures,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { compareItems, rankItem } from '@tanstack/match-sorter-utils'
-import {
-  For,
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-  splitProps,
-} from 'solid-js'
+import { For, createEffect, createMemo, createSignal, omit } from 'solid-js'
 import { makeData } from './makeData'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type { RankingInfo } from '@tanstack/match-sorter-utils'
 import type { Person } from './makeData'
 import type {
@@ -148,11 +140,12 @@ function IndeterminateCheckbox(
   } & JSX.InputHTMLAttributes<HTMLInputElement>,
 ) {
   let ref!: HTMLInputElement
-  createEffect(() => {
-    if (typeof props.indeterminate === 'boolean') {
-      ref.indeterminate = !props.checked && props.indeterminate
-    }
-  })
+  createEffect(
+    () => !props.checked && Boolean(props.indeterminate),
+    (value) => {
+      ref.indeterminate = value
+    },
+  )
 
   return <input type="checkbox" ref={ref} {...props} />
 }
@@ -164,21 +157,26 @@ function DebouncedInput(
     debounce?: number
   } & Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'>,
 ) {
-  const [value, setValue] = createSignal(props.value)
-  const [, rest] = splitProps(props, ['value', 'onChange', 'debounce'])
+  const [value, setValue] = createSignal(() => props.value)
+  const rest = omit(props, 'value', 'onChange', 'debounce')
 
-  createEffect(() => {
-    setValue(props.value)
-  })
+  createEffect(
+    () => props.value,
+    (nextValue) => {
+      setValue(nextValue)
+    },
+  )
 
-  createEffect(() => {
-    const currentValue = value()
-    const timeout = setTimeout(
-      () => props.onChange(currentValue),
-      props.debounce ?? 300,
-    )
-    onCleanup(() => clearTimeout(timeout))
-  })
+  createEffect(
+    () => ({ value: value(), delay: props.debounce ?? 300 }),
+    (current) => {
+      const timeout = setTimeout(
+        () => props.onChange(current.value),
+        current.delay,
+      )
+      return () => clearTimeout(timeout)
+    },
+  )
 
   return (
     <input
@@ -292,7 +290,7 @@ function TableHeader(props: {
   })
 
   return (
-    <th style={style()} colSpan={props.header.colSpan}>
+    <th style={style()} colspan={props.header.colSpan}>
       {!props.header.isPlaceholder ? (
         <>
           <div class="header-row">
@@ -571,8 +569,6 @@ function App() {
     keepPinnedRows: true,
     debugTable: true,
   })
-
-  useTanStackTableDevtools(table)
 
   const columnSizeVars = createMemo(() => {
     void table.atoms.columnResizing.get()

@@ -1,5 +1,5 @@
-import { onCleanup, onMount } from 'solid-js'
-import { Portal } from 'solid-js/web'
+import { onSettled } from 'solid-js'
+import { Portal } from '@solidjs/web'
 import type { GridInteractions } from './createGridInteractions'
 import type {
   SpreadsheetTable,
@@ -17,7 +17,7 @@ interface Props {
 
 export function CellContextMenu(props: Props) {
   let menuRef: HTMLDivElement | undefined
-  onMount(() => {
+  onSettled(() => {
     const pointer = (event: PointerEvent) => {
       if (!menuRef?.contains(event.target as Node)) props.onClose()
     }
@@ -26,10 +26,10 @@ export function CellContextMenu(props: Props) {
     }
     document.addEventListener('pointerdown', pointer)
     document.addEventListener('keydown', key)
-    onCleanup(() => {
+    return () => {
       document.removeEventListener('pointerdown', pointer)
       document.removeEventListener('keydown', key)
-    })
+    }
   })
   const run = (action: () => void | Promise<void>) => {
     props.onClose()

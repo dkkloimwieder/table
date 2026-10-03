@@ -1,4 +1,4 @@
-import { For, createSignal } from 'solid-js'
+import { For, createMemo, createSignal, deep } from 'solid-js'
 import {
   keepPreviousData,
   useInfiniteQuery,
@@ -14,7 +14,6 @@ import {
   rowSortingFeature,
   tableFeatures,
 } from '@tanstack/solid-table'
-import { useTanStackTableDevtools } from '@tanstack/solid-table-devtools'
 import { fetchData, fetchInfiniteData } from './fetchData'
 import type {
   PaginationState,
@@ -54,7 +53,7 @@ function PersonTable(props: { table: SolidTable<typeof features, Person> }) {
             <tr>
               <For each={headerGroup.headers}>
                 {(header) => (
-                  <th colSpan={header.colSpan}>
+                  <th colspan={header.colSpan}>
                     {header.isPlaceholder ? null : (
                       <div
                         class={
@@ -139,12 +138,13 @@ function UseQueryApp() {
     placeholderData: keepPreviousData,
   }))
 
+  const rows = createMemo(() => deep(dataQuery.data?.rows) ?? defaultData)
   const table = createTable({
     key: 'with-tanstack-query-offset',
     features,
     columns,
     get data() {
-      return dataQuery.data?.rows ?? defaultData
+      return rows()
     },
     get rowCount() {
       return dataQuery.data?.rowCount
@@ -174,8 +174,6 @@ function UseQueryApp() {
     manualPagination: true,
     manualSorting: true,
   })
-
-  useTanStackTableDevtools(table)
 
   return (
     <div>
@@ -286,6 +284,7 @@ function UseInfiniteQueryApp() {
     getNextPageParam: (lastPage) => lastPage.nextCursor,
   }))
   const currentPage = () => dataQuery.data?.pages[pagination().pageIndex]
+  const rows = createMemo(() => deep(currentPage()?.rows) ?? defaultData)
   const canNextPage = () =>
     Boolean(dataQuery.data?.pages[pagination().pageIndex + 1]) ||
     Boolean(currentPage()?.hasNextPage)
@@ -295,7 +294,7 @@ function UseInfiniteQueryApp() {
     features,
     columns,
     get data() {
-      return currentPage()?.rows ?? defaultData
+      return rows()
     },
     pageCount: -1,
     getRowId: (row) => String(row.id),
@@ -323,8 +322,6 @@ function UseInfiniteQueryApp() {
     manualPagination: true,
     manualSorting: true,
   })
-
-  useTanStackTableDevtools(table)
 
   const goToNextPage = async () => {
     const nextPageIndex = pagination().pageIndex + 1

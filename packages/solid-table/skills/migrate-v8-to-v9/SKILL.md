@@ -19,7 +19,7 @@ sources:
 
 Read `@tanstack/table-core#migrate-v8-to-v9`, `getting-started`, and `table-state`. Use this as the exhaustive Solid migration checklist. Check the installed declarations before emitting APIs for a different v9 version.
 
-Framework prerequisite: Solid 1.3 or newer (`solid-js >=1.3`).
+Framework prerequisite: Solid 2 (`solid-js` and `@solidjs/web >=2.0.0-rc.13 <3.0.0`). Set `jsxImportSource` to `@solidjs/web`. Read the Solid 2 guide before migrating runtime APIs.
 
 ## Target architecture
 

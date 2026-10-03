@@ -1,4 +1,4 @@
-import { createEffect, onCleanup, onMount } from 'solid-js'
+import { createEffect, onCleanup, onSettled } from 'solid-js'
 import type { Accessor } from 'solid-js'
 import type { TradingTableInstance } from './trading-table-features'
 
@@ -8,8 +8,7 @@ export function createFeedCommitTracking(
 ): void {
   const runtime = { queued: false, disposed: false }
 
-  createEffect(() => {
-    quotes()
+  createEffect(quotes, () => {
     if (runtime.queued) return
 
     runtime.queued = true
@@ -30,7 +29,7 @@ export function createTableAutoFit(
 ): void {
   const runtime = { manuallyResized: false }
 
-  onMount(() => {
+  onSettled(() => {
     const fitAvailableWidth = (): void => {
       const element = scrollElement()
       if (!element || runtime.manuallyResized) return
@@ -60,9 +59,9 @@ export function createTableAutoFit(
     if (element) resizeObserver.observe(element)
     fitAvailableWidth()
 
-    onCleanup(() => {
+    return () => {
       resizeObserver.disconnect()
       resizingSubscription.unsubscribe()
-    })
+    }
   })
 }

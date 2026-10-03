@@ -1,21 +1,15 @@
-import {
-  createEffect,
-  createMemo,
-  createSignal,
-  onCleanup,
-  onMount,
-} from 'solid-js'
-import { createHotkeys } from '@tanstack/solid-hotkeys'
-import { createVirtualizer } from '@tanstack/solid-virtual'
+import { createEffect, createMemo, createSignal, onSettled } from 'solid-js'
+import { createHotkeys } from '../../_shared/createHotkeys'
+import { createVirtualizer } from '../../_shared/createVirtualizer'
 import { CellContextMenu } from './CellContextMenu'
 import { ColumnMenu } from './ColumnMenu'
 import { getFillPreview } from './spreadsheetModel'
-import type { JSX } from 'solid-js'
+import type { JSX } from '@solidjs/web'
 import type {
   CellSelectionRangeOperation,
   CellSelectionState,
 } from '@tanstack/solid-table'
-import type { VirtualItem } from '@tanstack/solid-virtual'
+import type { VirtualItem } from '../../_shared/createVirtualizer'
 import type {
   FillPreview,
   GridBounds,
@@ -200,12 +194,14 @@ export function SpreadsheetGrid(props: SpreadsheetGridProps) {
     overscan: 3,
   })
 
-  createEffect(() => {
-    void table.atoms.columnSizing.get()
-    columnVirtualizer.measure()
-  })
+  createEffect(
+    () => table.atoms.columnSizing.get(),
+    () => {
+      columnVirtualizer.measure()
+    },
+  )
 
-  onMount(() => {
+  onSettled(() => {
     props.onReady({
       scrollToCell(rowId, columnId) {
         const topRowIds = new Set(topRows().map((row) => row.id))
@@ -480,7 +476,7 @@ export function SpreadsheetGrid(props: SpreadsheetGridProps) {
     [applyHeaderSelectionDrag],
   )
 
-  onMount(() => {
+  onSettled(() => {
     const handleMouseMove = (event: MouseEvent) => {
       pointer = {
         clientX: event.clientX,
@@ -508,13 +504,13 @@ export function SpreadsheetGrid(props: SpreadsheetGridProps) {
 
     document.addEventListener('mousemove', handleMouseMove)
     document.addEventListener('mouseup', handleMouseUp)
-    onCleanup(() => {
+    return () => {
       document.removeEventListener('mousemove', handleMouseMove)
       document.removeEventListener('mouseup', handleMouseUp)
       if (scrollFrame != null) {
         cancelAnimationFrame(scrollFrame)
       }
-    })
+    }
   })
 
   const startFillDrag = useCallback(
@@ -549,7 +545,7 @@ export function SpreadsheetGrid(props: SpreadsheetGridProps) {
         class="spreadsheet-grid"
         data-testid="spreadsheet-grid"
         role="grid"
-        tabIndex={0}
+        tabindex={0}
         aria-rowcount={table.getRowsInDisplayOrder().length}
         aria-colcount={getDisplayColumns().length}
         onKeyDown={interactions.handleGridTextEntry}
@@ -783,7 +779,7 @@ function HeaderCell({
       role="columnheader"
       data-column-id={column.id}
       aria-colindex={columnIndex + 1}
-      aria-selected={fullySelected()}
+      aria-selected={fullySelected() ? 'true' : 'false'}
       style={style}
       onMouseDown={(event) =>
         onStartSelection(event, 'column', column.id, fullySelected())
@@ -926,7 +922,7 @@ function SpreadsheetRowView({
         type="button"
         class={fullySelected() ? 'row-header header-selected' : 'row-header'}
         aria-label={`Select row ${rowIndex + 1}`}
-        aria-selected={fullySelected()}
+        aria-selected={fullySelected() ? 'true' : 'false'}
         onMouseDown={(event) =>
           onStartHeaderSelection(event, 'row', row.id, fullySelected())
         }
@@ -1044,11 +1040,11 @@ function SpreadsheetCell({
       class={className()}
       role="gridcell"
       aria-colindex={columnIndex() + 1}
-      aria-selected={cell.getIsSelected()}
+      aria-selected={cell.getIsSelected() ? 'true' : 'false'}
       data-sheet-cell
       data-row-id={cell.row.id}
       data-column-id={cell.column.id}
-      tabIndex={isEditing() ? -1 : cell.getTabIndex()}
+      tabindex={isEditing() ? -1 : cell.getTabIndex()}
       style={getColumnPositionStyle(cell.column, left, pinned)}
       onMouseDown={(event) => {
         if (isEditing() || event.button !== 0) return

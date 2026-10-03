@@ -18,18 +18,14 @@
     "@tanstack/router-vite-plugin": "^1.167.38",
     "typescript": "6.0.3",
     "vite": "^8.3.0",
-    "vite-plugin-solid": "^2.11.14"
+    "@solidjs/vite-plugin": "3.0.0-next.47"
   },
   "dependencies": {
-    "@tanstack/solid-devtools": "^0.8.12",
-    "@tanstack/solid-pacer": "^0.22.0",
-    "@tanstack/solid-pacer-devtools": "0.7.0",
-    "@tanstack/solid-query": "^5.102.8",
-    "@tanstack/solid-query-devtools": "^5.102.8",
-    "@tanstack/solid-router": "^1.170.34",
-    "@tanstack/solid-router-devtools": "^1.167.2",
+    "@tanstack/solid-query": "6.0.0-rc.4",
+    "@tanstack/solid-router": "2.0.0-rc.8",
     "@tanstack/solid-table": "^9.2.4",
-    "@tanstack/solid-table-devtools": "^9.2.0",
-    "solid-js": "^1.9.15"
+    "solid-js": "2.0.0-rc.13",
+    "@solidjs/web": "2.0.0-rc.13",
+    "@tanstack/pacer": "0.23.0"
   }
 }

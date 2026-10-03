@@ -114,29 +114,37 @@ export function Spreadsheet() {
     keepPinnedRows: false,
   })
 
-  createEffect(() => {
-    const desiredTop = table
-      .getRowModel()
-      .rows.slice(0, frozenRowCount())
-      .map((row) => row.id)
-    const current = table.atoms.rowPinning.get()
+  createEffect(
+    () => {
+      const desiredTop = table
+        .getRowModel()
+        .rows.slice(0, frozenRowCount())
+        .map((row) => row.id)
+      const current = table.atoms.rowPinning.get()
+      return { desired: desiredTop, current }
+    },
+    ({ desired: desiredTop, current }) => {
+      if (!arraysEqual(current.top, desiredTop) || current.bottom.length > 0) {
+        table.setRowPinning({ top: desiredTop, bottom: [] })
+      }
+    },
+  )
 
-    if (!arraysEqual(current.top, desiredTop) || current.bottom.length > 0) {
-      table.setRowPinning({ top: desiredTop, bottom: [] })
-    }
-  })
-
-  createEffect(() => {
-    const desiredStart = table
-      .getAllLeafColumns()
-      .slice(0, frozenColumnCount())
-      .map((column) => column.id)
-    const current = table.atoms.columnPinning.get()
-
-    if (!arraysEqual(current.start, desiredStart) || current.end.length > 0) {
-      table.setColumnPinning({ start: desiredStart, end: [] })
-    }
-  })
+  createEffect(
+    () => {
+      const desiredStart = table
+        .getAllLeafColumns()
+        .slice(0, frozenColumnCount())
+        .map((column) => column.id)
+      const current = table.atoms.columnPinning.get()
+      return { desired: desiredStart, current }
+    },
+    ({ desired: desiredStart, current }) => {
+      if (!arraysEqual(current.start, desiredStart) || current.end.length > 0) {
+        table.setColumnPinning({ start: desiredStart, end: [] })
+      }
+    },
+  )
 
   let gridRef: SpreadsheetGridHandle | undefined
   const scrollToCell = useCallback(
@@ -274,7 +282,7 @@ export function Spreadsheet() {
             <button
               type="button"
               role="tab"
-              aria-selected={ribbonTab() === tab}
+              aria-selected={ribbonTab() === tab ? 'true' : 'false'}
               class={ribbonTab() === tab ? 'ribbon-tab-active' : undefined}
               onClick={() => setRibbonTab(tab)}
             >
@@ -503,7 +511,7 @@ export function Spreadsheet() {
                     ? 'sheet-tab sheet-tab-active'
                     : 'sheet-tab'
                 }
-                aria-selected={sheet.id === activeSheetId()}
+                aria-selected={sheet.id === activeSheetId() ? 'true' : 'false'}
                 onClick={() => switchSheet(sheet.id)}
               >
                 {sheet.name}
@@ -572,7 +580,12 @@ function SpreadsheetFormulaBar(props: {
   interactions: ReturnType<typeof createGridInteractions>
 }) {
   const [draft, setDraft] = createSignal(props.initialValue())
-  createEffect(() => setDraft(props.initialValue()))
+  createEffect(
+    () => props.initialValue(),
+    (value) => {
+      setDraft(value)
+    },
+  )
 
   const commit = useCallback(
     (move?: 'up' | 'down' | 'left' | 'right') => {
