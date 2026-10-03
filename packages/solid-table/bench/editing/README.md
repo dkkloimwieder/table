@@ -1,8 +1,46 @@
-# Non-virtualized inline editing
+# Table controls and inline editing
 
-This fixture tests inline text and dropdown editing with the native Solid Table entry and plain HTML controls.
+This fixture tests column filters, search, and inline editing with Solid 2 and plain HTML controls.
 It renders every matching record. Virtualization is optional elsewhere and is not a dependency here.
 The measured editing subsets contain 25, 250, and 999 records. These sizes are not product limits.
+
+## Column filters and search
+
+Column filters appear above the table by default.
+Record, Name, and Note use text matching. Priority uses an exact choice.
+Text matching ignores case and surrounding whitespace.
+All active column filters must match a record.
+
+Global search is a separate, optional control.
+It searches saved values in visible, searchable columns and combines with the column filters.
+The Record column is excluded from global search in this example, but its column filter remains available.
+An explicit column filter still applies when its column is hidden.
+
+Each control has its own clear button. Escape clears a text filter or global search and keeps focus in that control.
+Composition input waits until the composed text is committed. Dropdown keys retain their browser behavior.
+Clear all filters resets both column filters and global search.
+The result count reports matching and loaded records. An empty result offers a Show all records action.
+An empty source instead reports that there are no records yet.
+
+The fixture parent in `App.tsx` supplies display configuration to `Table.tsx`.
+Display options can place filters above the table, in headers, in both places, or hide the controls.
+Header sorting and global search have separate switches.
+Both filter presentations share Table state. Hiding or moving controls preserves their values.
+External state changes update the controls without another filter store.
+`TableFilter.tsx` accepts a value and change callback, so a parent can compose its own filter panel.
+
+The existing controlled Table API remains the boundary for a later view component.
+That parent will own saved configurations and persistence. This fixture adds no persistence layer.
+Records, drafts, and pending requests remain separate from view configuration.
+
+When the caller disables local processing, the controls become unavailable and preserve their configuration.
+The table shows the caller-provided order until local processing resumes.
+The integration fixture demonstrates the corresponding complete-dataset rule.
+
+Search and filters use committed values. An unsaved draft does not change whether a row matches.
+Hidden drafts remain available through Show and Cancel. Show clears both filtering layers before reopening the row.
+Save all includes hidden drafts. An accepted save can move a row into or out of the current result.
+If a save removes the focused row from global search, focus returns to that search control.
 
 ## Editing behavior
 
@@ -101,7 +139,8 @@ The markers do not add dirty flags to Table or a second record store.
 Draft ID memos compare IDs in order before notifying subscribers.
 Adding a visible draft leaves the hidden-draft notice unchanged when its IDs remain the same.
 The comparison reads only IDs. It does not inspect or copy record fields.
-Document listeners close the active row on outside pointer or focus movement.
+Document listeners close the active row after an outside click or keyboard focus movement.
+Pointer focus does not collapse a row before the click reaches its target, because collapse can move the next row.
 Disabling a focused Save button during a request does not count as user navigation.
 Solid's property tracking can retain an older record value internally. The heap tests measure that cost and its disposal.
 
@@ -188,7 +227,11 @@ BENCH_URL=http://127.0.0.1:7777/ BENCH_SIZES=25 BENCH_OUTPUT=/tmp/table-editing-
 ```
 
 The repeated-draft case creates eight drafts, changes filters, and saves the visible and hidden drafts together.
-The runner rejects console warnings, page errors, and captured Solid diagnostics.
+The runner rejects page errors and unexpected console warnings or Solid diagnostics.
+It records the known broad-dependency diagnostics from the full-scan filter and sort separately.
+Those diagnostics describe the existing algorithms, which read candidate records on each relevant change.
+It also records `HOT_SCOPE_TIME` as advisory because this machine runs other development loads.
+Store replacement warnings and unstable memo results remain failures.
 The live-server report omits the built-module audit. The separate built runs still require it.
 
 Set `BENCH_EXECUTABLE_PATH` to use a specific installed Chromium binary.
@@ -198,6 +241,13 @@ With `BENCH_URL`, it closes Chromium and leaves the supplied server running.
 
 The runner tests keyboard and pointer flows, draft retention, request races, record identity, and disposal.
 Subset workloads require every matching row to render and reject replacement Table views or cells during an edit.
+Five column-filter changes require five reads per record in the measured workload.
+Five global-search changes with that filter active require ten reads per record.
+All records match these measured queries, so surviving views and cells must remain unchanged.
+Search and filter interactions must send no save request and run no edit validation.
+Filtering still allocates a result ID array per pass.
+The equality comparison checks ordered IDs and prevents unchanged results from updating row-list subscribers.
+It does not copy records or eliminate the filter scan.
 Heap captures classify records and reactive resources before and after disposal.
 They also measure 20 further edits to one record and an edit to a second record.
 Timings include browser automation and remain advisory on the shared development machine.

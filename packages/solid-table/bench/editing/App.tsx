@@ -1,524 +1,77 @@
-import {
-  For,
-  Show,
-  createMemo,
-  createSignal,
-  onCleanup,
-  onSettled,
-  untrack,
-} from 'solid-js'
+import { createSignal } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import { createModel } from './model'
+import { Table } from './Table'
+import type { SaveMode, TableControls } from './Table'
 import type { EditingModel } from './model'
-import type { EditColumn } from './createEditing'
-import './style.css'
-
-export type SaveMode = 'row' | 'table'
-
-function sameIds(left: ReadonlyArray<string>, right: ReadonlyArray<string>) {
-  return (
-    left.length === right.length &&
-    left.every((id, index) => id === right[index])
-  )
-}
 
 export function App(props: {
   size: number
   saveMode?: SaveMode
-  ready: (model: EditingModel) => void
+  ready: (
+    model: EditingModel,
+    configure: (value: Partial<TableControls>) => void,
+  ) => void
 }) {
-  const model = createModel(untrack(() => props.size))
-  const { table, editing, counts } = model
-  let filter!: HTMLInputElement
-  let element!: HTMLTableElement
-  let modeControl!: HTMLSelectElement
-  let saveAllButton!: HTMLButtonElement
-  let disposed = false
-  let focusIntent = 0
-  let activeId: string | undefined
-  const [notice, setNotice] = createSignal('')
-  const [saveMode, setSaveMode] = createSignal(
-    untrack(() => props.saveMode ?? 'row'),
-  )
-  const draftIds = createMemo(() => Object.keys(editing.drafts), {
-    equals: sameIds,
+  const [controls, setControls] = createSignal<TableControls>({
+    filters: 'external',
+    headerSorting: true,
+    globalSearch: true,
   })
-  function belongsToRow(id: string, target: EventTarget | null) {
-    return (
-      target instanceof Element &&
-      target.closest<HTMLTableRowElement>('tr[data-row]')?.dataset.row === id &&
-      element.contains(target)
-    )
-  }
-  function collapseOutside(target: EventTarget | null) {
-    if (!activeId || belongsToRow(activeId, target)) return
-    const id = activeId
-    activeId = undefined
-    // Focus can move from row cleanup. Write only after that owned scope ends.
-    queueMicrotask(() => {
-      if (!disposed && activeId !== id) editing.collapse(id)
-    })
-  }
-  onSettled(() => {
-    const interruptFocus = (event: Event) => {
-      focusIntent++
-      collapseOutside(event.target)
-    }
-    const leaveFocus = (event: FocusEvent) => {
-      const id = activeId
-      if (!id || !belongsToRow(id, event.target)) return
-      if (event.relatedTarget) collapseOutside(event.relatedTarget)
-      else
-        queueMicrotask(() => {
-          // Disabling a focused Save button can blur it without user navigation.
-          if (
-            !disposed &&
-            activeId === id &&
-            editing.drafts[id]?.expanded &&
-            editing.drafts[id].status !== 'pending'
-          )
-            collapseOutside(document.activeElement)
-        })
-    }
-    document.addEventListener('pointerdown', interruptFocus, true)
-    document.addEventListener('focusin', interruptFocus, true)
-    document.addEventListener('focusout', leaveFocus, true)
-    props.ready(model)
-    return () => {
-      disposed = true
-      focusIntent++
-      document.removeEventListener('pointerdown', interruptFocus, true)
-      document.removeEventListener('focusin', interruptFocus, true)
-      document.removeEventListener('focusout', leaveFocus, true)
-    }
-  })
-  const visibleIds = createMemo(() => new Set(table.getRowIds()))
-  const hiddenDrafts = createMemo(
-    () => {
-      const visible = visibleIds()
-      return draftIds().filter((id) => !visible.has(id))
-    },
-    { equals: sameIds },
-  )
-  const filterEvents = nativeEvents<HTMLInputElement>({
-    input: (event) =>
-      table.setColumnFilters(
-        event.currentTarget.value
-          ? [{ id: 'name', value: event.currentTarget.value }]
-          : [],
-      ),
-  })
-  function actionColumn(id: string): EditColumn {
-    return editing.drafts[id]?.activeColumn ?? 'name'
-  }
-  function focusCell(id: string, column: EditColumn, input: boolean) {
-    const target = element.querySelector<HTMLElement>(
-      `[data-${input ? 'editor' : 'edit'}="${id}/${column}"]`,
-    )
-    if (target) target.focus({ preventScroll: true })
-    else filter.focus({ preventScroll: true })
-  }
-  function begin(id: string, column: EditColumn) {
-    if (editing.drafts[id]?.status === 'pending') return
-    if (activeId && activeId !== id) editing.collapse(activeId)
-    activeId = id
-    editing.begin(id, column)
-    const intent = ++focusIntent
-    onSettled(() => {
-      if (!disposed && intent === focusIntent) focusCell(id, column, true)
-    })
-  }
-  function cancel(id: string, column: EditColumn) {
-    if (!editing.cancel(id)) return
-    const intent = ++focusIntent
-    setNotice(`Canceled changes to ${id}.`)
-    onSettled(() => {
-      if (!disposed && intent === focusIntent) focusCell(id, column, false)
-    })
-  }
-  function finish(id: string, column: EditColumn) {
-    activeId = undefined
-    editing.collapse(id)
-    const intent = ++focusIntent
-    onSettled(() => {
-      if (!disposed && intent === focusIntent) focusCell(id, column, false)
-    })
-  }
-  async function saveAll() {
-    const origin = document.activeElement
-    const intent = ++focusIntent
-    const result = await editing.saveAll()
-    if (disposed || !result) return
-    if (result.status === 'blocked')
-      setNotice(
-        `Nothing saved. Correct ${result.failed.length} draft${result.failed.length === 1 ? '' : 's'} before saving all.`,
-      )
-    else
-      setNotice(
-        `Saved ${result.saved.length} row${result.saved.length === 1 ? '' : 's'}. ${result.failed.length} failed. ${result.unchanged.length} unchanged.`,
-      )
-    onSettled(() => {
-      if (disposed || intent !== focusIntent) return
-      if (
-        document.activeElement !== origin &&
-        document.activeElement !== document.body
-      )
-        return
-      const target = saveAllButton.disabled ? modeControl : saveAllButton
-      target.focus({ preventScroll: true })
-    })
-  }
-  async function save(id: string, column: EditColumn) {
-    if (editing.drafts[id]?.status === 'pending') return
-    const origin = document.activeElement
-    const intent = ++focusIntent
-    const saved = await editing.save(id)
-    if (disposed) return
-    if (saved) setNotice(`Saved ${id}.`)
-    onSettled(() => {
-      if (disposed || intent !== focusIntent) return
-      // A finished request must not steal focus from a later user interaction.
-      if (
-        document.activeElement !== origin &&
-        document.activeElement !== document.body
-      )
-        return
-      if (saved) focusCell(id, column, false)
-      else if (editing.drafts[id]?.status === 'invalid') {
-        const first = (['name', 'note', 'priority'] as const).find(
-          (field) => editing.drafts[id]?.fieldErrors[field],
-        )
-        focusCell(id, first ?? column, true)
-      } else if (origin instanceof HTMLElement && origin.isConnected)
-        origin.focus({ preventScroll: true })
-    })
-  }
-  function Row(id: string) {
-    const row = table.createRowView(id)
-    counts.views++
-    let node!: HTMLTableRowElement
-    onCleanup(() => {
-      counts.unmounted++
-      if (node.contains(document.activeElement))
-        filter.focus({ preventScroll: true })
-    })
-    return (
-      <tr
-        ref={node}
-        data-row={id}
-        aria-busy={editing.drafts[id]?.status === 'pending' ? 'true' : 'false'}
-      >
-        <For each={row.getVisibleCells()}>
-          {(cell) => {
-            counts.cells++
-            const column = cell.column.id
-            if (column === 'id') return <th scope="row">{id}</th>
-            const field = column as EditColumn
-            const changed = () => {
-              const draft = editing.drafts[id]
-              return Boolean(draft && draft[field] !== cell.getValue())
-            }
-            return (
-              <td data-column={field}>
-                <Show
-                  when={editing.drafts[id]?.expanded}
-                  fallback={
-                    <button
-                      class="cell-value"
-                      data-edit={`${id}/${field}`}
-                      aria-label={`Edit ${field} ${id}`}
-                      aria-describedby={`edited-${id}-${field} error-${id}-${field} message-${id}`}
-                      data-edited={changed() ? 'true' : undefined}
-                      disabled={editing.drafts[id]?.status === 'pending'}
-                      ref={nativeEvents({ click: () => begin(id, field) })}
-                    >
-                      <span data-value>
-                        {String(
-                          editing.drafts[id]?.[field] ?? cell.getValue(),
-                        ) || (field === 'note' ? 'Add note' : 'Empty value')}
-                      </span>
-                      <Show when={changed()}>
-                        <span
-                          id={`edited-${id}-${field}`}
-                          class="edited-marker"
-                        >
-                          Edited
-                        </span>
-                      </Show>
-                    </button>
-                  }
-                >
-                  {field === 'priority' ? (
-                    <select
-                      data-editor={`${id}/${field}`}
-                      aria-label={`Priority ${id}`}
-                      aria-describedby={`error-${id}-${field} message-${id}`}
-                      aria-invalid={
-                        editing.drafts[id]?.fieldErrors[field]
-                          ? 'true'
-                          : undefined
-                      }
-                      value={editing.drafts[id]?.priority ?? ''}
-                      disabled={editing.drafts[id]?.status === 'pending'}
-                      ref={nativeEvents<HTMLSelectElement>({
-                        focus: () => editing.focus(id, field),
-                        change: (event) =>
-                          editing.change(id, field, event.currentTarget.value),
-                      })}
-                    >
-                      <option value="" disabled>
-                        Choose priority
-                      </option>
-                      <option value="low">Low</option>
-                      <option value="normal">Normal</option>
-                      <option value="high">High</option>
-                    </select>
-                  ) : (
-                    <input
-                      data-editor={`${id}/${field}`}
-                      aria-label={`${field === 'name' ? 'Name' : 'Note'} ${id}`}
-                      aria-describedby={`error-${id}-${field} message-${id}`}
-                      aria-invalid={
-                        editing.drafts[id]?.fieldErrors[field]
-                          ? 'true'
-                          : undefined
-                      }
-                      value={editing.drafts[id]?.[field] ?? ''}
-                      readonly={editing.drafts[id]?.status === 'pending'}
-                      ref={nativeEvents<HTMLInputElement>({
-                        focus: () => editing.focus(id, field),
-                        input: (event) =>
-                          editing.change(id, field, event.currentTarget.value),
-                        keydown: (event) => {
-                          if (event.isComposing || event.keyCode === 229) return
-                          if (event.key === 'Enter') {
-                            event.preventDefault()
-                            if (saveMode() === 'table') finish(id, field)
-                            else void save(id, field)
-                          } else if (event.key === 'Escape') {
-                            event.preventDefault()
-                            cancel(id, field)
-                          }
-                        },
-                      })}
-                    />
-                  )}
-                </Show>
-                <p id={`error-${id}-${field}`} class="message">
-                  {editing.drafts[id]?.fieldErrors[field]}
-                </p>
-              </td>
-            )
-          }}
-        </For>
-        <td class="row-actions">
-          <Show
-            when={editing.drafts[id]?.expanded}
-            fallback={
-              <span class="muted">
-                {editing.drafts[id]?.status === 'pending'
-                  ? 'Saving…'
-                  : editing.drafts[id]
-                    ? 'Unsaved changes'
-                    : 'No changes'}
-              </span>
-            }
-          >
-            <div class="buttons">
-              <Show when={saveMode() === 'row'}>
-                <button
-                  aria-label={`Save ${id}`}
-                  disabled={editing.drafts[id]?.status === 'pending'}
-                  ref={nativeEvents({
-                    click: () => {
-                      void save(id, actionColumn(id))
-                    },
-                  })}
-                >
-                  Save
-                </button>
-              </Show>
-              <button
-                aria-label={`Cancel ${id}`}
-                disabled={editing.drafts[id]?.status === 'pending'}
-                ref={nativeEvents({
-                  click: () => cancel(id, actionColumn(id)),
+  const configure = (value: Partial<TableControls>) =>
+    setControls((previous) => ({ ...previous, ...value }))
+  return (
+    <Table
+      size={props.size}
+      saveMode={props.saveMode}
+      controls={controls()}
+      ready={(model) => props.ready(model, configure)}
+      settings={
+        <details class="display-options">
+          <summary>Display options</summary>
+          <div class="display-fields">
+            <label>
+              Column filter controls
+              <select
+                value={controls().filters}
+                ref={nativeEvents<HTMLSelectElement>({
+                  change: (event) =>
+                    configure({
+                      filters: event.currentTarget
+                        .value as TableControls['filters'],
+                    }),
                 })}
               >
-                Cancel
-              </button>
-              <Show when={editing.drafts[id]?.status === 'pending'}>
-                <span role="status">Saving…</span>
-              </Show>
-            </div>
-          </Show>
-          <p id={`message-${id}`} role="alert" class="message">
-            {editing.drafts[id]?.message}
-          </p>
-        </td>
-      </tr>
-    )
-  }
-  return (
-    <main>
-      <h1>Inline editing</h1>
-      <p>
-        {saveMode() === 'row'
-          ? 'Edit a name, note, or priority. Save saves the row and Cancel discards its draft. In text fields, Enter saves and Escape cancels.'
-          : 'Save all saves every draft, including filtered rows. In text fields, Enter closes the editors and Escape discards that row draft.'}
-      </p>
-      <p>
-        Leaving a row closes its editors and keeps your draft. Changed cells
-        show an Edited marker. Click a cell to resume. Filtering uses saved
-        values.
-      </p>
-      <p>
-        The priority dropdown uses its native keys. Choosing an option does not
-        save the row.
-      </p>
-      <div class="toolbar">
-        <label>
-          Save mode
-          <select
-            aria-label="Save mode"
-            value={saveMode()}
-            disabled={editing.savingAll()}
-            ref={[
-              (node) => {
-                modeControl = node
-              },
-              nativeEvents<HTMLSelectElement>({
-                change: (event) => {
-                  if (!editing.savingAll()) {
-                    setSaveMode(event.currentTarget.value as SaveMode)
-                    setNotice('')
-                  }
-                },
-              }),
-            ]}
-          >
-            <option value="row">Per row</option>
-            <option value="table">Whole table</option>
-          </select>
-        </label>
-        <Show when={saveMode() === 'table'}>
-          <button
-            aria-label="Save all"
-            aria-describedby="save-all-description"
-            disabled={
-              editing.savingAll() ||
-              !draftIds().length ||
-              draftIds().some((id) => editing.drafts[id]?.status === 'pending')
-            }
-            ref={[
-              (node) => {
-                saveAllButton = node
-              },
-              nativeEvents<HTMLButtonElement>({
-                click: () => {
-                  void saveAll()
-                },
-              }),
-            ]}
-          >
-            {editing.savingAll()
-              ? 'Saving…'
-              : `Save all (${draftIds().length})`}
-          </button>
-        </Show>
-        <label>
-          Filter saved names
-          <input
-            aria-label="Filter saved names"
-            value={String(table.getColumn('name')!.getFilterValue() ?? '')}
-            ref={(node) => {
-              filter = node
-              filterEvents(node)
-            }}
-          />
-        </label>
-        <button ref={nativeEvents({ click: () => table.setColumnFilters([]) })}>
-          Clear filter
-        </button>
-        <button
-          ref={nativeEvents({
-            click: () => table.getColumn('name')!.toggleSorting(),
-          })}
-        >
-          Sort names {table.getColumn('name')!.getIsSorted() || 'off'}
-        </button>
-        <span>
-          {table.getRowIds().length} records · {draftIds().length} drafts
-        </span>
-      </div>
-      <Show when={saveMode() === 'table'}>
-        <p id="save-all-description">
-          All drafts must pass validation before saving starts. Each row saves
-          separately. Failed rows keep their drafts. New edits during a save
-          wait for the next Save all.
-        </p>
-      </Show>
-      <Show when={hiddenDrafts().length > 0}>
-        <aside aria-label="Hidden drafts">
-          <p>Drafts outside the current view are preserved.</p>
-          <For each={hiddenDrafts()}>
-            {(id) => (
-              <div class="hidden-draft">
-                <span>
-                  {id}: {editing.drafts[id]?.name}
-                </span>
-                <button
-                  disabled={!model.records[id]}
-                  ref={nativeEvents({
-                    click: () => {
-                      table.setColumnFilters([])
-                      begin(id, 'name')
-                    },
-                  })}
-                >
-                  Show {id}
-                </button>
-                <button
-                  disabled={editing.drafts[id]?.status === 'pending'}
-                  ref={nativeEvents({ click: () => cancel(id, 'name') })}
-                >
-                  Cancel hidden {id}
-                </button>
-                <span role="alert">{editing.drafts[id]?.message}</span>
-              </div>
-            )}
-          </For>
-        </aside>
-      </Show>
-      <p role="status" class="notice">
-        {notice()}
-      </p>
-      <div class="table-scroll">
-        <table ref={element}>
-          <caption>Editable records</caption>
-          <thead>
-            <tr>
-              <th scope="col">Record</th>
-              <th scope="col">Name</th>
-              <th scope="col">Note</th>
-              <th scope="col">Priority</th>
-              <th scope="col">Row actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <For each={table.getRowIds()}>{Row}</For>
-          </tbody>
-        </table>
-        <Show when={table.getRowIds().length === 0}>
-          <p>No records match the filter.</p>
-        </Show>
-      </div>
-      <button
-        class="after-table"
-        ref={nativeEvents({ click: () => setNotice('Focus left the table.') })}
-      >
-        After table
-      </button>
-    </main>
+                <option value="external">Above the table</option>
+                <option value="headers">In column headers</option>
+                <option value="both">Both</option>
+                <option value="none">Hidden</option>
+              </select>
+            </label>
+            <label class="check-option">
+              <input
+                type="checkbox"
+                checked={controls().headerSorting}
+                ref={nativeEvents<HTMLInputElement>({
+                  change: (event) =>
+                    configure({ headerSorting: event.currentTarget.checked }),
+                })}
+              />
+              Header sorting
+            </label>
+            <label class="check-option">
+              <input
+                type="checkbox"
+                checked={controls().globalSearch}
+                ref={nativeEvents<HTMLInputElement>({
+                  change: (event) =>
+                    configure({ globalSearch: event.currentTarget.checked }),
+                })}
+              />
+              Global search
+            </label>
+          </div>
+        </details>
+      }
+    />
   )
 }

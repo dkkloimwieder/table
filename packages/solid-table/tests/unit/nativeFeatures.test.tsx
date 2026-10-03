@@ -120,6 +120,130 @@ test('global search combines column filters and responds to visible eligible col
   }
 })
 
+test('updating one column filter preserves other store entries and composes batched calls', () => {
+  const h = setup()
+  h.table.getColumn('score')!.setFilterValue(10)
+  h.table.getColumn('color')!.setFilterValue('red')
+  flush()
+  const filters = h.table.state.columnFilters
+  const color = filters[1]
+  let reads = 0
+  const selected = observe(() => {
+    reads++
+    return h.table.getColumn('color')!.getFilterValue()
+  })
+  try {
+    const before = reads
+    h.table
+      .getColumn('score')!
+      .setFilterValue((old: unknown) => Number(old) + 5)
+    h.table
+      .getColumn('score')!
+      .setFilterValue((old: unknown) => Number(old) + 5)
+    flush()
+    expect(h.table.state.columnFilters).toBe(filters)
+    expect(h.table.state.columnFilters[1]).toBe(color)
+    expect(h.table.state.columnFilters).toEqual([
+      { id: 'score', value: 20 },
+      { id: 'color', value: 'red' },
+    ])
+    expect(reads).toBe(before)
+    expect(selected.value()).toBe('red')
+    h.table.getColumn('score')!.setFilterValue(undefined)
+    flush()
+    expect(h.table.state.columnFilters).toEqual([{ id: 'color', value: 'red' }])
+    expect(h.table.state.columnFilters[0]).toBe(color)
+    const opaque = { range: [1, 3] }
+    h.table.getColumn('color')!.setFilterValue(opaque)
+    flush()
+    expect(h.table.getColumn('color')!.getFilterValue()).toEqual(opaque)
+    const firstValue = h.table.getColumn('color')!.getFilterValue()
+    h.table.getColumn('color')!.setFilterValue({ range: [1, 3] })
+    flush()
+    expect(h.table.getColumn('color')!.getFilterValue()).not.toBe(firstValue)
+    h.table.setColumnFilters([])
+    flush()
+    expect(selected.value()).toBeUndefined()
+  } finally {
+    selected.stop()
+    h.dispose()
+  }
+})
+
+test('equivalent filtered IDs do not rerun row-list subscribers but membership changes do', () => {
+  const h = setup()
+  let reads = 0
+  const view = observe(() => {
+    reads++
+    return h.table.getRowIds()
+  })
+  try {
+    const original = view.value()
+    const before = reads
+    for (const minimum of [1, 2, 3, 4]) {
+      h.table.getColumn('score')!.setFilterValue(minimum)
+      flush()
+    }
+    expect(view.value()).toBe(original)
+    expect(reads).toBe(before)
+    h.table.getColumn('score')!.setFilterValue(25)
+    flush()
+    expect(view.value()).toEqual(['c', 'd'])
+    expect(reads).toBe(before + 1)
+    h.table.getColumn('score')!.setFilterValue(undefined)
+    h.table.setGlobalFilter('red')
+    flush()
+    expect(view.value()).toEqual(['a', 'c'])
+    expect(reads).toBe(before + 2)
+    h.table.setGlobalFilter(' RED ')
+    flush()
+    expect(reads).toBe(before + 2)
+  } finally {
+    view.stop()
+    h.dispose()
+  }
+})
+
+test('multi-sort updates preserve other entries and compose before a flush', () => {
+  const h = setup()
+  h.table.setSorting([
+    { id: 'score', desc: false },
+    { id: 'name', desc: false },
+  ])
+  flush()
+  const sorting = h.table.state.sorting
+  const secondary = sorting[1]
+  let reads = 0
+  const direction = observe(() => {
+    reads++
+    return h.table.getColumn('name')!.getIsSorted()
+  })
+  try {
+    const before = reads
+    h.table.getColumn('score')!.toggleSorting(true, true)
+    flush()
+    expect(h.table.state.sorting).toBe(sorting)
+    expect(h.table.state.sorting[1]).toBe(secondary)
+    expect(reads).toBe(before)
+    expect(direction.value()).toBe('asc')
+    expect(h.table.state.sorting[0]!.desc).toBe(true)
+    h.table.getColumn('score')!.toggleSorting(undefined, true)
+    h.table.getColumn('score')!.toggleSorting(undefined, true)
+    flush()
+    expect(h.table.state.sorting).toEqual([
+      { id: 'name', desc: false },
+      { id: 'score', desc: false },
+    ])
+    expect(h.table.state.sorting[0]).toBe(secondary)
+    h.table.setSorting([])
+    flush()
+    expect(direction.value()).toBe(false)
+  } finally {
+    direction.stop()
+    h.dispose()
+  }
+})
+
 test('facets exclude their own filter, include other filters and global search, and deduplicate values per record', () => {
   const h = setup()
   const colors = observe(h.table.getColumn('color')!.getFacetedUniqueValues)

@@ -11,6 +11,11 @@ import type {
 
 type Fault =
   'none' | 'hold' | 'refuse' | 'conflict' | 'uncertain' | 'throw' | 'wrong-id'
+const contains = (value: unknown, query: unknown) =>
+  String(value).toLowerCase().includes(String(query).trim().toLowerCase())
+const compareText = (left: unknown, right: unknown) =>
+  String(left).localeCompare(String(right))
+
 export function createModel(size: number) {
   const initial = Array.from({ length: size }, (_, index): RecordData => ({
     id: `R${String(index + 1).padStart(4, '0')}`,
@@ -23,6 +28,7 @@ export function createModel(size: number) {
     Record<string, RecordData | undefined>
   >(Object.fromEntries(initial.map((row) => [row.id, row])))
   const [ids, setIds] = createSignal(initial.map((row) => row.id))
+  const [localProcessing, setLocalProcessing] = createSignal(true)
   const counts = {
     name: 0,
     note: 0,
@@ -36,13 +42,23 @@ export function createModel(size: number) {
   }
   const table = createTable({
     source: { ids, get: (id) => records[id] },
+    get manualProcessing() {
+      return !localProcessing()
+    },
     columns: [
-      { id: 'id', accessorKey: 'id', enableGlobalFilter: false },
+      {
+        id: 'id',
+        header: 'Record',
+        accessorKey: 'id',
+        filterFn: contains,
+        sortFn: compareText,
+        enableGlobalFilter: false,
+      },
       {
         id: 'name',
-        filterFn: (value, query) =>
-          String(value).toLowerCase().includes(String(query).toLowerCase()),
-        sortFn: (left, right) => String(left).localeCompare(String(right)),
+        header: 'Name',
+        filterFn: contains,
+        sortFn: compareText,
         accessorFn: (row) => {
           counts.name++
           return row.name
@@ -50,6 +66,9 @@ export function createModel(size: number) {
       },
       {
         id: 'note',
+        header: 'Note',
+        filterFn: contains,
+        sortFn: compareText,
         accessorFn: (row) => {
           counts.note++
           return row.note
@@ -57,6 +76,11 @@ export function createModel(size: number) {
       },
       {
         id: 'priority',
+        header: 'Priority',
+        filterFn: (value, choice) => value === choice,
+        sortFn: (left, right) =>
+          ['low', 'normal', 'high'].indexOf(String(left)) -
+          ['low', 'normal', 'high'].indexOf(String(right)),
         accessorFn: (row) => {
           counts.priority++
           return row.priority
@@ -133,6 +157,8 @@ export function createModel(size: number) {
   })
   return {
     table,
+    localProcessing,
+    setLocalProcessing,
     records,
     editing,
     counts,

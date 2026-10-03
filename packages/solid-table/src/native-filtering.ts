@@ -69,7 +69,12 @@ export function createNativeFiltering<T, TMeta>(
       const matches = createMatcher()
       return matches ? input.filter((id) => matches(getRecord(id)!)) : input
     },
-    { lazy: true },
+    {
+      lazy: true,
+      equals: (left, right) =>
+        left.length === right.length &&
+        left.every((id, index) => id === right[index]),
+    },
   )
 
   function createFacets(id: string) {

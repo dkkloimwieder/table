@@ -57,7 +57,28 @@ export function createNativeState(
           // committed public state here would lose consecutive updater calls.
           setInternal((draft) => {
             const previous = draft[key]
-            Object.assign(draft, { [key]: resolveUpdater(updater, previous) })
+            const next = resolveUpdater(updater, previous)
+            if (key === 'columnFilters') {
+              const filters = next as NativeTableState['columnFilters']
+              // Keep the array and unchanged entries in the Solid store.
+              // Filter values remain opaque and retain replacement semantics.
+              for (let index = 0; index < filters.length; index++) {
+                const filter = filters[index]!
+                const current = draft.columnFilters[index]
+                if (current?.id === filter.id) current.value = filter.value
+                else draft.columnFilters[index] = filter
+              }
+              draft.columnFilters.length = filters.length
+            } else if (key === 'sorting') {
+              const sorting = next as NativeTableState['sorting']
+              for (let index = 0; index < sorting.length; index++) {
+                const sort = sorting[index]!
+                const current = draft.sorting[index]
+                if (current?.id === sort.id) current.desc = sort.desc
+                else draft.sorting[index] = sort
+              }
+              draft.sorting.length = sorting.length
+            } else Object.assign(draft, { [key]: next })
           })
         }
         callback?.(updater)

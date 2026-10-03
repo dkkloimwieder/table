@@ -1,11 +1,12 @@
 import { render } from '@solidjs/web'
 import { OBSERVE, action, flush, snapshot } from 'solid-js'
 import { App } from './App'
-import type { SaveMode } from './App'
+import type { SaveMode, TableControls } from './Table'
 import type { EditingModel } from './model'
 
 const root = document.getElementById('root')!
 let model: EditingModel | undefined
+let configureControls: ((value: Partial<TableControls>) => void) | undefined
 let dispose: (() => void) | undefined
 let remembered: WeakRef<object> | undefined
 let rememberedId = ''
@@ -24,6 +25,7 @@ function stop() {
   lastCounts = counts && { ...counts }
   dispose = undefined
   model = undefined
+  configureControls = undefined
   remembered = undefined
   flush()
 }
@@ -36,8 +38,9 @@ function start(size = 8, saveMode: SaveMode = 'row') {
       <App
         size={size}
         saveMode={saveMode}
-        ready={(value) => {
+        ready={(value, configure) => {
           model = value
+          configureControls = configure
         }}
       />
     ),
@@ -51,6 +54,8 @@ const api = {
   ready: () => Boolean(model),
   read: () => ({
     ids: model!.table.getRowIds(),
+    filters: snapshot(model!.table.state.columnFilters),
+    search: model!.table.state.globalFilter,
     sample: model!.table
       .getSourceIds()
       .slice(0, 8)
@@ -71,6 +76,26 @@ const api = {
   },
   remove: (id: string) => {
     model!.remove(id)
+    flush()
+  },
+  search: (value: string) => {
+    model!.table.setGlobalFilter(value)
+    flush()
+  },
+  filter: (id: string, value: string) => {
+    model!.table.getColumn(id)!.setFilterValue(value || undefined)
+    flush()
+  },
+  visibility: (id: string, visible: boolean) => {
+    model!.table.getColumn(id)!.toggleVisibility(visible)
+    flush()
+  },
+  controls: (value: Partial<TableControls>) => {
+    configureControls!(value)
+    flush()
+  },
+  localProcessing: (enabled: boolean) => {
+    model!.setLocalProcessing(enabled)
     flush()
   },
   saveTwice: (id: string) => {

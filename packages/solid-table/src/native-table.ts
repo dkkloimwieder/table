@@ -223,8 +223,14 @@ export function createNativeTable<T, TMeta = unknown>(
                 updater,
                 old.find((filter) => filter.id === id)?.value,
               )
-              const rest = old.filter((filter) => filter.id !== id)
-              return value === undefined ? rest : [...rest, { id, value }]
+              if (value === undefined)
+                return old.filter((filter) => filter.id !== id)
+              const index = old.findIndex((filter) => filter.id === id)
+              return index < 0
+                ? [...old, { id, value }]
+                : old.map((filter, at) =>
+                    at === index ? { id, value } : filter,
+                  )
             }),
           getIsSorted: () => {
             const sort = state.sorting.find((item) => item.id === id)

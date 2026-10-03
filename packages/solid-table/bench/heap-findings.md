@@ -720,3 +720,46 @@ Thirty Maps and 208 V8 allocation templates remain.
 Raw reports are `/tmp/table-editing-global-{source,distribution,development}.json`.
 Actual snapshots and summaries are under `/tmp/table-editing-global-heaps` with the same four snapshot names.
 The served preview also passes a two-row Save all smoke test. Timings remain advisory on this shared machine.
+
+### Configurable column filters and search
+
+The Table fixture defaults to external column filters and offers optional header filters and global search.
+The parent controls filter placement, header sorting, and global search independently.
+Both filter presentations read the same Table state. Hiding a control preserves its value.
+
+Fifty-one browser scenarios pass against source, built-package, development, and live Vite entries in Chromium `151.0.7922.34` on Linux.
+The source and built runs render 25, 250, and 999 records. The development and live runs render 25 records.
+The scenarios cover combined filters, external changes, composition input, empty results, hidden columns, disabled local processing, drafts, and global save.
+A pointer regression test makes sure that closing an editor does not move the next row before its click arrives.
+All 120 package unit tests pass, including filter and sort identity, composed state updates, and unchanged result IDs.
+
+At these three sizes, five Name filter changes read 125, 1,250, and 4,995 cell values.
+Five global-search changes with that filter active read 250, 2,500, and 9,990 values.
+Each combined pass reads Name for its column filter and again for global search.
+Every record matches these queries. The changes create no replacement row views or cells and run no validation or save request.
+The existing text, dropdown, collapse, and three-row Save all workloads retain their counts of 3, 3, 6, and 18 reads.
+
+The filter still scans candidate records and allocates a result ID array.
+An ordered ID comparison prevents unchanged results from notifying row-list subscribers. It does not copy records or remove the scan.
+Updating one column filter preserves the filter array and unaffected entries in the Solid store.
+Filter values retain replacement semantics, including opaque application objects.
+Multi-column sorting also preserves its array and unaffected entries when a sort changes.
+
+The live run records known broad-dependency diagnostics from filtering and sorting. It records timing diagnostics separately as advisory.
+The runner permits broad-dependency diagnostics only from those two memos and rejects other non-timing diagnostics.
+It reports no browser errors, unstable memo results, or store replacement warnings.
+Bead `table-gd3.1.5` retains the filter profiling work. Timings remain advisory on this shared machine.
+
+The built fixture uses 24.024 MiB after loading 999 records and 24.207 MiB after both per-row saves.
+The premount heap uses 3.844 MiB. After the editing and filtering workloads, disposal reduces the heap to 3.898 MiB.
+These figures include the controls and the editing UI. They do not isolate the cost of filtering.
+The record snapshots precede the filter workload to preserve the earlier retention comparison.
+
+The loaded snapshot contains 47,143 computations, 54,150 dependency links, 11,010 owners, and 1,006 store targets.
+It retains 999 row views and 3,996 cells.
+Record counts remain 1,000 after both per-row saves and repeated updates, then reach 1,001 after another record changes.
+Disposal removes all classified records, views, cells, store targets, computations, owners, and dependency links.
+Thirty Maps and 273 V8 allocation templates remain.
+
+Raw reports are `/tmp/table-filters-{source,distribution,development,live}.json`.
+Actual snapshots and summaries are under `/tmp/table-filters-heaps` with the same four snapshot names.

@@ -64,7 +64,16 @@ const report = {
   benchmarks: [],
   errors: [],
   diagnostics: [],
+  expectedDiagnostics: [],
+  timingDiagnostics: [],
 }
+// Local filtering and sorting observe candidate records. Keep this
+// known full-scan cost visible; every other diagnostic remains a failure.
+const expectedFanIn = (event) =>
+  ['WIDE_SCOPE_DEPS', 'HUGE_FAN_IN'].includes(event.code) &&
+  ['createNativeFiltering.filteredIds', 'createNativeTable.sortedIds'].includes(
+    event.nodeName,
+  )
 try {
   browser = await chromium.launch({
     executablePath: process.env.BENCH_EXECUTABLE_PATH,
@@ -76,8 +85,17 @@ try {
     console.error(error.stack)
   })
   page.on('console', (message) => {
-    if (['warning', 'error'].includes(message.type()))
-      report.errors.push(message.text())
+    if (['warning', 'error'].includes(message.type())) {
+      if (message.text().startsWith('[HOT_SCOPE_TIME]'))
+        report.timingDiagnostics.push(message.text())
+      else if (
+        /^\[(WIDE_SCOPE_DEPS|HUGE_FAN_IN)\] memo "(createNativeFiltering\.filteredIds|createNativeTable\.sortedIds)"/.test(
+          message.text(),
+        )
+      )
+        report.expectedDiagnostics.push(message.text())
+      else report.errors.push(message.text())
+    }
   })
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('Performance.enable')
@@ -161,6 +179,341 @@ try {
       summary.categories.map(({ key, count }) => [key, count]),
     )
   }
+  const filters = () =>
+    page.getByRole('region', { name: 'Column filters', exact: true })
+  const nameFilter = () =>
+    filters().getByRole('textbox', { name: 'Filter saved names', exact: true })
+  const noteFilter = () =>
+    filters().getByRole('textbox', { name: 'Filter saved notes', exact: true })
+  const priorityFilter = () =>
+    filters().getByRole('combobox', { name: 'Filter priority', exact: true })
+  const search = () =>
+    page.getByRole('searchbox', { name: 'Search all columns', exact: true })
+  const results = () =>
+    page.getByRole('status', { name: 'Filter results', exact: true })
+  const clearFilters = () =>
+    page.getByRole('button', { name: 'Clear all filters', exact: true })
+  await record(
+    'external column filters compose and clear independently',
+    async () => {
+      await start(12)
+      await call('patch', 'R0001', { priority: 'high' })
+      await call('patch', 'R0002', { priority: 'low' })
+      await nameFilter().fill('  RECORD 000  ')
+      await noteFilter().fill('NOTE 1')
+      await priorityFilter().selectOption('high')
+      await settle()
+      assert.deepEqual((await read()).ids, ['R0001'])
+      assert.equal((await read()).filters.length, 3)
+      assert.match(await results().innerText(), /Showing 1 of 12 records/)
+      await filters()
+        .getByRole('button', { name: 'Clear Priority filter', exact: true })
+        .click()
+      await noteFilter().press('Escape')
+      await settle()
+      assert.equal((await read()).ids.length, 9)
+      assert.equal((await read()).filters.length, 1)
+      assert.ok(await focused(noteFilter()))
+      await filters()
+        .getByRole('textbox', { name: 'Filter record IDs', exact: true })
+        .fill('R0002')
+      await settle()
+      assert.deepEqual((await read()).ids, ['R0002'])
+      assert.equal((await read()).counts.requests, 0)
+    },
+  )
+  await record(
+    'filter placement and header sorting are independent controlled options',
+    async () => {
+      await start()
+      await nameFilter().fill('0001')
+      await page.getByText('Display options', { exact: true }).click()
+      const placement = page.getByRole('combobox', {
+        name: 'Column filter controls',
+        exact: true,
+      })
+      await placement.selectOption('both')
+      const header = page
+        .locator('thead')
+        .getByRole('textbox', { name: 'Filter saved names', exact: true })
+      assert.equal(await header.inputValue(), '0001')
+      await header.fill('0002')
+      await settle()
+      assert.equal(await nameFilter().inputValue(), '0002')
+      assert.deepEqual((await read()).ids, ['R0002'])
+      await page
+        .getByRole('checkbox', { name: 'Header sorting', exact: true })
+        .uncheck()
+      assert.equal(
+        await page
+          .getByRole('button', { name: 'Sort by Name', exact: true })
+          .count(),
+        0,
+      )
+      await placement.selectOption('headers')
+      assert.equal(await filters().count(), 0)
+      assert.equal(await header.inputValue(), '0002')
+      await placement.selectOption('none')
+      assert.equal(await header.count(), 0)
+      assert.deepEqual((await read()).ids, ['R0002'])
+      await call('filter', 'name', '0003')
+      await placement.selectOption('external')
+      assert.equal(await nameFilter().inputValue(), '0003')
+      await page
+        .getByRole('checkbox', { name: 'Header sorting', exact: true })
+        .check()
+      await clearFilters().click()
+      await page
+        .getByRole('button', { name: 'Sort by Name', exact: true })
+        .click()
+      await page
+        .getByRole('button', { name: 'Sort by Name', exact: true })
+        .click()
+      assert.equal((await read()).ids[0], 'R0008')
+      assert.equal(await page.locator('th[aria-sort="descending"]').count(), 1)
+      await page
+        .getByRole('button', { name: 'Sort by Priority', exact: true })
+        .click({ modifiers: ['Shift'] })
+      assert.equal(await page.locator('th[aria-sort]').count(), 1)
+      await call('localProcessing', false)
+      assert.equal(await page.locator('th[aria-sort]').count(), 0)
+    },
+  )
+  await record(
+    'global search composes with column filters and has separate clearing',
+    async () => {
+      await start(12)
+      await search().fill('  nOtE 1  ')
+      await settle()
+      assert.deepEqual((await read()).ids, ['R0001', 'R0010', 'R0011', 'R0012'])
+      await nameFilter().fill('Record 001')
+      await settle()
+      assert.deepEqual((await read()).ids, ['R0010', 'R0011', 'R0012'])
+      await search().press('Escape')
+      await settle()
+      assert.equal(await search().inputValue(), '')
+      assert.equal(await nameFilter().inputValue(), 'Record 001')
+      assert.ok(await focused(search()))
+      await call('search', 'Note 12')
+      assert.equal(await search().inputValue(), 'Note 12')
+      await call('controls', { globalSearch: false })
+      assert.equal(await search().count(), 0)
+      assert.deepEqual((await read()).ids, ['R0012'])
+      await call('controls', { globalSearch: true })
+      assert.equal(await search().inputValue(), 'Note 12')
+      await page
+        .getByRole('button', { name: 'Clear search', exact: true })
+        .click()
+      assert.equal((await read()).filters.length, 1)
+    },
+  )
+  await record(
+    'empty filter results and an empty source have distinct recovery states',
+    async () => {
+      await start()
+      await noteFilter().fill('missing')
+      assert.match(await results().innerText(), /Showing 0 of 8 records/)
+      assert.equal(
+        await page
+          .getByText('No records match your search or filters.', {
+            exact: true,
+          })
+          .count(),
+        1,
+      )
+      await page
+        .getByRole('button', { name: 'Show all records', exact: true })
+        .click()
+      await settle()
+      assert.equal((await read()).ids.length, 8)
+      assert.deepEqual((await read()).filters, [])
+      await start(0)
+      assert.equal(
+        await page.getByText('No records yet.', { exact: true }).count(),
+        1,
+      )
+      assert.equal(
+        await page
+          .getByRole('button', { name: 'Show all records', exact: true })
+          .count(),
+        0,
+      )
+    },
+  )
+  await record(
+    'search excludes hidden or non-searchable columns while explicit filters stay active',
+    async () => {
+      await start()
+      await search().fill('R0001')
+      assert.deepEqual((await read()).ids, [])
+      await search().fill('Note 1')
+      assert.deepEqual((await read()).ids, ['R0001'])
+      await call('visibility', 'note', false)
+      assert.deepEqual((await read()).ids, [])
+      assert.equal(
+        await page
+          .getByRole('button', { name: 'Sort by Note', exact: true })
+          .count(),
+        0,
+      )
+      await search().fill('')
+      await noteFilter().fill('Note 2')
+      assert.deepEqual((await read()).ids, ['R0002'])
+      await call('visibility', 'note', true)
+      assert.deepEqual((await read()).ids, ['R0002'])
+    },
+  )
+  await record(
+    'manual processing disables local controls without losing their configuration',
+    async () => {
+      await start()
+      await nameFilter().fill('0001')
+      await search().fill('Note 1')
+      await call('localProcessing', false)
+      assert.equal((await read()).ids.length, 8)
+      assert.equal(await nameFilter().isDisabled(), true)
+      assert.equal(await search().isDisabled(), true)
+      assert.equal(await priorityFilter().isDisabled(), true)
+      assert.equal(await clearFilters().isDisabled(), true)
+      assert.equal(
+        await page
+          .getByRole('button', { name: 'Sort by Name', exact: true })
+          .isDisabled(),
+        true,
+      )
+      assert.equal(await nameFilter().inputValue(), '0001')
+      await call('localProcessing', true)
+      assert.deepEqual((await read()).ids, ['R0001'])
+      assert.equal(await search().inputValue(), 'Note 1')
+    },
+  )
+  await record(
+    'filter composition waits for committed input and does not clear on composition Escape',
+    async () => {
+      await start()
+      await nameFilter().evaluate((node) => {
+        node.dispatchEvent(
+          new CompositionEvent('compositionstart', { bubbles: true }),
+        )
+        node.value = '0001'
+        node.dispatchEvent(
+          new InputEvent('input', { bubbles: true, isComposing: true }),
+        )
+        node.dispatchEvent(
+          new KeyboardEvent('keydown', {
+            key: 'Escape',
+            bubbles: true,
+            isComposing: true,
+          }),
+        )
+      })
+      assert.equal((await read()).filters.length, 0)
+      assert.equal((await read()).ids.length, 8)
+      await nameFilter().dispatchEvent('compositionend')
+      await settle()
+      assert.deepEqual((await read()).ids, ['R0001'])
+      await nameFilter().press('Escape')
+      await settle()
+      assert.equal((await read()).ids.length, 8)
+    },
+  )
+  await record(
+    'showing a hidden draft clears column filters and global search',
+    async () => {
+      await start(8, 'table')
+      await edit('R0001', 'note').click()
+      await input('R0001', 'note').fill('Unique draft')
+      await search().fill('Note 2')
+      await noteFilter().fill('Note 2')
+      await page
+        .getByRole('button', { name: 'Show R0001', exact: true })
+        .click()
+      await settle()
+      assert.equal(await search().inputValue(), '')
+      assert.equal(await noteFilter().inputValue(), '')
+      assert.equal(await input('R0001', 'note').inputValue(), 'Unique draft')
+      assert.equal((await read()).counts.requests, 0)
+    },
+  )
+  await record(
+    'Save all includes drafts hidden by search then updates matching from saved values',
+    async () => {
+      await start(8, 'table')
+      await edit('R0001', 'note').click()
+      await input('R0001', 'note').fill('New searchable value')
+      await input('R0001', 'note').press('Enter')
+      await search().fill('New searchable value')
+      assert.deepEqual((await read()).ids, [])
+      await page.getByRole('button', { name: 'Save all', exact: true }).click()
+      await idle()
+      assert.deepEqual((await read()).ids, ['R0001'])
+      assert.deepEqual((await read()).drafts, {})
+      assert.equal((await read()).counts.requests, 1)
+    },
+  )
+  await record(
+    'saving a row out of search returns focus to the search control',
+    async () => {
+      await start()
+      await search().fill('Note 1')
+      await edit('R0001', 'note').click()
+      await input('R0001', 'note').fill('No longer matches')
+      await input('R0001', 'note').press('Enter')
+      await idle()
+      assert.deepEqual((await read()).ids, [])
+      assert.ok(await focused(search()))
+      assert.deepEqual((await read()).drafts, {})
+    },
+  )
+  await record(
+    'equivalent filter and search results retain row views',
+    async () => {
+      await start()
+      const before = await read()
+      await page.locator('tr[data-row="R0001"]').evaluate((node) => {
+        node.dataset.retained = 'true'
+      })
+      for (const value of ['r', 're', 'rec', 'reco', 'record']) {
+        await nameFilter().fill(value)
+        await settle()
+      }
+      for (const value of ['n', 'no', 'not', 'note', 'note ']) {
+        await search().fill(value)
+        await settle()
+      }
+      const after = await read()
+      assert.equal(after.counts.views, before.counts.views)
+      assert.equal(after.counts.cells, before.counts.cells)
+      assert.equal(after.counts.validations, 0)
+      assert.equal(after.counts.requests, 0)
+      assert.equal(
+        await page
+          .locator('tr[data-row="R0001"]')
+          .getAttribute('data-retained'),
+        'true',
+      )
+    },
+  )
+  await record(
+    'an outside pointer does not move the clicked row before its click reaches the editor',
+    async () => {
+      await start()
+      await edit('R0001', 'note').click()
+      await input('R0001', 'note').fill('Retained draft')
+      const target = edit('R0002', 'priority')
+      await target.scrollIntoViewIfNeeded()
+      const before = await target.boundingBox()
+      await page.mouse.move(before.x + 20, before.y + 15)
+      await page.mouse.down()
+      await settle()
+      assert.deepEqual(await target.boundingBox(), before)
+      await page.mouse.up()
+      await settle()
+      assert.equal(await select('R0002').count(), 1)
+      assert.ok(await focused(select('R0002')))
+      assert.equal((await read()).drafts.R0001.note, 'Retained draft')
+    },
+  )
   await record(
     'repeated visible drafts keep hidden ID output stable and real filter changes update it',
     async () => {
@@ -217,7 +570,7 @@ try {
       await input().fill('Draft on display')
       await input('R0001', 'note').click()
       assert.equal(await input().count(), 1)
-      await page.getByRole('heading', { name: 'Inline editing' }).click()
+      await page.getByRole('heading', { name: 'Table' }).click()
       await settle()
       assert.equal(await input().count(), 0)
       assert.equal(await save().count(), 0)
@@ -281,7 +634,7 @@ try {
     async () => {
       await start()
       await edit().click()
-      await page.getByRole('heading', { name: 'Inline editing' }).click()
+      await page.getByRole('heading', { name: 'Table' }).click()
       await settle()
       assert.deepEqual((await read()).drafts, {})
       await edit().click()
@@ -303,7 +656,7 @@ try {
       await input().fill('')
       await save().click()
       await idle()
-      await page.getByRole('heading', { name: 'Inline editing' }).click()
+      await page.getByRole('heading', { name: 'Table' }).click()
       await settle()
       assert.equal(await input().count(), 0)
       assert.equal(await edit().getAttribute('data-edited'), 'true')
@@ -476,8 +829,8 @@ try {
       await page.locator('[data-row="R0001"]').evaluate((node) => {
         window.originalRow = new WeakRef(node)
       })
-      await page.getByRole('button', { name: /^Sort names/ }).click()
-      await page.getByRole('button', { name: /^Sort names/ }).click()
+      await page.getByRole('button', { name: 'Sort by Name' }).click()
+      await page.getByRole('button', { name: 'Sort by Name' }).click()
       await settle()
       assert.equal((await read()).ids.at(-1), 'R0001')
       assert.equal(await select().count(), 0)
@@ -622,9 +975,7 @@ try {
       await input().fill('Saved later')
       await call('fault', 'hold')
       await save().click()
-      await page
-        .getByRole('heading', { name: 'Inline editing', exact: true })
-        .click()
+      await page.getByRole('heading', { name: 'Table', exact: true }).click()
       assert.equal(await input().count(), 0)
       await call('release')
       await idle()
@@ -735,7 +1086,7 @@ try {
         assert.equal(value.sample[0].name, 'Record 0001')
         assert.ok(value.drafts.R0001.message)
         assert.equal(await save().isEnabled(), true)
-        await page.getByRole('heading', { name: 'Inline editing' }).click()
+        await page.getByRole('heading', { name: 'Table' }).click()
         await settle()
         assert.equal(await input().count(), 0)
         assert.equal(await edit().getAttribute('data-edited'), 'true')
@@ -819,7 +1170,7 @@ try {
       await start()
       await edit().click()
       await input().fill('ZZZ moved')
-      await page.getByRole('button', { name: /^Sort names/ }).click()
+      await page.getByRole('button', { name: 'Sort by Name' }).click()
       await settle()
       assert.equal(await input().count(), 0)
       assert.equal(await edit().getAttribute('data-edited'), 'true')
@@ -1180,7 +1531,7 @@ try {
     const beforeCollapse = await read()
     await edit('R0001', 'note').click()
     await input('R0001', 'note').fill('Collapsed draft')
-    await page.getByRole('heading', { name: 'Inline editing' }).click()
+    await page.getByRole('heading', { name: 'Table' }).click()
     await settle()
     const collapsed = await read()
     const collapseReads =
@@ -1233,6 +1584,29 @@ try {
     assert.deepEqual(global.drafts, {})
     // These three rows display drafts and markers before saving, unlike open editors.
     assert.equal(globalReads, 18, `Save all cell reads changed at size ${size}`)
+    const cellReads = (value) =>
+      value.counts.name + value.counts.note + value.counts.priority
+    const beforeFilter = await read()
+    for (const query of ['r', 're', 'rec', 'reco', 'record']) {
+      await nameFilter().fill(query)
+      await settle()
+    }
+    const filtered = await read()
+    const filterReads = cellReads(filtered) - cellReads(beforeFilter)
+    assert.equal(filterReads, size * 5)
+    for (const query of ['r', 're', 'rec', 'reco', 'record']) {
+      await search().fill(query)
+      await settle()
+    }
+    const searched = await read()
+    const searchReads = cellReads(searched) - cellReads(filtered)
+    // Each pass checks the Name column filter, then global search matches Name.
+    assert.equal(searchReads, size * 10)
+    assert.equal(searched.counts.views, size)
+    assert.equal(searched.counts.cells, size * 4)
+    assert.equal(searched.counts.requests, global.counts.requests)
+    assert.equal(searched.counts.validations, global.counts.validations)
+    assert.equal(searched.identity, true)
     await call('stop')
     const disposed = await metrics()
     let disposedObjects
@@ -1266,6 +1640,8 @@ try {
       selectAccessorReads: selectReads,
       collapseAccessorReads: collapseReads,
       globalAccessorReads: globalReads,
+      fiveColumnFilterAccessorReads: filterReads,
+      fiveCombinedSearchAccessorReads: searchReads,
       selectCounts: selected.counts,
       elapsedMs,
       before,
@@ -1279,10 +1655,17 @@ try {
       hostLoad: loadavg(),
     })
     console.log(
-      `PASS ${size} fully rendered rows; text reads ${reads}; select reads ${selectReads}; collapse reads ${collapseReads}; Save all reads ${globalReads}; zero replacement views/cells`,
+      `PASS ${size} fully rendered rows; text reads ${reads}; select reads ${selectReads}; collapse reads ${collapseReads}; Save all reads ${globalReads}; five filters ${filterReads}; five combined searches ${searchReads}; zero replacement views/cells`,
     )
   }
-  report.diagnostics = await call('diagnostics')
+  const diagnostics = await call('diagnostics')
+  report.expectedDiagnostics.push(...diagnostics.filter(expectedFanIn))
+  report.timingDiagnostics.push(
+    ...diagnostics.filter((event) => event.code === 'HOT_SCOPE_TIME'),
+  )
+  report.diagnostics = diagnostics.filter(
+    (event) => !expectedFanIn(event) && event.code !== 'HOT_SCOPE_TIME',
+  )
   assert.deepEqual(report.diagnostics, [])
   await start(8)
   await edit().click()
