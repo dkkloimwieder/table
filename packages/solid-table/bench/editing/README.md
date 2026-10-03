@@ -98,6 +98,9 @@ The controller does not copy the dataset or replace unaffected rows.
 
 Each draft records whether its editors are open. Cell markers compare draft values with saved values through Solid property tracking.
 The markers do not add dirty flags to Table or a second record store.
+Draft ID memos compare IDs in order before notifying subscribers.
+Adding a visible draft leaves the hidden-draft notice unchanged when its IDs remain the same.
+The comparison reads only IDs. It does not inspect or copy record fields.
 Document listeners close the active row on outside pointer or focus movement.
 Disabling a focused Save button during a request does not count as user navigation.
 Solid's property tracking can retain an older record value internally. The heap tests measure that cost and its disposal.
@@ -169,16 +172,29 @@ BENCH_DISTRIBUTION=1 BENCH_PROFILE=1 pnpm --filter @tanstack/solid-table exec vi
 BENCH_DISTRIBUTION=1 BENCH_HEAPS=/tmp/table-editing-heaps BENCH_OUTPUT=/tmp/table-editing-distribution.json node packages/solid-table/bench/editing/run.mjs
 ```
 
-Use the development runtime to detect Solid diagnostics:
+Build with the development runtime to detect its available Solid diagnostics:
 
 ```sh
 NODE_ENV=development BENCH_DEVELOPMENT=1 pnpm --filter @tanstack/solid-table exec vite build --config bench/editing/vite.config.ts
 BENCH_DEVELOPMENT=1 BENCH_SIZES=25 BENCH_OUTPUT=/tmp/table-editing-development.json node packages/solid-table/bench/editing/run.mjs
 ```
 
+The live Vite server also enables performance diagnostics that this development build does not include.
+These diagnostics include `UNSTABLE_MEMO_OUTPUT`, which reports repeated equivalent memo results with new references.
+Start the fixture server before running the same suite against its URL:
+
+```sh
+BENCH_URL=http://127.0.0.1:7777/ BENCH_SIZES=25 BENCH_OUTPUT=/tmp/table-editing-live.json node packages/solid-table/bench/editing/run.mjs
+```
+
+The repeated-draft case creates eight drafts, changes filters, and saves the visible and hidden drafts together.
+The runner rejects console warnings, page errors, and captured Solid diagnostics.
+The live-server report omits the built-module audit. The separate built runs still require it.
+
 Set `BENCH_EXECUTABLE_PATH` to use a specific installed Chromium binary.
 The report records the actual browser version.
-The runner starts a temporary local server and closes it and Chromium in its cleanup block.
+For built assets, the runner starts a temporary local server and closes it and Chromium in its cleanup block.
+With `BENCH_URL`, it closes Chromium and leaves the supplied server running.
 
 The runner tests keyboard and pointer flows, draft retention, request races, record identity, and disposal.
 Subset workloads require every matching row to render and reject replacement Table views or cells during an edit.

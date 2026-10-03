@@ -16,16 +16,19 @@ const directory = process.env.BENCH_DEVELOPMENT
     : '.dist'
 const assets = fileURLToPath(new URL(`${directory}/`, import.meta.url))
 const output = process.env.BENCH_OUTPUT ?? '/tmp/table-editing-browser.json'
-const modules = JSON.parse(await readFile(`${assets}modules.json`, 'utf8'))
-assert.ok(
-  !modules.some((path) =>
-    /table-core|@tanstack\/store|virtual-core|solid-form|kobalte|sonner|lucide/.test(
-      path,
+const externalUrl = process.env.BENCH_URL
+if (!externalUrl) {
+  const modules = JSON.parse(await readFile(`${assets}modules.json`, 'utf8'))
+  assert.ok(
+    !modules.some((path) =>
+      /table-core|@tanstack\/store|virtual-core|solid-form|kobalte|sonner|lucide/.test(
+        path,
+      ),
     ),
-  ),
-)
-assert.ok(modules.some((path) => /zod\/v4\/mini\//.test(path)))
-assert.ok(!modules.some((path) => /zod\/v4\/classic\//.test(path)))
+  )
+  assert.ok(modules.some((path) => /zod\/v4\/mini\//.test(path)))
+  assert.ok(!modules.some((path) => /zod\/v4\/classic\//.test(path)))
+}
 const server = createServer(async (request, response) => {
   try {
     const path = new URL(request.url, 'http://localhost').pathname
@@ -48,10 +51,14 @@ const server = createServer(async (request, response) => {
     response.writeHead(404).end()
   }
 })
-await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+if (!externalUrl)
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
+const url = externalUrl ?? `http://127.0.0.1:${server.address().port}`
 let browser
 const report = {
-  directory,
+  directory: externalUrl ? null : directory,
+  url,
+  moduleAudit: !externalUrl,
   hostLoad: loadavg(),
   cases: [],
   benchmarks: [],
@@ -74,7 +81,7 @@ try {
   })
   const cdp = await page.context().newCDPSession(page)
   await cdp.send('Performance.enable')
-  await page.goto(`http://127.0.0.1:${server.address().port}`)
+  await page.goto(url)
   const call = (name, ...args) =>
     page.evaluate(({ name, args }) => window.editingFixture[name](...args), {
       name,
@@ -154,6 +161,54 @@ try {
       summary.categories.map(({ key, count }) => [key, count]),
     )
   }
+  await record(
+    'repeated visible drafts keep hidden ID output stable and real filter changes update it',
+    async () => {
+      await start(12, 'table')
+      for (let index = 1; index <= 8; index++) {
+        const id = `R${String(index).padStart(4, '0')}`
+        await edit(id, 'note').click()
+        await input(id, 'note').fill(`Draft ${index}`)
+        await input(id, 'note').press('Enter')
+        await settle()
+      }
+      assert.equal(
+        await page
+          .getByRole('complementary', { name: 'Hidden drafts' })
+          .count(),
+        0,
+      )
+      const filter = page.getByRole('textbox', {
+        name: 'Filter saved names',
+        exact: true,
+      })
+      await filter.fill('0001')
+      await settle()
+      assert.equal(
+        await page.getByRole('button', { name: /^Show R/ }).count(),
+        7,
+      )
+      assert.equal(Object.keys((await read()).drafts).length, 8)
+      await filter.fill('0002')
+      await settle()
+      assert.equal(
+        await page
+          .getByRole('button', { name: 'Show R0001', exact: true })
+          .count(),
+        1,
+      )
+      assert.equal(
+        await page
+          .getByRole('button', { name: 'Show R0002', exact: true })
+          .count(),
+        0,
+      )
+      await page.getByRole('button', { name: 'Save all', exact: true }).click()
+      await idle()
+      assert.equal((await read()).counts.requests, 8)
+      assert.deepEqual((await read()).drafts, {})
+    },
+  )
   await record(
     'focus exit collapses editors and marks only changed cells without saving',
     async () => {
@@ -1242,8 +1297,9 @@ try {
 } finally {
   await writeFile(output, `${JSON.stringify(report, null, 2)}\n`)
   await browser?.close()
-  await new Promise((resolve, reject) =>
-    server.close((error) => (error ? reject(error) : resolve())),
-  )
+  if (server.listening)
+    await new Promise((resolve, reject) =>
+      server.close((error) => (error ? reject(error) : resolve())),
+    )
 }
 console.log(`Saved ${output}`)

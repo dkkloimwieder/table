@@ -15,6 +15,13 @@ import './style.css'
 
 export type SaveMode = 'row' | 'table'
 
+function sameIds(left: ReadonlyArray<string>, right: ReadonlyArray<string>) {
+  return (
+    left.length === right.length &&
+    left.every((id, index) => id === right[index])
+  )
+}
+
 export function App(props: {
   size: number
   saveMode?: SaveMode
@@ -33,7 +40,9 @@ export function App(props: {
   const [saveMode, setSaveMode] = createSignal(
     untrack(() => props.saveMode ?? 'row'),
   )
-  const draftIds = createMemo(() => Object.keys(editing.drafts))
+  const draftIds = createMemo(() => Object.keys(editing.drafts), {
+    equals: sameIds,
+  })
   function belongsToRow(id: string, target: EventTarget | null) {
     return (
       target instanceof Element &&
@@ -84,10 +93,13 @@ export function App(props: {
     }
   })
   const visibleIds = createMemo(() => new Set(table.getRowIds()))
-  const hiddenDrafts = createMemo(() => {
-    const visible = visibleIds()
-    return draftIds().filter((id) => !visible.has(id))
-  })
+  const hiddenDrafts = createMemo(
+    () => {
+      const visible = visibleIds()
+      return draftIds().filter((id) => !visible.has(id))
+    },
+    { equals: sameIds },
+  )
   const filterEvents = nativeEvents<HTMLInputElement>({
     input: (event) =>
       table.setColumnFilters(
