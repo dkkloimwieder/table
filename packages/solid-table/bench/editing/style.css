@@ -87,9 +87,7 @@ select[aria-invalid='true'] {
 }
 table {
   border-collapse: collapse;
-  width: 100%;
   table-layout: fixed;
-  min-width: 1100px;
 }
 caption {
   text-align: left;
@@ -105,12 +103,6 @@ td {
 }
 thead {
   background: #eef1f6;
-}
-th:first-child {
-  width: 150px;
-}
-th:last-child {
-  width: 230px;
 }
 tbody th {
   font-weight: 500;
@@ -240,9 +232,6 @@ aside {
   .column-filters {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  table {
-    min-width: 900px;
-  }
 }
 thead .table-filter {
   font-weight: 400;
@@ -343,4 +332,79 @@ thead .table-filter {
 .read-only-value {
   padding-top: 18px;
   overflow-wrap: anywhere;
+}
+
+.column-header {
+  position: relative;
+  padding-right: 28px;
+}
+.column-header .column-sort,
+.column-header .column-title {
+  min-height: 22px;
+}
+.column-layout {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 12px 0;
+  font-size: 0.875rem;
+  color: #546174;
+}
+.column-resize {
+  position: absolute;
+  right: -6px;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+  z-index: 2;
+}
+.resize-grip {
+  position: absolute;
+  left: 5px;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: #8793a5;
+}
+.column-resize:hover .resize-grip,
+.column-resize[data-resizing] .resize-grip {
+  background: #285cce;
+  width: 3px;
+}
+.column-resize:focus-visible {
+  outline: 3px solid #285cce;
+  outline-offset: -2px;
+}
+.resize-preview {
+  position: absolute;
+  left: 5px;
+  top: 0;
+  bottom: 0;
+  border-left: 2px solid #285cce;
+  pointer-events: none;
+}
+.resize-preview span {
+  position: absolute;
+  top: 100%;
+  left: -28px;
+  white-space: nowrap;
+  font-size: 0.75rem;
+  font-weight: 500;
+  background: #285cce;
+  color: white;
+  padding: 3px 6px;
+  border-radius: 3px;
+}
+.column-reset {
+  font-size: 0.875rem;
+  padding: 0 4px;
+  margin-top: 4px;
+  border-color: transparent;
+  background: transparent;
+  color: #546174;
 }

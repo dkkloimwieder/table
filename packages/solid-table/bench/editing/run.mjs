@@ -10,6 +10,7 @@ import { promisify } from 'node:util'
 import { chromium } from '@playwright/test'
 import { groupingCases } from './grouping-cases.mjs'
 import { aggregateCases } from './aggregate-cases.mjs'
+import { resizeCases, resizeWorkload } from './resize-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -150,6 +151,7 @@ try {
     await settle()
   }
   async function record(name, test) {
+    if (process.env.BENCH_SCENARIOS === '0') return
     await test()
     assert.deepEqual(report.errors, [])
     report.cases.push(name)
@@ -201,6 +203,18 @@ try {
     page.getByRole('status', { name: 'Filter results', exact: true })
   const clearFilters = () =>
     page.getByRole('button', { name: 'Clear all filters', exact: true })
+  await resizeCases({
+    page,
+    cdp,
+    start,
+    call,
+    read,
+    record,
+    settle,
+    edit,
+    input,
+    idle,
+  })
   await aggregateCases({
     page,
     start,
@@ -1766,6 +1780,59 @@ try {
       assert.equal(summaryObjects['Native group cells'], 24)
       assert.equal(summaryObjects['Native group membership nodes'], 4)
     }
+    const resizeWork = await resizeWorkload({ page, cdp, read, settle })
+    const resizedMetrics = await metrics()
+    const resizedObjects =
+      size === sizes.at(-1) ? await heap('resized') : undefined
+    if (resizedObjects)
+      for (const category of [
+        'Data records',
+        'Native row views',
+        'Table cells',
+        'Native group views',
+        'Native group cells',
+        'Native group membership nodes',
+        'Solid store targets',
+        'Solid owner scopes',
+        'Solid computations and effects',
+      ])
+        assert.equal(
+          resizedObjects[category],
+          summaryObjects[category],
+          category,
+        )
+    let repeatedResizeObjects
+    if (resizedObjects) {
+      // Initial writes can add links in the existing width computations.
+      // Repeating gestures must not keep growing the retained graph.
+      for (let cycle = 0; cycle < 9; cycle++)
+        await resizeWorkload({ page, cdp, read, settle })
+      await metrics()
+      repeatedResizeObjects = await heap('resized-repeat')
+      for (const category of [
+        'Data records',
+        'Native row views',
+        'Table cells',
+        'Native group views',
+        'Native group cells',
+        'Native group membership nodes',
+        'Solid store targets',
+        'Solid store property signals',
+        'Solid plain signals',
+        'Solid owner scopes',
+        'Solid computations and effects',
+      ])
+        assert.equal(
+          repeatedResizeObjects[category],
+          resizedObjects[category],
+          category,
+        )
+      assert.ok(
+        repeatedResizeObjects['Solid dependency links'] <=
+          resizedObjects['Solid dependency links'],
+        'Repeated resizing grows the retained dependency graph',
+      )
+    }
     await call('stop')
     const disposed = await metrics()
     let disposedObjects
@@ -1809,6 +1876,10 @@ try {
       summaryWork,
       summaryMetrics,
       summaryObjects,
+      resizeWork,
+      resizedMetrics,
+      resizedObjects,
+      repeatedResizeObjects,
       groupedMetrics,
       regroupedMetrics,
       groupedObjects,
@@ -1830,6 +1901,9 @@ try {
     )
     console.log(
       `PASS ${size} grouped records; initial grouping reads ${groupingReads}; note edit reads ${aggregateEditReads}; zero grouping reads on collapse or summary edit; four live groups after regrouping`,
+    )
+    console.log(
+      `PASS ${size} resized records; six drags, two keys and reset; zero record/view/summary work and zero retained gesture listeners`,
     )
   }
   const diagnostics = await call('diagnostics')

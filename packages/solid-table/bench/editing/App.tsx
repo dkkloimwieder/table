@@ -17,6 +17,7 @@ export function App(props: {
     headerSorting: true,
     globalSearch: true,
     grouping: true,
+    columnResizing: true,
   })
   const configure = (value: Partial<TableControls>) =>
     setControls((previous) => ({ ...previous, ...value }))
@@ -80,6 +81,17 @@ export function App(props: {
                 })}
               />
               Grouping controls
+            </label>
+            <label class="check-option">
+              <input
+                type="checkbox"
+                checked={controls().columnResizing}
+                ref={nativeEvents<HTMLInputElement>({
+                  change: (event) =>
+                    configure({ columnResizing: event.currentTarget.checked }),
+                })}
+              />
+              Column resizing
             </label>
           </div>
         </details>

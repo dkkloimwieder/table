@@ -99,6 +99,11 @@ export function createNativeState(
                 } else draft.groupSorting[index] = sort
               }
               draft.groupSorting.length = sorting.length
+            } else if (key === 'columnSizing') {
+              const sizing = next as NativeTableState['columnSizing']
+              for (const id of Object.keys(draft.columnSizing))
+                if (!Object.hasOwn(sizing, id)) delete draft.columnSizing[id]
+              Object.assign(draft.columnSizing, sizing)
             } else if (key === 'groupExpanded') {
               const expanded = next as NativeTableState['groupExpanded']
               for (const id of Object.keys(draft.groupExpanded))

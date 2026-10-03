@@ -176,6 +176,24 @@ These flags let the server own filtering and sorting.
 Removing a column suspends its saved filter and sort until that column returns.
 An existing column with an active local filter or sort must provide the corresponding function.
 
+## Column widths
+
+Column definitions accept `size`, `minSize`, `maxSize`, and `enableResizing`.
+`column.getSize()` returns the configured width within its bounds. `column.setSize(width)` updates the existing `columnSizing` state.
+Clearing a saved width restores that column default. `table.setColumnSizing({})` clears all saved widths.
+Controlled state requires the caller to apply `onColumnSizingChange` updates.
+
+The internal sizing store preserves its container and updates individual properties.
+A change to one width leaves unrelated width subscribers unchanged.
+Width changes do not read records or invalidate filtering, grouping, or summaries.
+Browser layout still responds to new widths and can change wrapping or row heights.
+
+The [editing fixture](../../../../packages/solid-table/bench/editing/README.md#column-resizing) demonstrates optional pointer and keyboard resize controls.
+It shows a preview during a drag and commits one width on release.
+Its shared `colgroup` keeps headers, cells, and group spans aligned.
+The component cancels stale gestures and releases listeners when a header disappears.
+Column resizing remains independent of record processing and does not require horizontal virtualization.
+
 ## Gate local processing
 
 `manualProcessing: true` bypasses local search, filters, facets, sorting, grouping, aggregates, and totals together.

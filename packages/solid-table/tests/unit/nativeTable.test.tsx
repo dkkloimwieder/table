@@ -569,3 +569,102 @@ test('a Solid effect apply callback can update native view state', () => {
     h.dispose()
   }
 })
+
+test('column sizing retains its store container and only invalidates changed widths', () => {
+  let reads = 0
+  const changed = vi.fn()
+  const h = createRoot((dispose) => {
+    const table = createTable({
+      source: { ids: () => [], get: () => undefined },
+      columns: [
+        { id: 'a', size: 180, minSize: 100, maxSize: 400 },
+        { id: 'b', size: 220, minSize: 100, maxSize: 500 },
+        { id: 'constructor', size: 150 },
+      ],
+      onColumnSizingChange: changed,
+    })
+    createEffect(
+      () => {
+        reads++
+        return table.getColumn('b')!.getSize()
+      },
+      () => {},
+    )
+    return { table, dispose }
+  })
+  flush()
+  const container = h.table.state.columnSizing
+  const initialReads = reads
+  try {
+    for (let size = 200; size < 240; size += 10) {
+      h.table.getColumn('a')!.setSize(size)
+      flush()
+    }
+    expect(reads).toBe(initialReads)
+    expect(h.table.state.columnSizing).toBe(container)
+    h.table.setColumnSizing((old) => ({ ...old, b: 320 }))
+    h.table.setColumnSizing((old) => ({ ...old, a: 250 }))
+    flush()
+    expect(h.table.getColumn('b')!.getSize()).toBe(320)
+    expect(h.table.getColumn('a')!.getSize()).toBe(250)
+    h.table.getColumn('constructor')!.setSize(210)
+    flush()
+    h.table.setColumnSizing({})
+    flush()
+    expect(h.table.state.columnSizing).toBe(container)
+    expect(Object.keys(container)).toEqual([])
+    expect(h.table.getColumn('constructor')!.getSize()).toBe(150)
+    expect(h.table.getColumn('b')!.getSize()).toBe(220)
+    expect(changed).toHaveBeenCalledTimes(8)
+  } finally {
+    h.dispose()
+  }
+})
+
+test('controlled column widths honor caller approval, bounds and disabled resizing', () => {
+  const changed = vi.fn()
+  const h = createRoot((dispose) => {
+    const [sizes, setSizes] = createSignal<Record<string, number>>({})
+    const table = createTable({
+      source: { ids: () => [], get: () => undefined },
+      columns: [
+        { id: 'width', size: 180, minSize: 100, maxSize: 400 },
+        { id: 'fixed', size: 120, enableResizing: false },
+      ],
+      state: {
+        get columnSizing() {
+          return sizes()
+        },
+      },
+      onColumnSizingChange: changed,
+    })
+    return { table, sizes, setSizes, dispose }
+  })
+  try {
+    h.table.getColumn('width')!.setSize(300)
+    flush()
+    expect(h.table.getColumn('width')!.getSize()).toBe(180)
+    expect(changed).toHaveBeenCalledTimes(1)
+    h.setSizes(changed.mock.calls[0]![0])
+    flush()
+    expect(h.table.getColumn('width')!.getSize()).toBe(300)
+    h.setSizes({ width: 900 })
+    flush()
+    expect(h.table.getColumn('width')!.getSize()).toBe(400)
+    h.setSizes({ width: 20 })
+    flush()
+    expect(h.table.getColumn('width')!.getSize()).toBe(100)
+    h.table.getColumn('fixed')!.setSize(250)
+    flush()
+    expect(h.table.getColumn('fixed')!.getSize()).toBe(120)
+    expect(changed).toHaveBeenCalledTimes(1)
+    expect(() => h.table.getColumn('width')!.setSize(Infinity)).toThrow(
+      'finite',
+    )
+    h.setSizes({})
+    flush()
+    expect(h.table.getColumn('width')!.getSize()).toBe(180)
+  } finally {
+    h.dispose()
+  }
+})

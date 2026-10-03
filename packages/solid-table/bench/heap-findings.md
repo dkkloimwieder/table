@@ -860,3 +860,54 @@ The seven snapshots and their classification reports are under `/tmp/table-aggre
 The initial evidence remains under `/tmp/table-aggregate-heaps` and `/tmp/table-aggregate-qualified-heaps`.
 Desktop and 390px mobile layouts were inspected. The mobile page has no horizontal overflow outside the table scroll area.
 The host runs other development workloads. Absolute timings remain advisory.
+
+## Column resizing
+
+The Table fixture adds mouse, touch, and keyboard resizing with bounds, reset, and cancellation.
+Pointer movement changes a temporary preview. Release commits one width through the existing Table state.
+The internal sizing store preserves its container and updates individual width properties.
+A shared `colgroup` keeps headers, cells, and group spans aligned.
+
+All 133 unit tests and 78 Chromium scenarios pass.
+The browser cases pass against source, built-package, development, and live Vite entries on Chromium `151.0.7922.34` for Linux.
+Source and built workloads cover 25, 250, and 999 records. Development and live workloads cover 25 records.
+Types, scoped lint, formatting, builds, publint, package imports, and server rendering pass.
+Live Vite records 98 expected scan-breadth entries and 10 advisory timing entries, with no unexpected diagnostics.
+
+At each subset size, the resize workload performs six drags, two keyboard changes, and a reset.
+Thirty pointer moves commit no width state. The completed drags commit six updates, keyboard controls commit two, and reset clears the override.
+These operations read no record accessors, rebuild no views or cells, and recalculate no groups or summaries.
+They run no validation or save requests and preserve record identity.
+Browser listener counts return to their initial value after garbage collection removes temporary automation listeners.
+
+Each drag allocates a small gesture object. Width commands create small column configuration objects.
+The counters cover record reads and Table resources. Browser layout still responds to committed widths and can change wrapping and row heights.
+Text save, dropdown save, editor collapse, and three-row Save all retain their previous read counts of 3, 3, 6, and 18.
+Timings include automation and remain advisory on this shared host.
+
+In the full built suite, the 999-record heap measures 4.390 MiB before mounting and 26.456 MiB loaded.
+It measures 27.363 MiB after summary changes, 27.629 MiB after resizing, and 4.426 MiB after disposal.
+These totals include the complete fixture and browser automation. They do not isolate the cost of a handle.
+
+The separate heap workload captures nine actual snapshots at 999 records.
+Summary, resize, and repeated-resize captures retain 999 row views, 5,994 cells, four group views, 24 group cells, and four membership nodes.
+Each capture contains 49,772 computations, 15,169 owners, 1,008 store targets, 7,037 store property signals, and 1,002 data records.
+The three additional record objects match the bounded prior values from the earlier editing workloads.
+Resizing adds no records, views, cells, computations, owners, or store targets.
+
+Dependency links connect reactive values to their readers.
+Their count changes from 75,876 after summaries to 75,892 after six drags, then 75,890 after 60 drags.
+The initial 16 links occupy 640 direct bytes.
+Their retaining paths reach the existing table-width memo, resize configuration memo, and header binding.
+The repeated-use test rejects continued growth after the first resize workload.
+Disposal removes every classified record, Table view, group node, store target, computation, owner, signal, and dependency link.
+
+The heap-only run starts without the preceding interaction suite, so its cold baseline differs from the full-suite measurements.
+Its disposed categories contain 30 JavaScript Maps and 174 V8 allocation templates.
+An initial eight-record probe also tested 60 drags and found no classified Table or Solid resources after disposal.
+Desktop and 390px mobile inspection show no page overflow outside the table scroll area.
+
+Interaction reports are `/tmp/table-resize-final-{source,distribution,development,live}.json`.
+The complete heap report is `/tmp/table-resize-final-heaps.json`, with snapshots and classifications under `/tmp/table-resize-complete-heaps`.
+The initial dependency evidence remains under `/tmp/table-resize-final-heaps` and `/tmp/table-resize-repeat-*.heapsnapshot`.
+The combined interaction and heap process ended with SIGTERM before its last capture. Separate runs completed both sets of gates.

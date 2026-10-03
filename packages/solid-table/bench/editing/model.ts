@@ -72,6 +72,12 @@ export function createModel(size: number) {
     groupViews: 0,
     groupCells: 0,
     groupsUnmounted: 0,
+    sizingChanges: 0,
+    resizeStarts: 0,
+    resizeMoves: 0,
+    resizeCommits: 0,
+    resizeCancels: 0,
+    resizeListeners: 0,
   }
   const aggregateFunctions: Record<
     string,
@@ -129,6 +135,9 @@ export function createModel(size: number) {
     {
       ...aggregated('id', 'Record', 'text'),
       id: 'id',
+      size: 130,
+      minSize: 96,
+      maxSize: 320,
       header: 'Record',
       accessorKey: 'id',
       filterFn: contains,
@@ -138,6 +147,9 @@ export function createModel(size: number) {
     {
       ...aggregated('name', 'Name', 'text', 'Name initial'),
       id: 'name',
+      size: 220,
+      minSize: 140,
+      maxSize: 640,
       header: 'Name',
       filterFn: contains,
       sortFn: compareValues,
@@ -152,6 +164,9 @@ export function createModel(size: number) {
     },
     {
       id: 'note',
+      size: 260,
+      minSize: 140,
+      maxSize: 800,
       header: 'Note',
       filterFn: contains,
       ...aggregated('note', 'Note', 'text'),
@@ -163,6 +178,9 @@ export function createModel(size: number) {
     },
     {
       id: 'priority',
+      size: 140,
+      minSize: 120,
+      maxSize: 280,
       header: 'Priority',
       ...aggregated('priority', 'Priority', 'text', 'Priority'),
       getGroupingValue: (row) => {
@@ -183,6 +201,9 @@ export function createModel(size: number) {
     {
       ...aggregated('amount', 'Amount', 'number'),
       id: 'amount',
+      size: 120,
+      minSize: 96,
+      maxSize: 360,
       header: 'Amount',
       enableGlobalFilter: false,
       filterFn: contains,
@@ -195,6 +216,9 @@ export function createModel(size: number) {
     {
       ...aggregated('dueDate', 'Due date', 'date'),
       id: 'dueDate',
+      size: 170,
+      minSize: 140,
+      maxSize: 360,
       header: 'Due date',
       enableGlobalFilter: false,
       filterFn: (value, query) => contains(formatValue(value, 'date'), query),
@@ -222,6 +246,9 @@ export function createModel(size: number) {
       return !localProcessing()
     },
     columns: configuredColumns,
+    onColumnSizingChange: () => {
+      counts.sizingChanges++
+    },
   })
   function setSummary(id: string, value: Summary) {
     const choices = table.getColumn(id)?.columnDef?.meta?.summaryChoices

@@ -1,6 +1,6 @@
 # Table controls and inline editing
 
-This fixture tests filters, search, grouping, column summaries, and inline editing with Solid 2 and plain HTML controls.
+This fixture tests filters, search, grouping, column summaries, resizing, and inline editing with Solid 2 and plain HTML controls.
 It renders records in expanded groups, or every matching record when grouping is off.
 Virtualization is optional elsewhere and is not a dependency here.
 The measured editing subsets contain 25, 250, and 999 records. These sizes are not product limits.
@@ -96,6 +96,39 @@ Collapsed descendants release their row and group views. Drafts remain in the ed
 The source store retains one canonical record per ID. Group membership stores IDs, and summaries iterate over those IDs.
 Ordered key comparisons prevent unchanged group lists from notifying subscribers after an edit stays in the same group.
 These comparisons do not remove membership scans or summary reads.
+
+## Column resizing
+
+Each resizable column has a handle on its right header edge and a reset button.
+Dragging with a mouse or touch shows a width preview. Releasing the handle commits that width once.
+The table keeps its current layout during the preview.
+Column metadata supplies the default, minimum, and maximum widths.
+
+Double-clicking the handle or activating its reset button restores that column default.
+Reset column widths clears all width overrides.
+
+The focused handle accepts Left and Right for 10-pixel changes, or 50 pixels with Shift.
+Home and End select the minimum and maximum widths.
+Escape cancels a drag. Lost pointer capture, window blur, a hidden document, and removal of the handle also cancel it.
+Caller changes to the active width or its bounds cancel a stale preview.
+
+The handle exposes its label and current pixel width through a vertical ARIA separator.
+Chromium tests cover keyboard, mouse, and emulated touch behavior. Other browsers and assistive technologies need separate qualification.
+
+Display options can hide resize controls independently of header filters and sorting. Hiding controls preserves saved widths.
+Resizing remains available when local record processing is disabled.
+
+`TableColumnResize.tsx` receives a width, bounds, and callbacks. It owns only the temporary preview and gesture listeners.
+The parent supplies callbacks that update Table `columnSizing` state.
+Controlled Table state still requires the caller to accept width updates.
+
+The table uses one `colgroup` for header and body widths. Its total width includes the fixed Actions column.
+Group spans follow the same table geometry. A narrow viewport scrolls horizontally without horizontal virtualization.
+
+Pointer movement updates the preview without reading records or changing Table state.
+A committed width updates its column and the total width. Browser layout can then change cell wrapping and row heights.
+The internal sizing store preserves its container, so unrelated width subscribers remain unchanged.
+The change does not replace records, views, cells, drafts, or summaries.
 
 ## Editing behavior
 
@@ -291,6 +324,8 @@ The live-server report omits the built-module audit. The separate built runs sti
 
 Set `BENCH_EXECUTABLE_PATH` to use a specific installed Chromium binary.
 The report records the actual browser version.
+`BENCH_SCENARIOS=0` runs only the subset workloads. Use it for separate heap captures after the full interaction suite passes.
+`BENCH_SIZES=999` limits that heap run to the largest measured subset.
 For built assets, the runner starts a temporary local server and closes it and Chromium in its cleanup block.
 With `BENCH_URL`, it closes Chromium and leaves the supplied server running.
 
@@ -317,6 +352,13 @@ Median allocates one temporary number array per observed group. The workload cou
 First and last each read four endpoint values across four groups. Count reads none.
 These changes must retain existing views, cells, membership, note reads, and date reads.
 The additional `summaries` snapshot measures retained resources after these changes.
+The resize workload repeats six drags, two keyboard changes, and a reset at each measured subset size.
+Each completed drag commits once. Pointer movement must leave Table width state unchanged.
+Record reads, grouping reads, summaries, views, cells, validation calls, and save requests must remain unchanged throughout this workload.
+Browser listener counts return to their initial value after garbage collection removes temporary automation listeners.
+The additional `resized` snapshot must retain the same records, views, cells, stores, computations, and owners as `summaries`.
+The first width writes can change the links between existing computations and their dependencies.
+The `resized-repeat` snapshot measures another nine workload cycles. Its retained dependency count must not exceed the first resize snapshot.
 The disposed snapshot must contain no classified group views, group cells, or membership nodes.
 Timings include browser automation and remain advisory on the shared development machine.
 They do not establish a latency budget or a universal non-virtualized row limit.

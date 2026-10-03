@@ -12,6 +12,7 @@ import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/na
 import { createModel } from './model'
 import { TableFilter } from './TableFilter'
 import { TableGrouping } from './TableGrouping'
+import { TableColumnResize } from './TableColumnResize'
 import type { JSX } from '@solidjs/web'
 import type { EditingModel } from './model'
 import type { EditColumn } from './createEditing'
@@ -23,6 +24,7 @@ export type TableControls = {
   headerSorting: boolean
   globalSearch: boolean
   grouping: boolean
+  columnResizing: boolean
 }
 
 function sameIds(left: ReadonlyArray<string>, right: ReadonlyArray<string>) {
@@ -67,6 +69,11 @@ export function Table(props: {
   const [notice, setNotice] = createSignal('')
   const [saveMode, setSaveMode] = createSignal(
     untrack(() => props.saveMode ?? 'row'),
+  )
+  const tableWidth = createMemo(() =>
+    table
+      .getVisibleColumns()
+      .reduce((sum, column) => sum + column.getSize(), 230),
   )
   const draftIds = createMemo(() => Object.keys(editing.drafts), {
     equals: sameIds,
@@ -704,15 +711,42 @@ export function Table(props: {
       <p role="status" class="notice">
         {notice()}
       </p>
+      <Show when={props.controls?.columnResizing !== false}>
+        <div class="column-layout">
+          <span>Drag a header edge to resize. Widths apply on release.</span>
+          <button
+            ref={nativeEvents({ click: () => table.setColumnSizing({}) })}
+          >
+            Reset column widths
+          </button>
+        </div>
+      </Show>
       <div class="table-scroll">
-        <table ref={element} tabindex="-1">
+        <table
+          ref={element}
+          tabindex="-1"
+          style={{ width: `${tableWidth()}px` }}
+        >
           <caption>Editable records</caption>
+          <colgroup>
+            <For each={table.getVisibleColumns()}>
+              {(column) => (
+                <col
+                  data-column-width={column.id}
+                  style={{ width: `${column.getSize()}px` }}
+                />
+              )}
+            </For>
+            <col style={{ width: '230px' }} />
+          </colgroup>
           <thead>
             <tr>
               <For each={table.getVisibleColumns()}>
                 {(column) => (
                   <th
                     scope="col"
+                    data-column-header={column.id}
+                    class="column-header"
                     aria-sort={
                       !model.localProcessing() ||
                       table.state.sorting[0]?.id !== column.id
@@ -756,6 +790,34 @@ export function Table(props: {
                       }
                     >
                       {columnFilter(column, 'headers')}
+                    </Show>
+                    <Show
+                      when={
+                        props.controls?.columnResizing !== false &&
+                        column.columnDef?.enableResizing !== false
+                      }
+                    >
+                      <TableColumnResize
+                        label={String(column.columnDef?.header)}
+                        size={column.getSize()}
+                        min={column.columnDef?.minSize ?? 20}
+                        max={column.columnDef?.maxSize ?? 1000}
+                        onSizeChange={(size) => column.setSize(size)}
+                        onReset={() =>
+                          table.setColumnSizing((old) => {
+                            const next = { ...old }
+                            delete next[column.id]
+                            return next
+                          })
+                        }
+                        onActivity={(event, listeners) => {
+                          counts.resizeListeners += listeners
+                          if (event === 'start') counts.resizeStarts++
+                          if (event === 'move') counts.resizeMoves++
+                          if (event === 'commit') counts.resizeCommits++
+                          if (event === 'cancel') counts.resizeCancels++
+                        }}
+                      />
                     </Show>
                   </th>
                 )}

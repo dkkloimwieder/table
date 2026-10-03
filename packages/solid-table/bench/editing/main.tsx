@@ -59,6 +59,10 @@ const api = {
     grouping: snapshot(model!.table.state.grouping),
     groupSorting: snapshot(model!.table.state.groupSorting),
     summaries: snapshot(model!.summaries),
+    columnSizing: snapshot(model!.table.state.columnSizing),
+    widths: Object.fromEntries(
+      model!.table.getColumns().map((column) => [column.id, column.getSize()]),
+    ),
     display: model!.table
       .getDisplayKeys()
       .map((key) => model!.table.getDisplayItem(key)),
@@ -94,6 +98,10 @@ const api = {
   },
   visibility: (id: string, visible: boolean) => {
     model!.table.getColumn(id)!.toggleVisibility(visible)
+    flush()
+  },
+  sizing: (value: Record<string, number>) => {
+    model!.table.setColumnSizing(value)
     flush()
   },
   controls: (value: Partial<TableControls>) => {
