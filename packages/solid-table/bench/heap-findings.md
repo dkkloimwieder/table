@@ -633,3 +633,32 @@ Thirty Maps and 182 V8 allocation templates remain. Shared-host timing results r
 
 Raw reports are `/tmp/table-editing-zod-{source,distribution,development}.json`.
 Actual snapshots and summaries are under `/tmp/table-editing-zod-heaps` with the same four snapshot names.
+
+### Native dropdown editing
+
+The fixture adds a Priority column with a native select editor and Zod enum validation.
+Twenty-seven browser scenarios pass against source, built, and development entries in Chromium `151.0.7922.34` on Linux.
+Five unit tests cover the validation adapter and controller.
+The dropdown keeps native keyboard behavior, and Save or Cancel finishes the row explicitly.
+Browser tests cover initial focus, keyboard selection, menu dismissal, pending saves, invalid choices, conflicts, filtering, sorting, and record identity.
+
+The source and built-package runs render 25, 250, and 999 records.
+Each workload saves a text edit and then a dropdown edit to the same record.
+Each save validates one row and reads three Table cell values as the row returns from editors to display controls.
+Those three reads cover the three editable fields, regardless of record count.
+Neither save replaces Table row views or cells, and the canonical record proxy retains its identity.
+
+The table now renders four data columns instead of three. The additional column increases display and reactive resources for every rendered record.
+The built-package heap uses 16.914 MiB after loading 999 records and 17.082 MiB after both edits.
+The premount heap uses 3.449 MiB and the disposed heap uses 3.501 MiB.
+This workload includes an extra column and an extra save, so these values do not isolate the cost of a select control.
+
+The loaded snapshot contains 999 views, 3,996 cells, 27,024 computations, 10,996 owners, 30,019 dependency links, and 1,007 store targets.
+Record-object counts remain 1,000 after both saves and after 20 further changes to the same record.
+Editing a second record increases the count to 1,001, consistent with the existing bounded cached-value diagnosis.
+Disposal removes all classified records, views, cells, store targets, computations, owners, and dependency links.
+Thirty Maps and 192 V8 allocation templates remain. There are no virtualizer instances.
+
+Raw reports are `/tmp/table-editing-select-{source,distribution,development}.json`.
+Actual snapshots and summaries are under `/tmp/table-editing-select-heaps` with the same four snapshot names.
+The browser reports record host load. Timings remain advisory on this shared machine.

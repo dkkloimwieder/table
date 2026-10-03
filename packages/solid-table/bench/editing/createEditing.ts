@@ -4,21 +4,23 @@ export type RecordData = {
   id: string
   name: string
   note: string
+  priority: string
   revision: string
 }
 export type TextColumn = 'name' | 'note'
-export type EditValues = Pick<RecordData, TextColumn>
+export type EditColumn = TextColumn | 'priority'
+export type EditValues = Pick<RecordData, EditColumn>
 export type ValidationResult =
   | { success: true; data: EditValues }
   | {
       success: false
-      fieldErrors: Partial<Record<TextColumn, string>>
+      fieldErrors: Partial<Record<EditColumn, string>>
       message: string
     }
 export type SaveRequest = {
   id: string
   expectedRevision: string
-  changes: Partial<Pick<RecordData, TextColumn>>
+  changes: Partial<EditValues>
 }
 export type SaveResult =
   | { status: 'saved'; id: string; revision: string }
@@ -26,12 +28,14 @@ export type SaveResult =
 type Draft = {
   name: string
   note: string
+  priority: string
   revision: string
   status:
     'editing' | 'invalid' | 'pending' | 'refused' | 'conflict' | 'uncertain'
   message: string
-  fieldErrors: Partial<Record<TextColumn, string>>
+  fieldErrors: Partial<Record<EditColumn, string>>
   validationAttempted: boolean
+  activeColumn: EditColumn
 }
 
 /** Fixture policy, separate from Table and from each rendered row's lifetime. */
@@ -53,23 +57,32 @@ export function createEditing(options: {
     for (const controller of pending.values()) controller.abort()
     pending.clear()
   })
-  function begin(id: string) {
+  function begin(id: string, column: EditColumn = 'name') {
     const row = options.get(id)
     if (disposed || !row || pending.has(id)) return
     const initial: Draft = {
       name: row.name,
       note: row.note,
+      priority: row.priority,
       revision: row.revision,
       status: 'editing',
       message: '',
       fieldErrors: {},
       validationAttempted: false,
+      activeColumn: column,
     }
     setDrafts((all) => {
       all[id] ??= initial
+      all[id].activeColumn = column
     })
   }
-  function change(id: string, column: TextColumn, value: string) {
+  function focus(id: string, column: EditColumn) {
+    if (disposed) return
+    setDrafts((all) => {
+      if (all[id]) all[id].activeColumn = column
+    })
+  }
+  function change(id: string, column: EditColumn, value: string) {
     if (disposed || pending.has(id)) return
     setDrafts((all) => {
       const draft = all[id]
@@ -80,7 +93,11 @@ export function createEditing(options: {
       if (draft.validationAttempted)
         showValidation(
           draft,
-          options.validate({ name: draft.name, note: draft.note }),
+          options.validate({
+            name: draft.name,
+            note: draft.note,
+            priority: draft.priority,
+          }),
         )
     })
   }
@@ -128,7 +145,11 @@ export function createEditing(options: {
         'conflict',
         'This record changed after editing started. Cancel to use its current values.',
       )
-    const validation = options.validate({ name: draft.name, note: draft.note })
+    const validation = options.validate({
+      name: draft.name,
+      note: draft.note,
+      priority: draft.priority,
+    })
     setDrafts((all) => showValidation(all[id]!, validation))
     if (!validation.success) return false
     const values = validation.data
@@ -138,6 +159,9 @@ export function createEditing(options: {
       changes: {
         ...(values.name !== row.name ? { name: values.name } : {}),
         ...(values.note !== row.note ? { note: values.note } : {}),
+        ...(values.priority !== row.priority
+          ? { priority: values.priority }
+          : {}),
       },
     }
     if (!Object.keys(request.changes).length) return cancel(id)
@@ -182,5 +206,5 @@ export function createEditing(options: {
       pending.delete(id)
     }
   }
-  return { drafts, begin, change, cancel, save }
+  return { drafts, begin, focus, change, cancel, save }
 }

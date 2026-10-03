@@ -102,6 +102,8 @@ try {
     })
   const save = (id = 'R0001') =>
     page.getByRole('button', { name: `Save ${id}`, exact: true })
+  const select = (id = 'R0001') =>
+    page.getByRole('combobox', { name: `Priority ${id}`, exact: true })
   const focused = (locator) =>
     locator.evaluate((node) => node === document.activeElement)
   const idle = async () => {
@@ -173,13 +175,187 @@ try {
       assert.deepEqual(value.drafts, {})
       assert.ok(await focused(edit()))
       assert.equal(value.sample[0].note, 'Note 1')
-      await edit('R0008', 'note').focus()
+      await edit('R0008', 'priority').focus()
       await page.keyboard.press('Tab')
       assert.ok(
         await focused(
           page.getByRole('button', { name: 'After table', exact: true }),
         ),
       )
+    },
+  )
+  await record(
+    'native dropdown keys and Tab preserve the draft until explicit Cancel',
+    async () => {
+      await start()
+      await edit('R0001', 'priority').click()
+      assert.ok(await focused(select()))
+      assert.equal(await select().inputValue(), 'normal')
+      await page.keyboard.press('ArrowDown')
+      await settle()
+      assert.equal(await select().inputValue(), 'high')
+      await page.keyboard.press('Enter')
+      await page.keyboard.press('Escape')
+      await settle()
+      let value = await read()
+      assert.equal(value.drafts.R0001.priority, 'high')
+      assert.equal(value.sample[0].priority, 'normal')
+      assert.equal(value.counts.requests, 0)
+      await page.keyboard.press('Tab')
+      assert.ok(await focused(save()))
+      await page.keyboard.press('Shift+Tab')
+      assert.ok(await focused(select()))
+      await page.keyboard.press('Shift+Tab')
+      assert.ok(await focused(input('R0001', 'note')))
+      await select().focus()
+      await page
+        .getByRole('button', { name: 'Cancel R0001', exact: true })
+        .click()
+      await settle()
+      value = await read()
+      assert.deepEqual(value.drafts, {})
+      assert.equal(value.sample[0].priority, 'normal')
+      assert.equal(value.counts.requests, 0)
+      assert.ok(await focused(edit('R0001', 'priority')))
+    },
+  )
+  await record(
+    'dropdown save sends only its changed value and restores the logical cell focus',
+    async () => {
+      await start()
+      await call('remember', 'R0001')
+      const before = await read()
+      await edit('R0001', 'priority').click()
+      await select().selectOption('low')
+      assert.equal((await read()).counts.requests, 0)
+      await save().click()
+      await idle()
+      const value = await read()
+      assert.deepEqual(value.sent, [
+        {
+          id: 'R0001',
+          expectedRevision: '9007199254740993',
+          changes: { priority: 'low' },
+        },
+      ])
+      assert.equal(value.sample[0].priority, 'low')
+      assert.equal(value.identity, true)
+      assert.equal(value.counts.views, before.counts.views)
+      assert.equal(value.counts.cells, before.counts.cells)
+      assert.ok(await focused(edit('R0001', 'priority')))
+    },
+  )
+  await record(
+    'a pending dropdown save disables the control without blocking other rows',
+    async () => {
+      await start()
+      await edit('R0001', 'priority').click()
+      await select().selectOption('high')
+      await call('fault', 'hold')
+      await save().click()
+      await settle()
+      assert.equal(await select().isDisabled(), true)
+      assert.equal(await save().isDisabled(), true)
+      await call('saveTwice', 'R0001')
+      assert.equal((await read()).counts.requests, 1)
+      await edit('R0002', 'priority').click()
+      await select('R0002').selectOption('low')
+      await call('release')
+      await idle()
+      const value = await read()
+      assert.equal(value.sample[0].priority, 'high')
+      assert.equal(value.sample[1].priority, 'normal')
+      assert.equal(value.drafts.R0002.priority, 'low')
+      assert.ok(await focused(select('R0002')))
+    },
+  )
+  await record(
+    'dropdown validation rejects unknown values and allows a corrected option',
+    async () => {
+      await start()
+      await call('patch', 'R0001', { priority: 'legacy' })
+      await edit('R0001', 'priority').click()
+      await save().click()
+      await idle()
+      assert.equal((await read()).counts.requests, 0)
+      assert.equal((await read()).drafts.R0001.priority, 'legacy')
+      assert.equal(await select().getAttribute('aria-invalid'), 'true')
+      assert.match(
+        await select().getAttribute('aria-describedby'),
+        /error-R0001-priority/,
+      )
+      assert.match(
+        await page.locator('#error-R0001-priority').innerText(),
+        /Choose Low/,
+      )
+      assert.ok(await focused(select()))
+      await select().selectOption('normal')
+      await settle()
+      assert.equal(await select().getAttribute('aria-invalid'), null)
+      await save().click()
+      await idle()
+      assert.equal((await read()).sample[0].priority, 'normal')
+      assert.equal((await read()).counts.requests, 1)
+    },
+  )
+  await record(
+    'dropdown drafts and editor identity survive sorting and filter removal',
+    async () => {
+      await start()
+      await edit('R0001', 'priority').click()
+      await select().selectOption('low')
+      await select().evaluate((node) => {
+        window.originalSelect = new WeakRef(node)
+      })
+      await page.getByRole('button', { name: /^Sort names/ }).click()
+      await page.getByRole('button', { name: /^Sort names/ }).click()
+      await settle()
+      assert.equal((await read()).ids.at(-1), 'R0001')
+      assert.ok(
+        await select().evaluate(
+          (node) => window.originalSelect.deref() === node,
+        ),
+      )
+      await page
+        .getByRole('textbox', { name: 'Filter saved names', exact: true })
+        .fill('0002')
+      await settle()
+      assert.equal(await select().count(), 0)
+      assert.equal((await read()).drafts.R0001.priority, 'low')
+      await page
+        .getByRole('button', { name: 'Show R0001', exact: true })
+        .click()
+      await settle()
+      assert.equal(await select().inputValue(), 'low')
+      assert.equal((await read()).counts.requests, 0)
+      await select().focus()
+      await save().click()
+      await idle()
+      assert.equal((await read()).sample[0].priority, 'low')
+      assert.ok(await focused(edit('R0001', 'priority')))
+    },
+  )
+  await record(
+    'a concurrent dropdown update preserves the draft and Cancel reveals the newer value',
+    async () => {
+      await start()
+      await edit('R0001', 'priority').click()
+      await select().selectOption('high')
+      await call('fault', 'hold')
+      await save().click()
+      await call('patch', 'R0001', { priority: 'low' })
+      await call('release')
+      await idle()
+      const value = await read()
+      assert.equal(value.sample[0].priority, 'low')
+      assert.equal(value.drafts.R0001.priority, 'high')
+      assert.equal(value.drafts.R0001.status, 'conflict')
+      assert.equal(await select().inputValue(), 'high')
+      await page
+        .getByRole('button', { name: 'Cancel R0001', exact: true })
+        .click()
+      await edit('R0001', 'priority').click()
+      assert.equal(await select().inputValue(), 'low')
     },
   )
   await record(
@@ -209,12 +385,14 @@ try {
     },
   )
   await record(
-    'multiple row drafts survive blur and one row saves both fields',
+    'multiple row drafts survive blur and one row saves all edited fields',
     async () => {
       await start()
       await edit().click()
       await input().fill('First name')
       await input('R0001', 'note').fill('First note')
+      await select().focus()
+      await select().selectOption('high')
       await edit('R0002').click()
       await input('R0002').fill('Second name')
       assert.equal((await read()).counts.requests, 0)
@@ -224,9 +402,11 @@ try {
       assert.deepEqual(value.sent[0].changes, {
         name: 'First name',
         note: 'First note',
+        priority: 'high',
       })
       assert.equal(value.drafts.R0002.name, 'Second name')
       assert.equal(value.sample[1].name, 'Record 0002')
+      assert.ok(await focused(edit('R0001', 'priority')))
     },
   )
   await record(
@@ -366,11 +546,15 @@ try {
         await start()
         await edit().click()
         await input().fill('Preserved draft')
+        await select().selectOption('high')
         await call('fault', fault)
         await save().click()
         await idle()
         const value = await read()
         assert.equal(value.drafts.R0001.name, 'Preserved draft')
+        assert.equal(value.drafts.R0001.priority, 'high')
+        assert.equal(value.sample[0].priority, 'normal')
+        assert.equal(await select().inputValue(), 'high')
         assert.equal(value.sample[0].name, 'Record 0001')
         assert.ok(value.drafts.R0001.message)
         assert.equal(await save().isEnabled(), true)
@@ -567,16 +751,39 @@ try {
     await idle()
     const elapsedMs = performance.now() - begin
     const value = await read()
-    const exercised = await metrics()
     assert.equal(value.identity, true)
     assert.equal(value.counts.views, size)
-    assert.equal(value.counts.cells, size * 3)
+    assert.equal(value.counts.cells, size * 4)
     assert.equal(value.counts.validations, 1)
     const reads =
       value.counts.name +
-      value.counts.note -
-      (baseline.counts.name + baseline.counts.note)
+      value.counts.note +
+      value.counts.priority -
+      (baseline.counts.name + baseline.counts.note + baseline.counts.priority)
     assert.ok(reads <= 4, `An edit reread ${reads} cells at size ${size}`)
+    const beforeSelect = await read()
+    await edit('R0001', 'priority').click()
+    await select().selectOption('high')
+    await save().click()
+    await idle()
+    const selected = await read()
+    const selectReads =
+      selected.counts.name +
+      selected.counts.note +
+      selected.counts.priority -
+      beforeSelect.counts.name -
+      beforeSelect.counts.note -
+      beforeSelect.counts.priority
+    assert.equal(selected.identity, true)
+    assert.equal(selected.counts.views, size)
+    assert.equal(selected.counts.cells, size * 4)
+    assert.equal(selected.counts.validations, 2)
+    assert.equal(selected.sample[0].priority, 'high')
+    assert.ok(
+      selectReads <= 4,
+      `A dropdown edit reread ${selectReads} cells at size ${size}`,
+    )
+    const exercised = await metrics()
     let loadedObjects
     if (size === sizes.at(-1)) loadedObjects = await heap('loaded')
     let repeatedObjects
@@ -622,6 +829,8 @@ try {
       size,
       counts: value.counts,
       editAccessorReads: reads,
+      selectAccessorReads: selectReads,
+      selectCounts: selected.counts,
       elapsedMs,
       before,
       loaded,
@@ -634,7 +843,7 @@ try {
       hostLoad: loadavg(),
     })
     console.log(
-      `PASS ${size} fully rendered rows; edit reads ${reads}; zero replacement views/cells`,
+      `PASS ${size} fully rendered rows; text reads ${reads}; select reads ${selectReads}; zero replacement views/cells`,
     )
   }
   report.diagnostics = await call('diagnostics')

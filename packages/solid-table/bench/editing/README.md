@@ -1,20 +1,21 @@
 # Non-virtualized inline editing
 
-This fixture tests inline text editing with the native Solid Table entry and plain HTML controls.
+This fixture tests inline text and dropdown editing with the native Solid Table entry and plain HTML controls.
 It renders every matching record. Virtualization is optional elsewhere and is not a dependency here.
 The measured editing subsets contain 25, 250, and 999 records. These sizes are not product limits.
 
 ## Editing behavior
 
-Activate a name or note button to open a row draft.
-Both text fields belong to that draft and share one revision.
+Activate a name, note, or priority button to open a row draft.
+All three fields belong to that draft and share one revision.
 Tab and Shift+Tab follow the browser's normal control order without saving.
 Clicking another row preserves the first draft. Multiple rows can have drafts.
 
-Save or Enter saves the row. Escape or Cancel discards its draft.
+Save saves the row. Cancel discards its draft.
+In text inputs, Enter saves and Escape cancels.
 An unchanged save sends no request. A blank name keeps the editor open with an error.
 Composition events do not save or cancel an unfinished input method composition.
-Pending requests make their inputs read-only and disable Save and Cancel.
+Pending requests make text inputs read-only and disable the dropdown, Save, and Cancel.
 Other rows remain editable while a request is pending.
 
 Filtering and sorting use committed values.
@@ -28,6 +29,25 @@ Cancel reveals the current committed values after a conflicting update.
 The fixture rejects a response for another record or a revision that changed during a request.
 It never recreates a removed record from a late response.
 
+## Dropdown behavior
+
+Priority uses a native select input with Low, Normal, and High as example choices.
+The dropdown uses the same row draft, validation callback, and save lifecycle as text inputs.
+Choosing an option changes only the draft.
+Save and Cancel return focus to the last edited field when no later interaction takes focus elsewhere.
+Each draft remembers its own focus target, including when several rows have drafts.
+
+The dropdown retains its [native select behavior](https://html.spec.whatwg.org/multipage/form-elements.html#the-select-element).
+The fixture attaches no Enter or Escape handler to the select.
+Those keys control the dropdown without saving or discarding the row.
+Tab moves to Save and Shift+Tab moves to Note.
+Use Save or Cancel to finish the row from the dropdown.
+
+Tests cover native keyboard selection and menu dismissal in Chromium on Linux.
+They also cover pointer entry, option changes, invalid values, concurrent updates, refused saves, and drafts hidden by filters.
+The fixture does not provide a custom popup, searchable choices, remote options, or multiple selection.
+Other browsers and operating systems need separate interaction tests.
+
 ## Ownership and scope
 
 `model.ts` owns one Solid record store. Table reads records through IDs.
@@ -40,7 +60,8 @@ Solid's property tracking can retain an older record value internally. The heap 
 The save transport is a deterministic local simulation with refusal, conflict, delay, and failure controls.
 It does not connect to WAMN or implement a production persistence protocol.
 The module audit rejects table-core, TanStack Store, virtual-core, Form, and the excluded UI libraries.
-Dropdown editors, row selection, and bulk-action design remain separate work in `table-gd3.6.7`.
+Dropdown editing is qualified under `table-gd3.6.7.3`. Action use cases remain under `table-gd3.6.7`.
+The user's select request means a dropdown input. It does not add row selection or bulk actions to this fixture.
 The editing controller is fixture code, not a new public Table API.
 
 ## Application validation
@@ -52,11 +73,12 @@ The callback returns parsed values or field and row errors.
 Tests also cover schemas with rules that involve multiple fields and transformations such as trimming.
 
 The fixture requires a nonblank name with at most 80 characters and a note with at most 240 characters.
+Priority must be one of the three available choices. Unknown values retain an error until the user selects a valid option.
 These rules demonstrate application policy. Table does not impose these limits.
 The default schema preserves whitespace in valid names.
 An application can replace the schema without changing Table.
 
-Save or Enter validates only the edited row's name and note.
+Saving validates only the edited row's name, note, and priority.
 An invalid result preserves the draft, marks each affected input, and focuses the first invalid field.
 Each input refers to its error text through `aria-describedby` and exposes `aria-invalid` when invalid.
 After the first validation attempt, a field change validates that row again to update errors involving related fields.

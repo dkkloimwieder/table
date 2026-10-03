@@ -22,7 +22,8 @@ p {
   line-height: 1.45;
 }
 button,
-input {
+input,
+select {
   font: inherit;
 }
 button {
@@ -41,11 +42,13 @@ button:disabled {
   opacity: 0.55;
 }
 button:focus-visible,
-input:focus-visible {
+input:focus-visible,
+select:focus-visible {
   outline: 3px solid #285cce;
   outline-offset: 2px;
 }
-input {
+input,
+select {
   width: 100%;
   min-width: 0;
   border: 1px solid #8793a5;
@@ -53,10 +56,12 @@ input {
   background: white;
   padding: 7px 8px;
 }
-input[readonly] {
+input[readonly],
+select:disabled {
   background: #edf0f4;
 }
-input[aria-invalid='true'] {
+input[aria-invalid='true'],
+select[aria-invalid='true'] {
   border-color: #9d251e;
 }
 .toolbar,

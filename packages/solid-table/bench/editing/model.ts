@@ -2,7 +2,12 @@ import { createSignal, createStore, onCleanup } from 'solid-js'
 import { createTable } from '@tanstack/solid-table/native'
 import { createEditing } from './createEditing'
 import { validateEdits } from './validation'
-import type { RecordData, SaveRequest, SaveResult } from './createEditing'
+import type {
+  EditValues,
+  RecordData,
+  SaveRequest,
+  SaveResult,
+} from './createEditing'
 
 type Fault =
   'none' | 'hold' | 'refuse' | 'conflict' | 'uncertain' | 'throw' | 'wrong-id'
@@ -11,6 +16,7 @@ export function createModel(size: number) {
     id: `R${String(index + 1).padStart(4, '0')}`,
     name: `Record ${String(index + 1).padStart(4, '0')}`,
     note: `Note ${index + 1}`,
+    priority: 'normal',
     revision: '9007199254740993',
   }))
   const [records, setRecords] = createStore<
@@ -20,6 +26,7 @@ export function createModel(size: number) {
   const counts = {
     name: 0,
     note: 0,
+    priority: 0,
     views: 0,
     cells: 0,
     unmounted: 0,
@@ -46,6 +53,13 @@ export function createModel(size: number) {
         accessorFn: (row) => {
           counts.note++
           return row.note
+        },
+      },
+      {
+        id: 'priority',
+        accessorFn: (row) => {
+          counts.priority++
+          return row.priority
         },
       },
     ],
@@ -129,7 +143,7 @@ export function createModel(size: number) {
     release: () => {
       for (const release of [...waiting]) release()
     },
-    patch(id: string, changes: Partial<Pick<RecordData, 'name' | 'note'>>) {
+    patch(id: string, changes: Partial<EditValues>) {
       if (disposed) return
       setRecords((all) => {
         const row = all[id]

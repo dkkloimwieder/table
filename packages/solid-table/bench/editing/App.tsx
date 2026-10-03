@@ -10,7 +10,7 @@ import {
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { createModel } from './model'
 import type { EditingModel } from './model'
-import type { TextColumn } from './createEditing'
+import type { EditColumn } from './createEditing'
 import './style.css'
 
 export function App(props: {
@@ -51,21 +51,24 @@ export function App(props: {
           : [],
       ),
   })
-  function focusCell(id: string, column: TextColumn, input: boolean) {
+  function actionColumn(id: string): EditColumn {
+    return editing.drafts[id]?.activeColumn ?? 'name'
+  }
+  function focusCell(id: string, column: EditColumn, input: boolean) {
     const target = element.querySelector<HTMLElement>(
       `[data-${input ? 'editor' : 'edit'}="${id}/${column}"]`,
     )
     if (target) target.focus({ preventScroll: true })
     else filter.focus({ preventScroll: true })
   }
-  function begin(id: string, column: TextColumn) {
-    editing.begin(id)
+  function begin(id: string, column: EditColumn) {
+    editing.begin(id, column)
     const intent = ++focusIntent
     onSettled(() => {
       if (!disposed && intent === focusIntent) focusCell(id, column, true)
     })
   }
-  function cancel(id: string, column: TextColumn) {
+  function cancel(id: string, column: EditColumn) {
     if (!editing.cancel(id)) return
     const intent = ++focusIntent
     setNotice(`Canceled changes to ${id}.`)
@@ -73,7 +76,7 @@ export function App(props: {
       if (!disposed && intent === focusIntent) focusCell(id, column, false)
     })
   }
-  async function save(id: string, column: TextColumn) {
+  async function save(id: string, column: EditColumn) {
     if (editing.drafts[id]?.status === 'pending') return
     const origin = document.activeElement
     const intent = ++focusIntent
@@ -90,7 +93,7 @@ export function App(props: {
         return
       if (saved) focusCell(id, column, false)
       else if (editing.drafts[id]?.status === 'invalid') {
-        const first = (['name', 'note'] as const).find(
+        const first = (['name', 'note', 'priority'] as const).find(
           (field) => editing.drafts[id]?.fieldErrors[field],
         )
         focusCell(id, first ?? column, true)
@@ -118,7 +121,7 @@ export function App(props: {
             counts.cells++
             const column = cell.column.id
             if (column === 'id') return <th scope="row">{id}</th>
-            const field = column as TextColumn
+            const field = column as EditColumn
             return (
               <td data-column={field}>
                 <Show
@@ -136,32 +139,60 @@ export function App(props: {
                     </button>
                   }
                 >
-                  <input
-                    data-editor={`${id}/${field}`}
-                    aria-label={`${field === 'name' ? 'Name' : 'Note'} ${id}`}
-                    aria-describedby={`error-${id}-${field} message-${id}`}
-                    aria-invalid={
-                      editing.drafts[id]?.fieldErrors[field]
-                        ? 'true'
-                        : undefined
-                    }
-                    value={editing.drafts[id]?.[field] ?? ''}
-                    readonly={editing.drafts[id]?.status === 'pending'}
-                    ref={nativeEvents<HTMLInputElement>({
-                      input: (event) =>
-                        editing.change(id, field, event.currentTarget.value),
-                      keydown: (event) => {
-                        if (event.isComposing || event.keyCode === 229) return
-                        if (event.key === 'Enter') {
-                          event.preventDefault()
-                          void save(id, field)
-                        } else if (event.key === 'Escape') {
-                          event.preventDefault()
-                          cancel(id, field)
-                        }
-                      },
-                    })}
-                  />
+                  {field === 'priority' ? (
+                    <select
+                      data-editor={`${id}/${field}`}
+                      aria-label={`Priority ${id}`}
+                      aria-describedby={`error-${id}-${field} message-${id}`}
+                      aria-invalid={
+                        editing.drafts[id]?.fieldErrors[field]
+                          ? 'true'
+                          : undefined
+                      }
+                      value={editing.drafts[id]?.priority ?? ''}
+                      disabled={editing.drafts[id]?.status === 'pending'}
+                      ref={nativeEvents<HTMLSelectElement>({
+                        focus: () => editing.focus(id, field),
+                        change: (event) =>
+                          editing.change(id, field, event.currentTarget.value),
+                      })}
+                    >
+                      <option value="" disabled>
+                        Choose priority
+                      </option>
+                      <option value="low">Low</option>
+                      <option value="normal">Normal</option>
+                      <option value="high">High</option>
+                    </select>
+                  ) : (
+                    <input
+                      data-editor={`${id}/${field}`}
+                      aria-label={`${field === 'name' ? 'Name' : 'Note'} ${id}`}
+                      aria-describedby={`error-${id}-${field} message-${id}`}
+                      aria-invalid={
+                        editing.drafts[id]?.fieldErrors[field]
+                          ? 'true'
+                          : undefined
+                      }
+                      value={editing.drafts[id]?.[field] ?? ''}
+                      readonly={editing.drafts[id]?.status === 'pending'}
+                      ref={nativeEvents<HTMLInputElement>({
+                        focus: () => editing.focus(id, field),
+                        input: (event) =>
+                          editing.change(id, field, event.currentTarget.value),
+                        keydown: (event) => {
+                          if (event.isComposing || event.keyCode === 229) return
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            void save(id, field)
+                          } else if (event.key === 'Escape') {
+                            event.preventDefault()
+                            cancel(id, field)
+                          }
+                        },
+                      })}
+                    />
+                  )}
                   <p id={`error-${id}-${field}`} class="message">
                     {editing.drafts[id]?.fieldErrors[field]}
                   </p>
@@ -181,7 +212,7 @@ export function App(props: {
                 disabled={editing.drafts[id]?.status === 'pending'}
                 ref={nativeEvents({
                   click: () => {
-                    void save(id, 'name')
+                    void save(id, actionColumn(id))
                   },
                 })}
               >
@@ -190,7 +221,9 @@ export function App(props: {
               <button
                 aria-label={`Cancel ${id}`}
                 disabled={editing.drafts[id]?.status === 'pending'}
-                ref={nativeEvents({ click: () => cancel(id, 'name') })}
+                ref={nativeEvents({
+                  click: () => cancel(id, actionColumn(id)),
+                })}
               >
                 Cancel
               </button>
@@ -210,12 +243,16 @@ export function App(props: {
     <main>
       <h1>Inline editing</h1>
       <p>
-        Edit a name or note. Save or Enter saves the row. Escape cancels the
-        row.
+        Edit a name, note, or priority. Save saves the row and Cancel discards
+        its draft. In text fields, Enter saves and Escape cancels.
       </p>
       <p>
         Tab and clicks preserve drafts. Filtering uses saved values. This table
         renders every matching row.
+      </p>
+      <p>
+        The priority dropdown uses its native keys. Choosing an option does not
+        save the row.
       </p>
       <div class="toolbar">
         <label>
@@ -287,6 +324,7 @@ export function App(props: {
               <th scope="col">Record</th>
               <th scope="col">Name</th>
               <th scope="col">Note</th>
+              <th scope="col">Priority</th>
               <th scope="col">Row actions</th>
             </tr>
           </thead>

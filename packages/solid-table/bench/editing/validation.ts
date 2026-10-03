@@ -1,8 +1,11 @@
 import * as z from 'zod/mini'
-import type { EditValues, TextColumn, ValidationResult } from './createEditing'
+import type { EditColumn, EditValues, ValidationResult } from './createEditing'
 
 /** Application rules for this fixture, not limits imposed by Table. */
 const editSchema = z.object({
+  priority: z.enum(['low', 'normal', 'high'], {
+    error: 'Choose Low, Normal, or High.',
+  }),
   name: z.string().check(
     z.refine((value) => Boolean(value.trim()), {
       error: 'Enter a name before saving.',
@@ -21,11 +24,11 @@ export function createValidator(schema: z.ZodMiniType<EditValues>) {
   return (values: EditValues): ValidationResult => {
     const result = schema.safeParse(values)
     if (result.success) return { success: true, data: result.data }
-    const fieldErrors: Partial<Record<TextColumn, string>> = {}
+    const fieldErrors: Partial<Record<EditColumn, string>> = {}
     const rowErrors: Array<string> = []
     for (const issue of result.error.issues) {
       const field = issue.path[0]
-      if (field === 'name' || field === 'note')
+      if (field === 'name' || field === 'note' || field === 'priority')
         fieldErrors[field] = [fieldErrors[field], issue.message]
           .filter(Boolean)
           .join(' ')

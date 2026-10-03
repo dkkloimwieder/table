@@ -5,7 +5,7 @@ import { createValidator, validateEdits } from '../../bench/editing/validation'
 import { createEditing } from '../../bench/editing/createEditing'
 
 test('Zod Mini reports all invalid fields without changing the input', () => {
-  const input = { name: '   ', note: 'x'.repeat(241) }
+  const input = { name: '   ', note: 'x'.repeat(241), priority: 'normal' }
   expect(validateEdits(input)).toEqual({
     success: false,
     fieldErrors: {
@@ -15,25 +15,41 @@ test('Zod Mini reports all invalid fields without changing the input', () => {
     message: 'Correct the marked fields before saving.',
   })
   expect(input.name).toBe('   ')
-  expect(validateEdits({ name: '  Valid  ', note: '' })).toEqual({
+  expect(
+    validateEdits({ name: '  Valid  ', note: '', priority: 'normal' }),
+  ).toEqual({
     success: true,
-    data: { name: '  Valid  ', note: '' },
+    data: { name: '  Valid  ', note: '', priority: 'normal' },
   })
 })
 
-const dependentSchema = z.object({ name: z.string(), note: z.string() }).check(
-  z.refine((value) => value.name !== value.note, {
-    path: ['note'],
-    error: 'The note must differ from the name.',
-  }),
-  z.refine((value) => value.name !== 'Blocked', {
-    error: 'This combination is unavailable.',
-  }),
-)
+test('the select schema rejects values outside its options', () => {
+  expect(
+    validateEdits({ name: 'Valid', note: '', priority: 'urgent' }),
+  ).toEqual({
+    success: false,
+    fieldErrors: { priority: 'Choose Low, Normal, or High.' },
+    message: 'Correct the marked fields before saving.',
+  })
+})
+
+const dependentSchema = z
+  .object({ name: z.string(), note: z.string(), priority: z.string() })
+  .check(
+    z.refine((value) => value.name !== value.note, {
+      path: ['note'],
+      error: 'The note must differ from the name.',
+    }),
+    z.refine((value) => value.name !== 'Blocked', {
+      error: 'This combination is unavailable.',
+    }),
+  )
 
 test('application schemas can return cross-field and row errors together', () => {
   const validate = createValidator(dependentSchema)
-  expect(validate({ name: 'Blocked', note: 'Blocked' })).toEqual({
+  expect(
+    validate({ name: 'Blocked', note: 'Blocked', priority: 'normal' }),
+  ).toEqual({
     success: false,
     fieldErrors: { note: 'The note must differ from the name.' },
     message: 'This combination is unavailable.',
@@ -41,7 +57,13 @@ test('application schemas can return cross-field and row errors together', () =>
 })
 
 test('editing a related field recomputes cross-field errors without committing', async () => {
-  const row = { id: '1', revision: '1', name: 'Original', note: '' }
+  const row = {
+    id: '1',
+    revision: '1',
+    name: 'Original',
+    note: '',
+    priority: 'normal',
+  }
   const commit = vi.fn(() =>
     Promise.resolve({
       status: 'saved' as const,
@@ -82,10 +104,17 @@ test('editing a related field recomputes cross-field errors without committing',
 })
 
 test('save sends parsed values and leaves the canonical record to apply', async () => {
-  const row = { id: '1', revision: '1', name: 'Original', note: '' }
+  const row = {
+    id: '1',
+    revision: '1',
+    name: 'Original',
+    note: '',
+    priority: 'normal',
+  }
   const schema = z.object({
     name: z.string().check(z.trim()),
     note: z.string(),
+    priority: z.string(),
   })
   const commit = vi.fn(() =>
     Promise.resolve({
