@@ -508,10 +508,10 @@ The exercised column includes scrolling, filtering, sorting, and draft survival.
 All heap figures in this table come from `Performance.getMetrics` after garbage collection.
 
 | Records | Before mount, MiB | After load, MiB | After exercise, MiB | After disposal, MiB |
-| --- | ---: | ---: | ---: | ---: |
-| 1,000 | 3.678 | 4.429 | 4.946 | 3.745 |
-| 10,000 | 3.833 | 6.598 | 9.151 | 3.978 |
-| 50,000 | 3.981 | 16.300 | 28.054 | 4.869 |
+| ------- | ----------------: | --------------: | ------------------: | ------------------: |
+| 1,000   |             3.678 |           4.429 |               4.946 |               3.745 |
+| 10,000  |             3.833 |           6.598 |               9.151 |               3.978 |
+| 50,000  |             3.981 |          16.300 |              28.054 |               4.869 |
 
 The growth after exercise includes reactive metadata created when filters and sorts read the whole source.
 It does not represent another record collection.
@@ -557,3 +557,50 @@ The initial non-generator action probe produced rejected promises and is not qua
 
 The production WAMN DataGrid, Form behavior, generator integration, and companion dependencies remain in phase 5.
 The fixture changes no WAMN checkout files and introduces no server streaming or horizontal virtualization.
+
+## Non-virtualized editing fixture
+
+The fixture in `bench/editing` uses plain controls and renders every matching record.
+It imports neither virtual-core nor Form/UI components.
+Non-virtualized editing is a supported use case. The measured subset sizes are not automatic virtualization thresholds.
+
+Twenty browser scenarios pass against the source entry, built package, and development runtime.
+They cover keyboard entry, Tab navigation, save/cancel, draft preservation, focus races, IME composition, revision conflicts, and late responses.
+The development pass reports no Solid diagnostics or browser errors.
+The test browser is Chromium `151.0.7922.34`, selected through `BENCH_EXECUTABLE_PATH` from the installed cache.
+This browser differs from the earlier WAMN qualification browser, so the timings are not a comparison between fixtures.
+
+The source and built-package runs each render 25, 250, and 999 records.
+Each measured note edit reads two Table cell values and creates no replacement Table row views or cells.
+The record proxy keeps its identity. Editor DOM creation still allocates normal input elements and their reactive bindings.
+
+The built-package capture uses 13.996 MiB after loading 999 records and 14.127 MiB after one edit.
+The premount heap is 3.219 MiB. The disposed heap is 3.248 MiB after the additional version-retention probes.
+Smaller loaded heaps are 3.389 MiB at 25 records and 5.898 MiB at 250 records.
+These values include the rendered table, Solid, and the browser test tools.
+
+The first loaded snapshot contains 1,000 record-shaped objects for 999 logical records.
+The extra object contains the old values of `R0001`.
+Its retaining path runs through the canonical store's `TargetShape.n.R0001.ce` property node.
+The current record appears under `TargetShape.v.R0001`.
+The pinned runtime's `getNode` and `slotNodeEquals` implementation explains this cached property value.
+It is Solid tracking metadata, not another application-owned record collection or a Table cache.
+
+Twenty further changes to `R0001` leave the record-object count at 1,000.
+Changing `R0002` increases it to 1,001.
+The harness asserts both counts rather than ignoring extra objects or assuming one physical object per logical record.
+
+All three loaded captures contain 999 native row views, 2,997 cells, and zero virtualizers.
+They contain 21,027 computations, 8,997 owners, 23,025 dependency links, and 1,005 store targets.
+These display resources scale with rendered rows because this fixture does not virtualize.
+After disposal, all classified records, views, cells, store targets, owners, computations, and dependency links are gone.
+The remaining classified objects are 30 JavaScript Maps and 163 V8 allocation templates.
+
+Single-run browser script work for the measured edit ranges from 1.38 to 3.06 ms in the built-package run.
+The corresponding source samples range from 2.18 to 4.44 ms.
+The machine runs other development loads. These samples are advisory and do not establish a response-time budget.
+
+Raw results are `/tmp/table-editing-qualified-{source,distribution,development}.json`.
+Actual snapshots and summaries are under `/tmp/table-editing-qualified-heaps`.
+The snapshot names are `loaded`, `repeated-edit`, `second-record-edit`, and `disposed`.
+The [fixture guide](./editing/README.md) provides reproduction commands and states the current scope.

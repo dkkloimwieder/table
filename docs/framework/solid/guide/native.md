@@ -19,6 +19,10 @@ Non-virtualized tables are a supported use case, including editable subsets that
 That record count describes the intended editing workload, not a limit or an automatic virtualization threshold.
 Editing qualification does not require virtualized rendering.
 
+The [inline editing fixture](../../../../packages/solid-table/bench/editing/README.md) demonstrates non-virtualized row drafts with plain text controls.
+It tests explicit save/cancel behavior, keyboard focus, revision conflicts, and draft retention through filtering and sorting.
+Its editing controller remains application example code and does not require Form or a UI component library.
+
 ## Supply the collection
 
 Create the table inside a component or `createRoot`.

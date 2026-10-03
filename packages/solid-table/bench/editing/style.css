@@ -1,0 +1,146 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #202732;
+  background: #f6f7f9;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1180px;
+  margin: 32px auto;
+  padding: 0 24px;
+}
+h1 {
+  font-size: 1.8rem;
+  margin-bottom: 12px;
+}
+p {
+  line-height: 1.45;
+}
+button,
+input {
+  font: inherit;
+}
+button {
+  border: 1px solid #aab4c2;
+  background: white;
+  color: inherit;
+  border-radius: 4px;
+  padding: 7px 10px;
+  cursor: pointer;
+}
+button:hover {
+  background: #edf3ff;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+button:focus-visible,
+input:focus-visible {
+  outline: 3px solid #285cce;
+  outline-offset: 2px;
+}
+input {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #8793a5;
+  border-radius: 3px;
+  background: white;
+  padding: 7px 8px;
+}
+input[readonly] {
+  background: #edf0f4;
+}
+.toolbar,
+.buttons,
+.hidden-draft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.toolbar {
+  margin: 22px 0 10px;
+}
+.toolbar label {
+  display: grid;
+  gap: 5px;
+}
+.table-scroll {
+  overflow: auto;
+  border: 1px solid #c8ced7;
+  background: white;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+}
+caption {
+  text-align: left;
+  padding: 12px;
+  font-weight: 650;
+}
+th,
+td {
+  padding: 10px 12px;
+  border-top: 1px solid #dbe0e7;
+  text-align: left;
+  vertical-align: top;
+}
+thead {
+  background: #eef1f6;
+}
+th:first-child {
+  width: 100px;
+}
+th:last-child {
+  width: 300px;
+}
+tbody th {
+  font-weight: 500;
+  padding-top: 18px;
+}
+.cell-value {
+  text-align: left;
+  width: 100%;
+  border-color: transparent;
+  background: transparent;
+  min-height: 36px;
+  overflow-wrap: anywhere;
+}
+.cell-value:hover {
+  border-color: #8793a5;
+}
+.message {
+  color: #9d251e;
+  margin: 6px 0 0;
+  font-size: 0.875rem;
+}
+.message:empty {
+  display: none;
+}
+.muted {
+  color: #6d7683;
+  display: inline-block;
+  padding-top: 7px;
+}
+.notice {
+  min-height: 24px;
+}
+aside {
+  padding: 8px 14px 14px;
+  background: #fff7d9;
+  border: 1px solid #ddc777;
+}
+.hidden-draft {
+  margin-top: 8px;
+}
+.after-table {
+  margin-top: 16px;
+}

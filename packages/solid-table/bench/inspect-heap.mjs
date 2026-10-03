@@ -173,6 +173,9 @@ for (let i = 0; i < count; i++) {
       (properties.has('region') &&
         properties.has('city') &&
         properties.has('amount')) ||
+      (properties.has('name') &&
+        properties.has('note') &&
+        properties.has('revision')) ||
       (properties.has('code') &&
         properties.has('createdAt') &&
         properties.has('editVersion') &&
