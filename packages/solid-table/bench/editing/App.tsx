@@ -13,6 +13,8 @@ import type { EditingModel } from './model'
 import type { ChildLoad, SubTables } from './createSubTables'
 import type { TableViews as Views } from './createTableViews'
 import type { ViewStorage } from './viewStorage'
+import type { Component } from 'solid-js'
+import type { PriorityEditorProps } from './TablePriorityEditor'
 
 const defaultControls: TableControls = {
   filters: 'external',
@@ -30,6 +32,7 @@ function ChildTable(props: {
   children: SubTables
   parentId: string
   viewFor: (model: EditingModel) => ViewBinding
+  priorityEditor?: Component<PriorityEditorProps>
 }) {
   const entry = untrack(() => props.children.get(props.parentId)!)
   const readyModel = () => {
@@ -58,6 +61,7 @@ function ChildTable(props: {
           return (
             <Table
               model={model}
+              priorityEditor={props.priorityEditor}
               title={`Sub-table for ${props.parentId}`}
               scope={props.parentId}
               controls={binding.controls()}
@@ -79,6 +83,7 @@ export function App(props: {
     request: ChildLoad,
   ) => ReturnType<Parameters<typeof createSubTables>[0]['load']>
   viewStorage?: ViewStorage
+  priorityEditor?: Component<PriorityEditorProps>
   ready: (
     model: EditingModel,
     configure: (value: Partial<TableControls>) => void,
@@ -157,6 +162,7 @@ export function App(props: {
       <h1>Table</h1>
       <Table
         model={model}
+        priorityEditor={props.priorityEditor}
         controls={controls()}
         ready={() =>
           props.ready(model, configure, children, changeScope, views, viewFor)
@@ -166,7 +172,12 @@ export function App(props: {
           draftCount: (id) => children.get(id)?.draftCount() ?? 0,
           toggle: children.toggle,
           render: (id) => (
-            <ChildTable parentId={id} children={children} viewFor={viewFor} />
+            <ChildTable
+              parentId={id}
+              children={children}
+              viewFor={viewFor}
+              priorityEditor={props.priorityEditor}
+            />
           ),
         }}
         settings={

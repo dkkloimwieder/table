@@ -1,8 +1,12 @@
 import { readFile, writeFile } from 'node:fs/promises'
+import { gunzipSync } from 'node:zlib'
 
 const file = process.argv[2]
 if (!file) throw new Error('Pass a Chrome .heapsnapshot path.')
-const heap = JSON.parse(await readFile(file, 'utf8'))
+const bytes = await readFile(file)
+const heap = JSON.parse(
+  (file.endsWith('.gz') ? gunzipSync(bytes) : bytes).toString('utf8'),
+)
 const { nodes, edges, strings } = heap
 const meta = heap.snapshot.meta
 const nf = meta.node_fields.length

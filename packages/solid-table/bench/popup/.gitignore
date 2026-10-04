@@ -1,0 +1,4 @@
+.input/
+.dist/
+.dist-package/
+.dist-dev/

@@ -1,0 +1,12 @@
+{
+  "extends": "../editing/tsconfig.json",
+  "compilerOptions": {
+    "allowImportingTsExtensions": true,
+    "paths": {
+      "@kobalte/core/select": [
+        "./.input/node_modules/@kobalte/core/dist/select/index.d.ts"
+      ]
+    }
+  },
+  "include": ["*.ts", "*.tsx"]
+}

@@ -1,0 +1,15 @@
+{
+  "name": "table-kobalte-popup-qualification",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@kobalte/core": "2.0.0-alpha.2",
+    "solid-js": "2.0.0-rc.13",
+    "@solidjs/web": "2.0.0-rc.13"
+  },
+  "overrides": {
+    "solid-js": "2.0.0-rc.13",
+    "@solidjs/web": "2.0.0-rc.13",
+    "@solidjs/signals": "2.0.0-rc.13"
+  }
+}

@@ -1142,6 +1142,70 @@ The final added scenario tests keyboard focus after storage actions and prevents
 Desktop and 390-pixel layouts show no page overflow.
 
 The final live attribution capture records 16,018 creation and rerun events without grouped-row draft subscriptions.
+
+## Kobalte popup editing
+
+The [popup fixture](./popup/README.md) qualifies real Kobalte Select with Solid rc.13 and focused source repairs.
+The immutable Kobalte revision is `e9d426d438b7c9ea0cc81bd1133831a20cd5fcae`.
+The application still owns one record store, row drafts, validation, and save requests.
+The popup wrapper exchanges scalar field values and callbacks with Table.
+
+All 19 popup scenarios pass against source, the package build, development diagnostics, and the live preview.
+The existing HTML-control fixture also passes all 122 browser scenarios after the optional editor interface changes.
+The package unit suite passes 138 tests.
+The final popup runs contain no browser errors, warnings, or timing diagnostics.
+Chromium reports version `153.0.8010.12` for the final runs.
+Desktop and 390-pixel viewport screenshots show the popup within the viewport and aligned with its trigger.
+
+The repeated workload mounts 100 records and performs 200 edit, open, choose, and cancel cycles.
+Each cycle reads the three editable fields once to create its draft.
+The workload creates no additional Table rows or cells and sends no save requests.
+Record identity remains stable.
+After garbage collection, all three captures contain 4,749 DOM nodes and 597 event listeners, including browser automation resources.
+
+Snapshots after 10, 100, and 200 cycles contain identical classified application resources.
+Each contains 100 records, 100 row views, 600 cells, 111 store targets, and 829 property signals.
+Each also contains 7,568 computations, 1,548 owners, 8,041 dependency links, 49 plain signals, and one view controller.
+These counts describe the complete editing fixture, not the dropdown alone.
+
+The browser heap metric rises from 8.046 MiB to 8.631 MiB and 8.941 MiB during warmup.
+Snapshot self-size totals rise from 13.532 MiB to 14.320 MiB and 14.637 MiB.
+These measures differ because the snapshot also includes browser-native objects.
+The largest increase is 878,248 bytes of compiled code.
+Other increases include browser layout-shift records, rectangles, selector queries, and weak-array storage.
+The classified Table and Solid resource counts remain unchanged.
+V8 allocation templates rise from 280 to 382 during warmup and then remain stable.
+
+Disposal leaves no classified records, rows, cells, store targets, property signals, computations, owners, dependency links, or view controllers.
+One plain signal remains in the window-wide scroll registry.
+The assertion requires exactly one signal and a retaining path through `@solid-primitives/scroll:prevent-scroll`.
+That signal has no component owner after the repair.
+The disposed browser heap metric is 4.987 MiB. Its snapshot self-size total is 7.365 MiB.
+The separate capture after all interaction scenarios has the same application cleanup result.
+
+### Retention diagnosis
+
+The first repaired interaction prototype still retained records after disposal.
+Strong paths led through V8 event caches, detached popup nodes, event callbacks, and Table properties.
+The global scroll signal also retained its first component owner.
+These paths required additional repairs beyond successful keyboard and pointer tests.
+
+The local port attaches owned DOM listeners at Kobalte element boundaries and removes them during cleanup.
+This follows the existing Table event workaround tracked by `table-gd3.6.4`.
+Kobalte renders its dismissable layer directly, so that element also needs the listener boundary.
+The port creates the global scroll signal with `runWithOwner(null, ...)`.
+The final disposal snapshots demonstrate that these paths no longer retain the Table model.
+
+The final minified source fixture contains 289.63 kB of JavaScript, or 94.85 kB with gzip.
+The regular editing fixture contains 199.41 kB, or 65.82 kB with gzip.
+The popup therefore adds about 90.22 kB, or 29.03 kB with gzip, to this complete demonstration.
+This comparison includes the wrapper and standalone demonstration. It does not measure a standalone library export.
+
+Final reports use `/tmp/table-popup-qualified-{source,distribution,development,live}.json`.
+Compressed snapshots and parsed retaining paths reside in `/tmp/table-popup-qualified-heaps/`.
+Earlier disposal evidence remains in `/tmp/table-popup-heaps/` and `/tmp/table-popup-final-heaps/`.
+The shared host runs other development loads. These results do not establish a latency budget.
+This qualification covers fixed choices in Chromium. Searchable references, touch gestures, other browsers, and production WAMN UI remain separate work.
 A hidden child load causes no group or summary reruns.
 It records two known scan-breadth entries, six advisory timing entries, and no unexpected diagnostics.
 Final reports are `/tmp/table-views-{source,distribution,development,memory}-final.json` and `/tmp/table-views-focus-live.json`.

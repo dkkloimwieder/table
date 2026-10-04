@@ -10,11 +10,15 @@ import {
   onSettled,
   untrack,
 } from 'solid-js'
+import { Dynamic } from '@solidjs/web'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { TableFilter } from './TableFilter'
 import { TableGrouping } from './TableGrouping'
 import { TableColumnResize } from './TableColumnResize'
 import { TableColumnMove, moveColumn } from './TableColumnMove'
+import { TablePriorityEditor } from './TablePriorityEditor'
+import type { PriorityEditorProps } from './TablePriorityEditor'
+import type { Component } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import type { EditingModel } from './model'
 import type { EditColumn } from './createEditing'
@@ -58,6 +62,7 @@ export function Table(props: {
   scope?: string
   controls?: Partial<TableControls>
   settings?: JSX.Element
+  priorityEditor?: Component<PriorityEditorProps>
   details?: {
     expanded: (id: string) => boolean
     draftCount: (id: string) => number
@@ -272,8 +277,16 @@ export function Table(props: {
     )
   }
   function belongsToRow(id: string, target: EventTarget | null) {
+    if (!(target instanceof Element)) return false
+    // Portaled editors carry a table-specific owner ID. Group rows never
+    // construct editors or subscribe to their state.
+    if (
+      target
+        .closest('[data-table-editor-owner]')
+        ?.getAttribute('data-table-editor-owner') === domId(`editor-${id}`)
+    )
+      return true
     return (
-      target instanceof Element &&
       target.closest<HTMLTableRowElement>('tr[data-row]')?.dataset.row === id &&
       target.closest('table') === element
     )
@@ -672,34 +685,22 @@ export function Table(props: {
                     }
                   >
                     {field === 'priority' ? (
-                      <select
-                        data-editor={`${id}/${field}`}
-                        aria-label={`Priority ${id}`}
-                        aria-describedby={`${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
-                        aria-invalid={
-                          editing.drafts[id]?.fieldErrors[field]
-                            ? 'true'
-                            : undefined
-                        }
+                      <Dynamic
+                        component={props.priorityEditor ?? TablePriorityEditor}
+                        editorId={`${id}/${field}`}
+                        ownerId={domId(`editor-${id}`)}
+                        label={`Priority ${id}`}
+                        describedBy={`${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
+                        invalid={Boolean(
+                          editing.drafts[id]?.fieldErrors[field],
+                        )}
                         value={editing.drafts[id]?.priority ?? ''}
                         disabled={editing.drafts[id]?.status === 'pending'}
-                        ref={nativeEvents<HTMLSelectElement>({
-                          focus: () => editing.focus(id, field),
-                          change: (event) =>
-                            editing.change(
-                              id,
-                              field,
-                              event.currentTarget.value,
-                            ),
-                        })}
-                      >
-                        <option value="" disabled>
-                          Choose priority
-                        </option>
-                        <option value="low">Low</option>
-                        <option value="normal">Normal</option>
-                        <option value="high">High</option>
-                      </select>
+                        onFocus={() => editing.focus(id, field)}
+                        onValueChange={(value: string) =>
+                          editing.change(id, field, value)
+                        }
+                      />
                     ) : (
                       <input
                         data-editor={`${id}/${field}`}

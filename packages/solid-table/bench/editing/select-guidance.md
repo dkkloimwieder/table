@@ -2,7 +2,8 @@
 
 The native dropdown fixture did not use Zaidan or Kobalte as its initial reference.
 This source review identifies the additional behavior that a popup editor needs.
-The existing browser results cover HTML select inputs only.
+The original browser results covered HTML select inputs only.
+The later [popup fixture](../popup/README.md) tests real Kobalte Select with a focused Solid 2 port.
 
 ## WAMN controls
 
@@ -36,7 +37,8 @@ Table currently uses `2.0.0-rc.13`. The branch name does not establish compatibi
 Kobalte Select contains Solid 2 effects, DOM imports from `@solidjs/web`, and explicit `ownedWrite` declarations.
 Its [test source](https://github.com/kobaltedev/kobalte/blob/e9d426d438b7c9ea0cc81bd1133831a20cd5fcae/packages/core/src/select/select.test.tsx) covers controlled values, disabled choices, keyboard selection, Escape, and selection through typed letters.
 This review read those tests but did not run them.
-It did not build or browser-test Kobalte with Table.
+The source review did not build or browser-test Kobalte with Table.
+The later popup fixture supplies that isolated browser evidence.
 
 Zaidan has a `refactor/solid-2` branch at `5ddc991f11bd2510c2cecc04bd0732f636f3168f`, dated September 9, 2026.
 Its [migration PR](https://github.com/carere/zaidan/pull/501) remains open and draft.
@@ -59,10 +61,9 @@ A late close or save must not take focus from another row.
 The existing controller can retain row drafts, schema rules, pending requests, and conflicts.
 The dropdown can manage its open state and highlighted choice.
 This division does not require another canonical record store or a Table dependency on Kobalte.
-It is a proposed integration boundary, not measured compatibility.
+The popup fixture now exercises this integration boundary with fixed choices.
 
-An isolated compatibility experiment can test the real popup against the pinned Table runtime.
-Its coverage needs keyboard and pointer selection, outside clicks, focus restoration, field errors, pending saves, hidden rows, and disposal.
-Allocation counts and retained memory need measurement alongside interaction tests.
-The experiment must establish one compatible Solid runtime before broader integration.
-WAMN Form/UI migration and component vendoring remain deferred.
+The isolated experiment tests keyboard and pointer selection, outside clicks, focus restoration, field errors, pending saves, editing locks, and disposal.
+It measures resource counts and actual heaps with one Solid runtime.
+The user authorized focused source repairs for this experiment.
+WAMN Form/UI migration, searchable Combobox references, and broader component vendoring remain separate work.

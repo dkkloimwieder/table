@@ -341,7 +341,9 @@ The fixture does not provide a custom popup, searchable choices, remote options,
 Other browsers and operating systems need separate interaction tests.
 
 The [Zaidan and Kobalte review](./select-guidance.md) records WAMN controls and upstream Solid 2 branch status.
-Popup integration needs additional keyboard, focus, and lifecycle tests against the pinned Table runtime.
+The separate [popup fixture](../popup/README.md) supplies a real Kobalte Select through the parent-owned `priorityEditor` component.
+It tests keyboard, focus, save behavior, and cleanup against the pinned Table runtime.
+The regular fixture keeps its HTML select and excludes Kobalte from its bundle.
 
 ## Ownership and scope
 
