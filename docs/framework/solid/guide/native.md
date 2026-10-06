@@ -19,7 +19,7 @@ Non-virtualized tables are a supported use case, including editable subsets that
 That record count describes the intended editing workload, not a limit or an automatic virtualization threshold.
 Editing qualification does not require virtualized rendering.
 
-The [inline editing fixture](../../../../packages/solid-table/bench/editing/README.md) demonstrates non-virtualized row drafts with plain text controls.
+The [inline editing fixture](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/editing/README.md) demonstrates non-virtualized row drafts with plain text controls.
 It tests explicit save/cancel behavior, keyboard focus, revision conflicts, and draft retention through filtering and sorting.
 Its editing controller remains application example code and does not require Form or a UI component library.
 
@@ -188,7 +188,7 @@ A change to one width leaves unrelated width subscribers unchanged.
 Width changes do not read records or invalidate filtering, grouping, or summaries.
 Browser layout still responds to new widths and can change wrapping or row heights.
 
-The [editing fixture](../../../../packages/solid-table/bench/editing/README.md#column-resizing) demonstrates optional pointer and keyboard resize controls.
+The [editing fixture](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/editing/README.md#column-resizing) demonstrates optional pointer and keyboard resize controls.
 It resizes headers and body cells together during pointer movement.
 Its Grow table mode shifts following columns. Keep table width mode transfers space to or from the adjacent visible column.
 Both modes respect column bounds. The fixture offers no width persistence or reset controls.
@@ -471,8 +471,8 @@ With no pins, the center array reuses `getDisplayKeys()`.
 
 ## Render a virtual window
 
-The [native virtualized example](../../../../examples/solid/virtualized-rows/src/NativeApp.tsx) uses TanStack virtual-core for geometry.
-Its [Solid binding](../../../../examples/solid/_shared/createKeyedVirtualizer.ts) publishes only visible measurements and total height.
+The [native virtualized example](https://github.com/dkkloimwieder/table/blob/main/examples/solid/virtualized-rows/src/NativeApp.tsx) uses TanStack virtual-core for geometry.
+Its [Solid binding](https://github.com/dkkloimwieder/table/blob/main/examples/solid/_shared/createKeyedVirtualizer.ts) publishes only visible measurements and total height.
 Neither the binding nor virtual-core owns records or computes table features.
 The native package itself continues to import only Solid.
 
@@ -530,7 +530,7 @@ Accessible row positions follow the complete displayed sequence, including pinne
 
 The example binds native DOM listeners through ref callbacks and removes them when their scopes end.
 This avoids retained delegated events observed with Solid rc.13 in Chromium after editing.
-The [heap report](../../../../packages/solid-table/bench/heap-findings.md) records the retaining paths and the matching capture after cleanup.
+The [heap report](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/heap-findings.md) records the retaining paths and the matching capture after cleanup.
 Create the listener helper in the owning component. Ref callbacks only supply the element.
 The editor reads its row ID in the effect's compute function. The apply function moves DOM focus.
 
@@ -557,11 +557,11 @@ The implementation creates no memo or owner for each loaded record.
 Facet controls add a few lazy memos per column instead.
 The [Solid 2 cheatsheet](https://github.com/solidjs/solid/blob/next/packages/solid/CHEATSHEET.md) describes lazy memo disposal.
 
-The [benchmark guide](../../../../packages/solid-table/bench/README.md) records the workload, allocation gates, and host limits.
-The [heap findings](../../../../packages/solid-table/bench/heap-findings.md) distinguish native tracking costs from duplicated core caches.
+The [benchmark guide](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/README.md) records the workload, allocation gates, and host limits.
+The [heap findings](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/heap-findings.md) distinguish native tracking costs from duplicated core caches.
 Exact memory parity with the array-based table is not a requirement.
 
-The [WAMN integration fixture](../../../../packages/solid-table/bench/wamn/README.md) connects real generated bindings and page helpers to a caller-owned Solid store.
+The [WAMN integration fixture](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/wamn/README.md) connects real generated bindings and page helpers to a caller-owned Solid store.
 It tests loading, edits, revision conflicts, partial results, and vertical virtualization with plain controls.
 Production Form and shared DataGrid adoption are deferred and do not block Table qualification.
 Editing, selection, and action behavior still need separate interaction qualification with plain controls.

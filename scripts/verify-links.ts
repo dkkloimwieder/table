@@ -3,6 +3,7 @@ import { extname, resolve } from 'node:path'
 import { glob } from 'tinyglobby'
 // @ts-ignore Could not find a declaration file for module 'markdown-link-extractor'.
 import markdownLinkExtractor from 'markdown-link-extractor'
+import { resolveRepositorySourceLink } from './repository-source-links.mjs'
 
 const errors: Array<{
   file: string
@@ -98,6 +99,13 @@ async function verifyMarkdownLinks() {
     const content = readFileSync(file, 'utf-8')
     const links: Array<string> = markdownLinkExtractor(content)
 
+    for (const link of links) {
+      const source = resolveRepositorySourceLink(link)
+      if (source?.reason) {
+        errors.push({ file, link, ...source })
+      }
+    }
+
     const relativeLinks = links.filter((link: string) => {
       return isRelativeLink(link)
     })
@@ -122,4 +130,7 @@ async function verifyMarkdownLinks() {
   }
 }
 
-verifyMarkdownLinks().catch(console.error)
+verifyMarkdownLinks().catch((error) => {
+  console.error(error)
+  process.exitCode = 1
+})
