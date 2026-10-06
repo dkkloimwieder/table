@@ -20,6 +20,26 @@ This skill builds on `@tanstack/table-core#core` and `@tanstack/table-core#table
 
 ## Setup
 
+Use Node 22.12 or newer with Solid 2. Solid 1 apps require the earlier adapter.
+The tested runtime pair is `solid-js@2.0.0-rc.13` and `@solidjs/web@2.0.0-rc.13`.
+Keep both packages on the same version.
+
+Install the runtime packages and Table in the app directory:
+
+```bash
+npm install @tanstack/solid-table solid-js@2.0.0-rc.13 @solidjs/web@2.0.0-rc.13
+npm install --save-dev @solidjs/vite-plugin@3.0.0-next.47 vite@8.3.0 typescript@6.0.3
+```
+
+The Vite plugin compiles Solid JSX, the markup syntax in TypeScript components.
+Register `solidPlugin()` from `@solidjs/vite-plugin` in the Vite `plugins` array.
+Set `jsx: "preserve"` and `jsxImportSource: "@solidjs/web"` in the TypeScript configuration.
+Import DOM functions and JSX types from `@solidjs/web`.
+
+The [quick start](https://github.com/dkkloimwieder/table/blob/main/docs/framework/solid/quick-start.md) provides the compiler configuration.
+The [Solid 2 guide](https://github.com/dkkloimwieder/table/blob/main/docs/framework/solid/guide/solid-2.md) describes runtime differences.
+Create the table inside a Solid component or `createRoot`:
+
 ```tsx
 import { For, createSignal } from 'solid-js'
 import {
