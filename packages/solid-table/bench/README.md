@@ -41,6 +41,11 @@ The native package does not publish them.
 Production WAMN, Form, shared UI, DataGrid, and generator integration remain deferred.
 Searchable references and undefined row or bulk actions need separate requirements and evidence.
 
+The [Query allocation probe](../../../examples/solid/virtualized-infinite-scrolling/bench/query-profile/README.md) measures the root adapter bridge separately.
+It compares deep snapshots, former row copies, and an array-only negative control through the installed Solid Query client.
+Its allocation samples include temporary objects that garbage collection removes during the operation.
+The probe does not change the native entry or production WAMN integration.
+
 From the repository root, run the automated correctness qualification after installing dependencies and Chromium.
 
 ```sh

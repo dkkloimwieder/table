@@ -4,6 +4,75 @@ The store-over-core prototype retains too much memory for the target architectur
 It preserves table-core rows and caches, then adds native Solid bookkeeping around them.
 The replacement must use Solid directly and restrict display objects to consumer demand.
 
+## Query allocation probe on 2026-10-06
+
+The [Query fixture](../../../examples/solid/virtualized-infinite-scrolling/bench/query-profile/README.md) measures Beads issue `table-rt3.2`.
+It uses Solid `2.0.0-rc.13`, Solid Query `6.0.0-rc.4`, and Chrome `154.0.8037.97`.
+The workload uses flat records and deterministic writes to an infinite Query cache.
+It does not measure network transport, rendered scrolling, the native Table entry, or production WAMN integration.
+
+The current deep bridge and former row-copy bridge return every expected ID and cached cell value.
+An array-only copy leaves one stale cached row after a field edit.
+Its row proxies also change values in the old output.
+This comparison rejects array-only copying as a replacement for the current bridge.
+
+At 50,000 records, a field edit changes one final deep output row identity.
+The former bridge copies all 50,000 output rows.
+Both bridges rebuild all 50,000 core rows and read 100,000 column values.
+The deep bridge runs twice and reads all 50 pages each time.
+Its final row identities therefore do not describe its temporary allocation volume.
+
+Appending a 1,000-record page changes 1,000 final deep row identities.
+The former bridge copies all 51,000 rows.
+Both bridges rebuild the complete core model.
+Page removal preserves every remaining deep row identity, but also rebuilds that model.
+These results separate snapshot identity reuse from the root adapter's array-based cache invalidation.
+
+With default Query structural sharing, an equal replacement payload performs no bridge or core rebuild.
+Query still compares the payload, so this state does not establish zero allocation.
+With sharing disabled, distinct equal payloads replace all final deep row identities and rebuild the core model.
+Repeated reads and writes of the identical cache reference preserve both the output array and core model.
+After disposal, a new cache write performs no bridge work.
+
+The allocation profiles sample bytes at a 32 KiB interval and include collected objects.
+They separate stacks under `deepNext`, stacks under `_createCoreRowModel`, and other stacks.
+The final source comparison samples 86.6–89.3 MiB under deep traversal for one field edit at 50,000 records.
+Its total sampled allocation is 109.5–112.1 MiB, compared with 81.5–82.7 MiB for the former bridge.
+Appending a page instead samples 67.0–72.8 MiB for deep and 83.9–85.7 MiB for the former bridge.
+The distribution comparison samples 89.2–91.6 MiB under deep traversal for the field edit.
+Its total is 112.5–113.0 MiB, compared with 80.3–82.5 MiB for the former bridge.
+Its append totals are 66.6–71.0 MiB for deep and 83.4–85.9 MiB for the former bridge.
+These values estimate temporary bytes, not exact totals or retained memory.
+Sampled timings remain advisory because the host runs other development tasks and the profiler adds overhead.
+The final runs record one-minute host load from 9.39 to 31.03.
+
+Source and distribution each pass 432 measured states and 144 discarded warmup states.
+All 144 distinct mode, size, sharing, and action groups match their exact work and identity counts across builds.
+The recorded bundle hashes match the final fixture builds.
+Reports reside in `/tmp/table-query-profile-{source,distribution}-final.json`.
+Their `.summary.json` files contain ranges and stack categories.
+Their `.allocations` directories preserve every measured allocation profile.
+
+The fixture passes types and scoped lint.
+The existing infinite scrolling example passes its type test.
+All five browser tests pass across the three Solid Query examples through the root `test:e2e` command with scoped projects.
+The Solid package passes 167 unit tests.
+The scoped qualification passes 15 stages and 282 browser cases, plus server rendering and hydration.
+Reports reside in `test-results/solid-qualification-query`.
+The documentation link scan passes.
+
+The broad root test sweep reports existing missing ESLint, Vitest, and Vite files, manifest failures, and Knip findings.
+The unchanged infinite scrolling source also reports an import-order lint error.
+The broad sweeps stop after that evidence, and the three relevant Query projects receive a complete browser run.
+These failures do not establish a clean repository-wide result.
+This probe changes development fixtures and documentation, so it needs no published-package changeset.
+
+Keep the current deep bridge for its supported observation and snapshot contract.
+Do not restore full row copies or adopt the incorrect array-only control from this probe.
+Beads issue `table-rt3.4` tracks a focused investigation of page-scoped snapshots or an upstream traversal improvement.
+Any replacement must preserve equal-payload behavior, field updates, page identity changes, old snapshots, and disposal.
+The native Table and production WAMN scopes remain separate.
+
 ## Native matcher reuse on 2026-10-06
 
 The native column option `enableFilterValueReuse` enables deterministic value reuse within one record match.
