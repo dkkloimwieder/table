@@ -4,7 +4,58 @@ The store-over-core prototype retains too much memory for the target architectur
 It preserves table-core rows and caches, then adds native Solid bookkeeping around them.
 The replacement must use Solid directly and restrict display objects to consumer demand.
 
+## Native matcher reuse on 2026-10-06
+
+The native column option `enableFilterValueReuse` enables deterministic value reuse within one record match.
+It defaults to false and retains independent row and facet computations.
+All matcher callbacks must preserve the opted-in accessor inputs and returned values during that match.
+Cell reads, facet extraction, sorting, and aggregates remain independent.
+
+The implementation stores one reusable value in local variables.
+If multiple column definitions qualify, it creates a temporary Map only when it reads a reusable value.
+Presence tracking preserves `undefined` and `null` without another accessor call.
+Values do not survive a matcher call or move between records.
+
+The source and distribution smoke runs each pass eight samples across four modes and both accessor costs.
+The full distribution comparison passes 72 measured samples and 1,008 state comparisons at 1,000, 10,000, and 50,000 rows.
+It also passes 24 discarded warmup runs with 336 state comparisons.
+Default native counters match the separate-scan reference across all 14 states.
+Opted-in native counters match the temporary matcher reference across those same states.
+All full row sequences and facet counts match independent calculations.
+
+At 50,000 rows, combined filtering and search reduce computed accessor calls from 62,500 to 50,000.
+An active color edit reduces calls from 62,499 to 50,000.
+An own-filter change reduces calls from 125,002 to 100,000.
+Record visits, predicate counts, predicate order, and short-circuit behavior stay unchanged.
+Unrelated and closed-color edits perform no measured work.
+Source updates after disposal perform no accessor work.
+
+The first implementation creates a temporary Map even when only one column qualifies.
+Its cheap-accessor search takes 46.3–59.4 ms at 50,000 rows, compared with 39.8–45.4 ms for default native matching.
+The refined local-value path takes 43.5–45.3 ms, compared with 43.9–49.1 ms for its matched default run.
+These runs use different host loads, so they do not establish a reliable speedup ratio.
+
+With 64 accessor calculation steps, refined matching takes 46.5–60.4 ms for search at 50,000 rows.
+Default matching takes 52.8–69.6 ms.
+At 10,000 rows, the same ranges are 15.4–21.8 ms and 15.2–17.0 ms respectively.
+The smaller workloads do not establish a consistent latency improvement.
+The refined run records one-minute host load from 1.17 to 3.35 with Chromium 153.0.8010.12.
+Timings remain advisory. Exact accessor counts provide the stable acceptance evidence.
+This fixture captures no heaps and makes no retained-memory claim.
+
+Current reports reside in `/tmp/table-native-filter-reuse-distribution.json` and `/tmp/table-native-filter-reuse-summary.json`.
+Smoke reports use `/tmp/table-native-filter-reuse-{source,distribution}-smoke.json`.
+The original implementation reports remain under the `-map-only` suffix.
+The benchmark README records the modes and commands.
+The final package checks pass 167 unit tests, types, source lint, strict publint, and the native import audit.
+The new contract tests cover missing values, property getters, callback replacement, controlled state, and independent consumers.
+The extended qualification passes 24 stages and 336 browser cases, plus server rendering and hydration.
+Reports remain in `test-results/solid-qualification-filter-reuse`.
+The profiling fixture passes types and lint, and all documentation links pass.
+
 ## Computed accessor profiling on 2026-10-06
+
+This section records the original experiment before the native opt-in implementation above.
 
 The focused fixture measures repeated computed values across filtering, search, and two open facets.
 It compares the native implementation with independent scans, temporary matcher reuse, and a combined scan.
@@ -56,8 +107,7 @@ The fixture captures no heaps, so these counts establish no retained-memory impr
 
 The package retains independent lazy scans.
 They preserve the measured own-filter and field dependency boundaries.
-Temporary matcher reuse warrants a focused review of the accessor contract before any package change.
-Bead `table-gd3.1.6` tracks that contract and tests for application callbacks, dynamic columns, and controlled state.
+The native matcher follow-up above records the contract review and implementation under `table-gd3.1.6`.
 Combined scans remain an experiment because they couple outputs and add work for some edits.
 The reports reside in `/tmp/table-accessor-profile-distribution.json` and `/tmp/table-accessor-profile-source-smoke.json`.
 Their asset hashes identify the measured bundles.

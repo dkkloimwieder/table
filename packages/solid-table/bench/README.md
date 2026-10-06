@@ -219,17 +219,22 @@ The [heap findings](./heap-findings.md) record dated measurements and the remain
 
 ## Computed accessor profiling
 
-The focused fixture compares native filtering and search with three experimental alternatives.
+The focused fixture compares native filtering and its opt-in value reuse with three experimental alternatives.
 An accessor computes a column value from a record.
 The fixture uses one caller-owned record store, a computed column, and a color column.
 It measures cheap accessors and accessors with 64 extra calculation steps at 1,000, 10,000, and 50,000 records.
 Sorting, grouping, DOM rendering, and application-specific computed values remain outside this comparison.
 
 The `separate` mode uses independent scans for rows and each open facet.
+The `native-reuse` mode enables the native column option `enableFilterValueReuse` for its deterministic computed accessor.
 The `matcher-cache` mode reuses a computed value inside one predicate call and preserves those separate scans.
 The `fused` mode combines active outputs in one scan and shares their reactive dependencies.
-These modes are experiments in the fixture, not published native package features.
-The [dated findings](./heap-findings.md#computed-accessor-profiling-on-2026-10-06) describe the measured costs and the package decision.
+The `separate`, `matcher-cache`, and `fused` modes are experiments.
+They do not define package features.
+The `native` and `native-reuse` modes exercise the package implementation.
+`BENCH_MODES` selects named modes. Its default includes all five modes.
+The [native reuse findings](./heap-findings.md#native-matcher-reuse-on-2026-10-06) describe the measured costs and the opt-in contract.
+The earlier experiment remains in the same report.
 
 From the repository root, build the Solid package before the distribution fixture.
 Then build and run the fixture with an installed Playwright Chromium browser.
@@ -238,7 +243,7 @@ If browsers use a custom directory, set `PLAYWRIGHT_BROWSERS_PATH` to that direc
 ```sh
 pnpm --filter @tanstack/solid-table run build
 BENCH_DISTRIBUTION=1 pnpm exec vite build --config packages/solid-table/bench/accessor-profile/vite.config.ts
-BENCH_DISTRIBUTION=1 BENCH_SIZES=1000,10000,50000 BENCH_REPEATS=3 BENCH_WARMUPS=1 BENCH_ITERATIONS=0,64 BENCH_OUTPUT=/tmp/table-native-accessor-profile-distribution.json node packages/solid-table/bench/accessor-profile/run.mjs
+BENCH_DISTRIBUTION=1 BENCH_MODES=native,native-reuse,separate,matcher-cache BENCH_SIZES=1000,10000,50000 BENCH_REPEATS=3 BENCH_WARMUPS=1 BENCH_ITERATIONS=0,64 BENCH_OUTPUT=/tmp/table-native-filter-reuse-distribution.json node packages/solid-table/bench/accessor-profile/run.mjs
 ```
 
 For a source comparison, omit `BENCH_DISTRIBUTION=1` from both fixture commands and choose a separate output path.

@@ -25,7 +25,20 @@ const sizes = list('BENCH_SIZES', '1000,10000,50000', 200)
 const iterations = list('BENCH_ITERATIONS', '0,64', 0)
 const repeats = list('BENCH_REPEATS', '3', 1)[0]
 const warmups = list('BENCH_WARMUPS', '1', 0)[0]
-const modes = ['native', 'separate', 'matcher-cache', 'fused']
+const availableModes = [
+  'native',
+  'native-reuse',
+  'separate',
+  'matcher-cache',
+  'fused',
+]
+const modes = process.env.BENCH_MODES?.split(',') ?? availableModes
+assert.ok(
+  modes.length &&
+    new Set(modes).size === modes.length &&
+    modes.every((mode) => availableModes.includes(mode)),
+  'Invalid BENCH_MODES',
+)
 const server = createServer(async (request, response) => {
   try {
     const path = new URL(request.url, 'http://localhost').pathname
@@ -86,6 +99,7 @@ try {
               window.accessorProfile.run(mode, size, work),
             { mode, size, work },
           )
+          assert.equal(result.steps.length, 14)
           assert.equal(result.disposed, true)
           assert.deepEqual(errors, [])
           const counts = result.steps.map(({ name, counts }) => ({
@@ -125,88 +139,122 @@ try {
       const native = representative('native')
       const separate = representative('separate')
       const cached = representative('matcher-cache')
+      const reused = representative('native-reuse')
       // Stable feature activation has the same traversal and predicate contract.
-      for (const { name } of native.steps) {
-        const a = native.steps.find((step) => step.name === name)
-        const b = separate.steps.find((step) => step.name === name)
-        assert.deepEqual(
-          a.counts,
-          b.counts,
-          `${size}/${work}/${name}: unmatched native and separate work`,
-        )
-      }
-      for (const step of cached.steps) {
-        const baseline = separate.steps.find(({ name }) => name === step.name)
-        assert.equal(step.rows, baseline.rows)
-        assert.equal(step.computedFacets, baseline.computedFacets)
-        assert.equal(step.colorFacets, baseline.colorFacets)
-        assert.ok(
-          step.counts.computed <= baseline.counts.computed,
-          `${step.name}: matcher cache added computed work`,
-        )
-        for (const key of ['records', 'filters', 'searches', 'colors'])
-          assert.equal(
-            step.counts[key],
-            baseline.counts[key],
-            `${step.name}: matcher cache changed ${key}`,
+      if (native && separate)
+        for (const { name } of native.steps) {
+          const a = native.steps.find((step) => step.name === name)
+          const b = separate.steps.find((step) => step.name === name)
+          assert.deepEqual(
+            a.counts,
+            b.counts,
+            `${size}/${work}/${name}: unmatched native and separate work`,
           )
+        }
+      if (cached && separate)
+        for (const step of cached.steps) {
+          const baseline = separate.steps.find(({ name }) => name === step.name)
+          assert.equal(step.rows, baseline.rows)
+          assert.equal(step.computedFacets, baseline.computedFacets)
+          assert.equal(step.colorFacets, baseline.colorFacets)
+          assert.ok(
+            step.counts.computed <= baseline.counts.computed,
+            `${step.name}: matcher cache added computed work`,
+          )
+          for (const key of ['records', 'filters', 'searches', 'colors'])
+            assert.equal(
+              step.counts[key],
+              baseline.counts[key],
+              `${step.name}: matcher cache changed ${key}`,
+            )
+        }
+      if (reused && cached) {
+        assert.deepEqual(
+          reused.steps.map(
+            ({ name, counts, rows, computedFacets, colorFacets }) => ({
+              name,
+              counts,
+              rows,
+              computedFacets,
+              colorFacets,
+            }),
+          ),
+          cached.steps.map(
+            ({ name, counts, rows, computedFacets, colorFacets }) => ({
+              name,
+              counts,
+              rows,
+              computedFacets,
+              colorFacets,
+            }),
+          ),
+          `${size}/${work}: unmatched native reuse and matcher cache work`,
+        )
       }
-      const fusedColor = representative('fused').steps.find(
-        ({ name }) => name === 'activeColorEdit',
-      )
-      assert.equal(
-        fusedColor.passes.combined,
-        1,
-        'Fused color edit did not rerun its combined derivation',
-      )
-      assert.equal(
-        separate.steps.find(({ name }) => name === 'activeColorEdit').passes
-          .rows,
-        0,
-        'Separate color edit reran row membership',
-      )
-      const nativeColor = native.steps.find(
-        ({ name }) => name === 'activeColorEdit',
-      )
-      assert.equal(
-        nativeColor.counts.records,
-        size,
-        'Native color edit traversed more than one output',
-      )
-      assert.equal(nativeColor.counts.filters, size)
-      assert.equal(
-        nativeColor.counts.searches,
-        nativeColor.populations.filterPasses,
-      )
-      assert.equal(
-        nativeColor.counts.computed,
-        size + nativeColor.populations.filterPasses,
-      )
-      assert.equal(nativeColor.counts.colors, nativeColor.populations.eligible)
-      const ownFilter = native.steps.find(
-        ({ name }) => name === 'ownFilterChange',
-      )
-      assert.equal(
-        ownFilter.counts.records,
-        2 * size,
-        'Own filter change traversed more than rows and the other facet',
-      )
-      assert.equal(ownFilter.counts.filters, 2 * size)
-      assert.equal(
-        ownFilter.counts.searches,
-        2 * ownFilter.populations.filterPasses,
-      )
-      assert.equal(
-        ownFilter.counts.computed,
-        2 * size + 2 * ownFilter.populations.filterPasses,
-      )
-      assert.equal(ownFilter.counts.colors, ownFilter.populations.eligible)
-      assert.equal(
-        separate.steps.find(({ name }) => name === 'ownFilterChange').passes
-          .computed,
-        0,
-        'Own filter change reran its facet',
-      )
+      const fused = representative('fused')
+      if (fused) {
+        assert.equal(
+          fused.steps.find(({ name }) => name === 'activeColorEdit').passes
+            .combined,
+          1,
+          'Fused color edit did not rerun its combined derivation',
+        )
+      }
+      if (separate) {
+        assert.equal(
+          separate.steps.find(({ name }) => name === 'activeColorEdit').passes
+            .rows,
+          0,
+          'Separate color edit reran row membership',
+        )
+        assert.equal(
+          separate.steps.find(({ name }) => name === 'ownFilterChange').passes
+            .computed,
+          0,
+          'Own filter change reran its facet',
+        )
+      }
+      if (native) {
+        const nativeColor = native.steps.find(
+          ({ name }) => name === 'activeColorEdit',
+        )
+        assert.equal(
+          nativeColor.counts.records,
+          size,
+          'Native color edit traversed more than one output',
+        )
+        assert.equal(nativeColor.counts.filters, size)
+        assert.equal(
+          nativeColor.counts.searches,
+          nativeColor.populations.filterPasses,
+        )
+        assert.equal(
+          nativeColor.counts.computed,
+          size + nativeColor.populations.filterPasses,
+        )
+        assert.equal(
+          nativeColor.counts.colors,
+          nativeColor.populations.eligible,
+        )
+        const ownFilter = native.steps.find(
+          ({ name }) => name === 'ownFilterChange',
+        )
+        assert.equal(
+          ownFilter.counts.records,
+          2 * size,
+          'Own filter change traversed more than rows and the other facet',
+        )
+        assert.equal(ownFilter.counts.filters, 2 * size)
+        assert.equal(
+          ownFilter.counts.searches,
+          2 * ownFilter.populations.filterPasses,
+        )
+        assert.equal(
+          ownFilter.counts.computed,
+          2 * size + 2 * ownFilter.populations.filterPasses,
+        )
+        assert.equal(ownFilter.counts.colors, ownFilter.populations.eligible)
+      }
     }
   const assetHashes = {}
   for (const file of await readdir(resolve(assets, 'assets')))

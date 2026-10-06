@@ -15,7 +15,7 @@ type Item = {
   color: string
   unused: number
 }
-type Mode = 'native' | 'separate' | 'matcher-cache' | 'fused'
+type Mode = 'native' | 'native-reuse' | 'separate' | 'matcher-cache' | 'fused'
 type Counts = {
   records: number
   computed: number
@@ -93,13 +93,14 @@ function profile(mode: Mode, size: number, iterations: number) {
       map.set(value, (map.get(value) ?? 0) + 1)
     let read: () => Output
     let configure: (value: string | undefined, term: string) => void
-    if (mode === 'native') {
+    if (mode === 'native' || mode === 'native-reuse') {
       const table = createNativeTable({
         source: { ids, get },
         columns: [
           {
             id: 'computed',
             accessorFn: access,
+            enableFilterValueReuse: mode === 'native-reuse',
             filterFn: (value, selected) =>
               matchesFilter(String(value), String(selected)),
           },
@@ -320,7 +321,7 @@ function profile(mode: Mode, size: number, iterations: number) {
         counts: delta,
         populations: expected.populations,
         passes:
-          mode === 'native'
+          mode === 'native' || mode === 'native-reuse'
             ? null
             : (Object.fromEntries(
                 Object.entries(passes).map(([key, n]) => [
