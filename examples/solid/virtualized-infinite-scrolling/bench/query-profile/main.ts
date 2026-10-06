@@ -1,12 +1,20 @@
-import { createMemo, createRoot, deep, flush } from 'solid-js'
+import {
+  createMemo,
+  createRoot,
+  createSignal,
+  deep,
+  flush,
+  onCleanup,
+} from 'solid-js'
 import { QueryClient, useInfiniteQuery } from '@tanstack/solid-query'
 import { createTable, tableFeatures } from '@tanstack/solid-table'
+import { createInfiniteQueryRows } from '../../src/createInfiniteQueryRows'
 import type { InfiniteData } from '@tanstack/solid-query'
 
 type Item = { id: string; name: string; score: number }
 type Page = { data: Array<Item> }
 type Data = InfiniteData<Page, number>
-type Mode = 'deep' | 'clone' | 'shallow'
+type Mode = 'deep' | 'page-deep' | 'clone' | 'shallow'
 type Action =
   | 'load'
   | 'stableRead'
@@ -16,7 +24,6 @@ type Action =
   | 'appendPage'
   | 'pageReplacement'
   | 'removePage'
-const pageSize = 1000
 const item = (i: number): Item => ({
   id: `r${i}`,
   name: `Person ${i}`,
@@ -29,7 +36,12 @@ const assert = (condition: boolean, message: string) => {
   if (!condition) throw new Error(message)
 }
 
-function start(mode: Mode, size: number, structuralSharing: boolean) {
+function start(
+  mode: Mode,
+  size: number,
+  structuralSharing: boolean,
+  pageSize = 1000,
+) {
   const client = new QueryClient({
     defaultOptions: {
       queries: { retry: false, gcTime: Infinity, structuralSharing },
@@ -66,8 +78,19 @@ function start(mode: Mode, size: number, structuralSharing: boolean) {
       }),
       () => client,
     )
+    const pageRows =
+      mode === 'page-deep'
+        ? createInfiniteQueryRows(
+            () => query.data.pages,
+            (part) => {
+              pageReads++
+              return part.data
+            },
+          )
+        : undefined
     const rows = createMemo(() => {
       bridgeRuns++
+      if (pageRows) return pageRows()
       return query.data.pages.flatMap((part) => {
         pageReads++
         if (mode === 'deep') return deep(part.data)
@@ -210,8 +233,16 @@ function start(mode: Mode, size: number, structuralSharing: boolean) {
         load: size,
         stableRead: 0,
         sameReference: 0,
-        equalPayload: mode === 'deep' && !structuralSharing ? size : 0,
-        fieldEdit: mode === 'deep' ? 1 : mode === 'clone' ? size : 0,
+        equalPayload:
+          (mode === 'deep' || mode === 'page-deep') && !structuralSharing
+            ? size
+            : 0,
+        fieldEdit:
+          mode === 'deep' || mode === 'page-deep'
+            ? 1
+            : mode === 'clone'
+              ? size
+              : 0,
         appendPage: mode === 'clone' ? size + pageSize : pageSize,
         pageReplacement: mode === 'clone' ? size + pageSize : pageSize,
         removePage: mode === 'clone' ? size : 0,
@@ -272,9 +303,202 @@ function start(mode: Mode, size: number, structuralSharing: boolean) {
     },
   }
 }
+async function verifyPageContracts(pageScoped = true) {
+  const client = new QueryClient({
+    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+  })
+  const firstKey = ['page-contracts', 0]
+  const secondKey = ['page-contracts', 1]
+  const initial: Data = {
+    pages: [{ data: [item(0), item(1)] }, { data: [item(2)] }],
+    pageParams: [0, 1],
+  }
+  client.setQueryData(firstKey, initial)
+  let active = 0
+  let reads = 0
+  const steps: Array<string> = []
+  const fixture = createRoot((dispose) => {
+    const [key, setKey] = createSignal(firstKey)
+    const query = useInfiniteQuery(
+      () => ({
+        queryKey: key(),
+        initialPageParam: 0,
+        queryFn: ({ pageParam }) =>
+          Promise.resolve({ data: [item(10 + pageParam)] }),
+        getNextPageParam: (_last, pages) => pages.length,
+        enabled: false,
+        staleTime: Infinity,
+      }),
+      () => client,
+    )
+    const rows = pageScoped
+      ? createInfiniteQueryRows(
+          () => query.data.pages,
+          (part) => {
+            reads++
+            active++
+            onCleanup(() => {
+              active--
+            })
+            return part.data
+          },
+        )
+      : createMemo(() => query.data.pages.flatMap((part) => deep(part.data)))
+    const table = createTable({
+      features: tableFeatures({}),
+      columns: [{ accessorKey: 'name' }, { accessorKey: 'score' }],
+      get data() {
+        return rows()
+      },
+      getRowId: (row) => row.id,
+    })
+    return { dispose, setKey, query, rows, table }
+  })
+  let key = firstKey
+  let old: Array<Item> = []
+  let oldValues: Array<[string, number]> = []
+  const inspect = (name: string) => {
+    flush()
+    const expected = client.getQueryData<Data>(key)!
+    const rows = fixture.rows()
+    const model = fixture.table.getCoreRowModel()
+    const expectedRows = expected.pages.flatMap((part) => part.data)
+    assert(
+      JSON.stringify(
+        model.rows.map((row) => [
+          row.id,
+          row.getValue('name'),
+          row.getValue('score'),
+        ]),
+      ) ===
+        JSON.stringify(
+          expectedRows.map((row) => [row.id, row.name, row.score]),
+        ),
+      `${name}: stale Query cells actual=${JSON.stringify(model.rows.map((row) => [row.id, row.getValue('name'), row.getValue('score')]))} expected=${JSON.stringify(expectedRows)}`,
+    )
+    assert(
+      active === (pageScoped ? expected.pages.length : 0),
+      `${name}: unbounded page computations ${active}`,
+    )
+    old.forEach((row, i) => {
+      assert(
+        row.name === oldValues[i][0] && row.score === oldValues[i][1],
+        `${name}: mutated old snapshot`,
+      )
+    })
+    old = rows
+    oldValues = rows.map((row) => [row.name, row.score])
+    steps.push(name)
+  }
+  const write = (name: string, data: Data) => {
+    client.setQueryData(key, structuredClone(data))
+    inspect(name)
+  }
+  try {
+    inspect('initial')
+    for (let i = 0; i < 20; i++) {
+      const data = client.getQueryData<Data>(key)!
+      write(`edit${i}`, {
+        ...data,
+        pages: [
+          {
+            data: data.pages[0].data.map((row, j) =>
+              j === 0 ? { ...row, name: `Edit ${i}`, score: 100 + i } : row,
+            ),
+          },
+          data.pages[1],
+        ],
+      })
+    }
+    const beforeMetadata = fixture.rows()
+    const beforeModel = fixture.table.getCoreRowModel()
+    const cached = client.getQueryData<Data>(key)!
+    const metadataOnly: Data = {
+      ...cached,
+      pages: cached.pages.map((part) => ({ ...part, metadata: 'changed' })),
+    }
+    write('metadataOnly', metadataOnly)
+    assert(
+      fixture.rows() === beforeMetadata &&
+        fixture.table.getCoreRowModel() === beforeModel,
+      'Metadata rebuilt row data',
+    )
+    write('prepend', {
+      pages: [{ data: [item(3)] }, ...cached.pages],
+      pageParams: [-1, ...cached.pageParams],
+    })
+    const prepended = client.getQueryData<Data>(key)!
+    write('reorder', {
+      pages: [...prepended.pages].reverse(),
+      pageParams: [...prepended.pageParams].reverse(),
+    })
+    const reordered = client.getQueryData<Data>(key)!
+    write('replace', {
+      ...reordered,
+      pages: [{ data: [item(4)] }, ...reordered.pages.slice(1)],
+    })
+    const replaced = client.getQueryData<Data>(key)!
+    write('insertRow', {
+      ...replaced,
+      pages: [
+        { data: [item(5), ...replaced.pages[0].data] },
+        ...replaced.pages.slice(1),
+      ],
+    })
+    const inserted = client.getQueryData<Data>(key)!
+    write('removeRow', {
+      ...inserted,
+      pages: [
+        { data: inserted.pages[0].data.slice(1) },
+        ...inserted.pages.slice(1),
+      ],
+    })
+    const trimmed = client.getQueryData<Data>(key)!
+    write('emptyPage', {
+      ...trimmed,
+      pages: [{ data: [] }, ...trimmed.pages.slice(1)],
+    })
+    write('emptyPages', { pages: [], pageParams: [] })
+    write('restore', initial)
+    await fixture.query.fetchNextPage()
+    inspect('fetchNextPage')
+    assert(fixture.rows().at(-1)?.id === 'r12', 'Next page did not append')
+    client.setQueryData(secondKey, {
+      pages: [{ data: [item(99)] }],
+      pageParams: [0],
+    })
+    key = secondKey
+    fixture.setKey(secondKey)
+    inspect('queryKeyChange')
+    const readsBefore = reads
+    client.setQueryData(firstKey, {
+      pages: [{ data: [item(98)] }],
+      pageParams: [0],
+    })
+    inspect('oldKeyWrite')
+    assert(reads === readsBefore, 'Previous Query key reran page snapshots')
+  } finally {
+    fixture.dispose()
+    client.clear()
+  }
+  assert(active === 0, 'Disposed page computations remain active')
+  const readsBefore = reads
+  client.setQueryData(key, initial)
+  flush()
+  assert(
+    reads === readsBefore && active === 0,
+    'Disposed Query pages restarted',
+  )
+  client.clear()
+  return { steps, active, reads }
+}
+
 declare global {
   interface Window {
-    queryProfile: { start: typeof start }
+    queryProfile: {
+      start: typeof start
+      verifyPageContracts: typeof verifyPageContracts
+    }
   }
 }
-window.queryProfile = { start }
+window.queryProfile = { start, verifyPageContracts }

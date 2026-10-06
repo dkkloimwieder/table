@@ -4,6 +4,89 @@ The store-over-core prototype retains too much memory for the target architectur
 It preserves table-core rows and caches, then adds native Solid bookkeeping around them.
 The replacement must use Solid directly and restrict display objects to consumer demand.
 
+## Page-scoped Query snapshots on 2026-10-06
+
+Beads issue `table-rt3.4` replaces the infinite scrolling example's whole-array deep bridge with snapshots for individual pages.
+A snapshot preserves data values at one point in time.
+A bridge converts Query data into Table data.
+A memo caches a reactive computation.
+The helper uses `mapArray` with `keyed: false` and one owned deep memo per page position.
+It releases each memo when its position disappears or its owner is disposed.
+
+The [Query fixture](../../../examples/solid/virtualized-infinite-scrolling/bench/query-profile/README.md) compares the original bridge and the example helper.
+It uses Solid `2.0.0-rc.13`, Solid Query `6.0.0-rc.4`, and Chrome `154.0.8037.97`.
+The comparison covers 1,000, 10,000, and 50,000 flat records with 1,000-row pages.
+A separate 50,000-record comparison uses the example's actual 50-row pages.
+Both comparisons cover default Query structural sharing and disabled sharing.
+Structural sharing preserves unchanged cache objects across responses.
+
+At 50,000 records with 1,000-row pages, a field edit reduces page reads from 100 to two.
+The source profiles reduce sampled deep allocation from 89.37–92.71 MiB to 2.20–2.32 MiB.
+Their total sampled allocation falls from 112.44–115.56 MiB to 22.86–24.17 MiB.
+The distribution profiles reduce sampled deep allocation from 89.85–91.94 MiB to 1.89–2.55 MiB.
+Their totals fall from 112.57–114.84 MiB to 22.79–24.07 MiB.
+
+With 50-row pages, the same edit reduces page reads from 2,000 to two.
+The source profiles reduce sampled deep allocation from 91.49–95.01 MiB to 0.03–0.28 MiB.
+Their totals fall from 112.68–118.22 MiB to 21.63–22.23 MiB.
+The distribution profiles reduce sampled deep allocation from 92.20–95.73 MiB to 0.13–0.16 MiB.
+Their totals fall from 114.06–119.25 MiB to 21.61–22.52 MiB.
+
+An append reads only the new page, and a same-length page replacement reads only the affected page twice.
+Removing the last page performs no deep reads.
+Repeated reads, identical cache references, and default-sharing equal payloads perform no bridge or core rebuild.
+With sharing disabled, distinct equal payloads still traverse every page and rebuild the core model.
+Initial loading also traverses every page.
+These results do not establish zero allocation for unchanged Query payloads.
+
+Both bridges still flatten the complete page sequence and rebuild every core row after a changed snapshot.
+A 50,000-record edit creates 50,000 core rows and reads 100,000 cached column values.
+Across these edit profiles, stacks under the core model sample approximately 16–18 MiB for either bridge.
+The optimization reduces repeated deep traversal and leaves the root adapter's array-based invalidation unchanged.
+
+Chrome samples allocation at a 32 KiB interval and includes collected objects.
+The summary separates deep traversal, core construction, and other stacks.
+Deep attribution recognizes `deep`, `deepNext`, `walkT`, `snapshotNext`, and `snapshotWalk` because Chrome can omit inlined outer frames.
+These ranges estimate temporary bytes, not exact allocation totals or retained memory.
+Timings remain advisory because profiling adds overhead and the host runs other development tasks.
+The final runs record one-minute host load from 3.41 to 8.85.
+
+Together, the source and distribution comparisons pass 768 measured states and 256 discarded warmup states.
+All 128 distinct work and identity groups agree across the two builds.
+Each of the four runs also passes 66 additional Query contract states.
+These cover repeated edits, metadata, fresh payload prepend and reorder, row changes, empty results, restoration, fetching, and query key changes.
+Eight unit regressions cover nested cells, immutable old snapshots, detached writes, bounded active computations, and disposal.
+The recorded bundle hashes match the frozen fixture builds.
+
+Reports reside in `/tmp/table-query-page-{source,distribution}-final.json` and `/tmp/table-query-page-small-{source,distribution}.json`.
+Their `.summary.json` files contain ranges and categories.
+Their `.allocations` directories preserve every measured allocation profile.
+The fixture README gives the reproduction commands.
+
+The Solid package passes 175 unit tests and its type test.
+The example and fixture pass types, scoped lint, and production builds.
+Scoped lint reports four optional-chain warnings and no errors.
+All six browser tests pass across the three Solid Query examples through the root command with scoped projects.
+The scrolling test covers page fetching and sort changes while scrolled.
+The renderer now tolerates temporarily missing virtual rows when a new query key reduces the loaded row count.
+
+The Solid qualification passes 15 stages and 282 browser cases, plus server rendering and hydration.
+Reports reside in `test-results/solid-qualification-query-pages`.
+The prior broad sweep still records existing tool, manifest, and Knip failures described below.
+These scoped results do not establish a clean repository-wide result.
+This change affects an example and development fixtures, so it needs no published-package changeset.
+
+An inherited runtime failure remains in Beads issue `table-rt3.5`.
+After a field edit, prepending reused page objects can duplicate projected rows while the Query cache remains correct.
+The original bridge and the page helper both expose this failure.
+A standalone reproduction imports only Solid and Solid Query.
+Fresh response objects pass the same operation.
+The follow-up issue stores the reproduction and tracks the runtime cause separately.
+
+Adopt the page helper for the infinite scrolling example's supported behavior.
+This decision supersedes the original bridge recommendation below for that example.
+It does not change dependency pins, Query configuration, the native Table entry, or production WAMN integration.
+
 ## Query allocation probe on 2026-10-06
 
 The [Query fixture](../../../examples/solid/virtualized-infinite-scrolling/bench/query-profile/README.md) measures Beads issue `table-rt3.2`.

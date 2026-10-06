@@ -10,9 +10,10 @@ import {
 } from '@tanstack/solid-table'
 import { keepPreviousData, useInfiniteQuery } from '@tanstack/solid-query'
 import { createAtom } from '@tanstack/store'
+import { For, Show, onSettled } from 'solid-js'
 import { useSelector } from '../../_shared/useSelector'
 import { createVirtualizer } from '../../_shared/createVirtualizer'
-import { For, Show, createMemo, deep, onSettled } from 'solid-js'
+import { createInfiniteQueryRows } from './createInfiniteQueryRows'
 import { fetchData } from './makeData'
 import type { Person, PersonApiResponse } from './makeData'
 import type { SortingState } from '@tanstack/solid-table'
@@ -84,8 +85,9 @@ function App() {
     placeholderData: keepPreviousData,
   }))
 
-  const flatData = createMemo(
-    () => query.data?.pages.flatMap((page) => deep(page.data)) ?? [],
+  const flatData = createInfiniteQueryRows(
+    () => query.data?.pages,
+    (page) => page.data,
   )
   const totalDBRowCount = () => query.data?.pages[0]?.meta?.totalRowCount ?? 0
   const totalFetched = () => flatData().length
@@ -230,7 +232,7 @@ function App() {
                       width: '100%',
                     }}
                   >
-                    <For each={row().getAllCells()}>
+                    <For each={row()?.getAllCells() ?? []}>
                       {(cell) => (
                         <td
                           style={{

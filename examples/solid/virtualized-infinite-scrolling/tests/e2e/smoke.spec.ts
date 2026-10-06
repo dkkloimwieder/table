@@ -1,7 +1,7 @@
-import { expect, test } from '@playwright/test'
-import type { Locator, Page } from '@playwright/test'
 import path from 'node:path'
+import { expect, test } from '@playwright/test'
 import { startExampleServer } from '../../../../../tests/e2e/helpers/startExampleServer'
+import type { Locator, Page } from '@playwright/test'
 
 const exampleDir = path.resolve()
 
@@ -97,6 +97,80 @@ test('renders the table without crashing', async ({ page }) => {
       await expect(bodyRows.first()).toBeVisible()
     }
 
+    expect(errors).toEqual([])
+  } finally {
+    await server.close()
+  }
+})
+
+test('loads additional pages and refreshes sorted cells through the page snapshots', async ({
+  page,
+}) => {
+  const { errors, server } = await openExample(page)
+  try {
+    const app = page.locator('.app')
+    const table = getTable(page)
+    const container = page.locator('.container')
+    await expect(table).toBeVisible()
+    await expect(app).toContainText('(50 of 1,000 rows fetched)')
+    for (const count of [100, 150]) {
+      await expect(page.getByText('Fetching More...')).toHaveCount(0)
+      await container.evaluate((element) => {
+        element.scrollTop = element.scrollHeight
+        element.dispatchEvent(new Event('scroll', { bubbles: true }))
+      })
+      await expect(app).toContainText(`(${count} of 1,000 rows fetched)`)
+    }
+    const age = table.locator('.sortable-header').filter({ hasText: /^Age/ })
+    await container.evaluate((element) => {
+      element.scrollTop = 0
+      element.dispatchEvent(new Event('scroll', { bubbles: true }))
+    })
+    await expect(getBodyRows(table).first().locator('td').first()).toHaveText(
+      '1',
+    )
+    await age.click()
+    await expect(app).toContainText('(50 of 1,000 rows fetched)')
+    await expect(page.getByText('Fetching More...')).toHaveCount(0)
+    const headers = await getHeaderCells(table).allTextContents()
+    const ageIndex = headers.findIndex((label) => label.startsWith('Age'))
+    expect(ageIndex).toBeGreaterThanOrEqual(0)
+    const readAges = () =>
+      getBodyRows(table).evaluateAll(
+        (rows, index) =>
+          rows.map((row) =>
+            Number(row.querySelectorAll('td')[index].textContent),
+          ),
+        ageIndex,
+      )
+    const expectSorted = async () => {
+      const direction = (await age.textContent())?.includes('🔼') ? 1 : -1
+      await expect
+        .poll(async () => {
+          const ages = await readAges()
+          return (
+            ages.length > 1 &&
+            ages.every(
+              (value, i) => i === 0 || direction * (value - ages[i - 1]) >= 0,
+            )
+          )
+        })
+        .toBe(true)
+    }
+    await expectSorted()
+    for (const count of [100, 150]) {
+      await expect(page.getByText('Fetching More...')).toHaveCount(0)
+      await container.evaluate((element) => {
+        element.scrollTop = element.scrollHeight
+        element.dispatchEvent(new Event('scroll', { bubbles: true }))
+      })
+      await expect(app).toContainText(`(${count} of 1,000 rows fetched)`)
+    }
+    await expect(page.getByText('Fetching More...')).toHaveCount(0)
+    await age.click()
+    await expect(app).toContainText(/\((50|100) of 1,000 rows fetched\)/)
+    await expect(page.getByText('Fetching More...')).toHaveCount(0)
+    await expectSorted()
     expect(errors).toEqual([])
   } finally {
     await server.close()

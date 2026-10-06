@@ -5,6 +5,14 @@ const filename = process.argv[2]
 assert.ok(filename, 'Usage: node summarize.mjs REPORT.json [SUMMARY.json]')
 const report = JSON.parse(await readFile(filename, 'utf8'))
 const groups = new Map()
+// Chrome can omit inlined outer frames, especially with smaller pages.
+const deepFrames = new Set([
+  'deep',
+  'deepNext',
+  'walkT',
+  'snapshotNext',
+  'snapshotWalk',
+])
 const range = (values) => ({
   min: Math.min(...values),
   max: Math.max(...values),
@@ -30,7 +38,7 @@ for (const sample of report.samples) {
       const nodeCategories = new Map()
       const walk = (node, category = 'other') => {
         const name = node.callFrame.functionName
-        if (name === 'deepNext') category = 'deep'
+        if (deepFrames.has(name)) category = 'deep'
         else if (name === '_createCoreRowModel') category = 'core'
         nodeCategories.set(node.id, category)
         for (const child of node.children) walk(child, category)
@@ -56,6 +64,8 @@ const summary = {
   browser: report.browser,
   versions: report.versions,
   distribution: report.distribution,
+  pageSize: report.pageSize ?? 1000,
+  contracts: report.contracts,
   measuredSamples: report.samples.length,
   measuredStates: report.samples.reduce(
     (total, sample) => total + sample.steps.length,

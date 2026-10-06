@@ -22,17 +22,25 @@ const numbers = (name, fallback, minimum) => {
   return values
 }
 const sizes = numbers('BENCH_SIZES', '1000,10000,50000', 1000)
+const pageSize = numbers('BENCH_PAGE_SIZE', '1000', 1)[0]
+assert.ok(
+  pageSize <= Math.min(...sizes),
+  'BENCH_PAGE_SIZE must not exceed a dataset size',
+)
 const repeats = numbers('BENCH_REPEATS', '3', 1)[0]
 const warmups = numbers('BENCH_WARMUPS', '1', 0)[0]
 const modes = process.env.BENCH_MODES?.split(',') ?? [
   'deep',
+  'page-deep',
   'clone',
   'shallow',
 ]
 assert.ok(
   modes.length &&
     new Set(modes).size === modes.length &&
-    modes.every((mode) => ['deep', 'clone', 'shallow'].includes(mode)),
+    modes.every((mode) =>
+      ['deep', 'page-deep', 'clone', 'shallow'].includes(mode),
+    ),
   'Invalid BENCH_MODES',
 )
 const allocations = process.env.BENCH_ALLOCATIONS !== '0'
@@ -80,6 +88,31 @@ try {
       ? { executablePath: process.env.BENCH_EXECUTABLE_PATH }
       : {},
   )
+  const contracts = []
+  for (const pageScoped of [false, true]) {
+    const contractPage = await browser.newPage()
+    const errors = []
+    contractPage.on('pageerror', (error) => errors.push(error.message))
+    contractPage.on('console', (message) => {
+      if (['warning', 'error'].includes(message.type()))
+        errors.push(message.text())
+    })
+    await contractPage.goto(`http://127.0.0.1:${server.address().port}/`)
+    await (
+      await contractPage.waitForFunction(() => window.queryProfile)
+    ).dispose()
+    const result = await contractPage.evaluate(
+      (pageScoped) => window.queryProfile.verifyPageContracts(pageScoped),
+      pageScoped,
+    )
+    assert.equal(result.active, 0)
+    assert.deepEqual(errors, [])
+    contracts.push({ pageScoped, ...result })
+    console.log(
+      `${pageScoped ? 'Page-scoped' : 'Original'} contracts: ${result.steps.length} states passed`,
+    )
+    await contractPage.close()
+  }
   for (const size of sizes)
     for (const structuralSharing of [true, false])
       for (let repeat = -warmups; repeat < repeats; repeat++) {
@@ -124,15 +157,16 @@ try {
               })
             if (action === 'load')
               await page.evaluate(
-                ({ mode, size, structuralSharing }) => {
+                ({ mode, size, structuralSharing, pageSize }) => {
                   window.fixture = window.queryProfile.start(
                     mode,
                     size,
                     structuralSharing,
+                    pageSize,
                   )
                   window.fixture.prepare('load')
                 },
-                { mode, size, structuralSharing },
+                { mode, size, structuralSharing, pageSize },
               )
             const result = await page.evaluate(() => window.fixture.measure())
             const profile = allocations
@@ -141,6 +175,25 @@ try {
             const identities = await page.evaluate(() =>
               window.fixture.inspect(),
             )
+            if (mode === 'page-deep') {
+              const expectedPageReads = {
+                load: Math.ceil(size / pageSize),
+                stableRead: 0,
+                sameReference: 0,
+                equalPayload: structuralSharing
+                  ? 0
+                  : Math.ceil(size / pageSize) * 2,
+                fieldEdit: 2,
+                appendPage: 1,
+                pageReplacement: 2,
+                removePage: 0,
+              }[action]
+              assert.equal(
+                result.counts.pageReads,
+                expectedPageReads,
+                `${size}/${structuralSharing}/${action}: page snapshot work`,
+              )
+            }
             const sampledBytes = profile?.samples.reduce(
               (total, { size }) => total + size,
               0,
@@ -238,10 +291,12 @@ try {
           query: manifest.dependencies['@tanstack/solid-query'],
         },
         sizes,
+        pageSize,
         repeats,
         warmups,
         modes,
         hashes,
+        contracts,
         samples,
       },
       null,
