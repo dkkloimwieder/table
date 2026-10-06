@@ -16,6 +16,7 @@ const directory = process.env.BENCH_DEVELOPMENT
     : '.dist'
 const assets = fileURLToPath(new URL(`${directory}/`, import.meta.url))
 const output = process.env.BENCH_OUTPUT ?? '/tmp/table-wamn-browser.json'
+const workloads = process.env.BENCH_WORKLOADS !== '0'
 const modules = JSON.parse(await readFile(`${assets}modules.json`, 'utf8'))
 assert.ok(modules.some((path) => path.includes('/.input/runtime/transport.ts')))
 assert.ok(modules.some((path) => path.includes('/.input/widget.ts')))
@@ -53,6 +54,7 @@ await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
 let browser
 const report = {
   directory,
+  workloads,
   hostLoad: loadavg(),
   cases: [],
   benchmarks: [],
@@ -62,7 +64,9 @@ const report = {
 const id = (index) =>
   `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`
 try {
-  browser = await chromium.launch()
+  browser = await chromium.launch({
+    executablePath: process.env.BENCH_EXECUTABLE_PATH,
+  })
   const page = await browser.newPage({ viewport: { width: 1600, height: 900 } })
   page.on('pageerror', (error) => {
     report.errors.push(error.stack)
@@ -495,8 +499,23 @@ try {
       assert.match(value.drafts[id(0)].message, /different record/)
     },
   )
-  const sizes = (process.env.BENCH_SIZES ?? '1000,10000,50000')
+  await record(
+    'disposal before first settlement leaves no mounted rows',
+    async () => {
+      await page.evaluate(() => {
+        window.wamn.start()
+        window.wamn.stop()
+      })
+      await settle()
+      assert.equal(await call('ready'), false)
+      assert.equal(await page.locator('[data-row]').count(), 0)
+    },
+  )
+  const sizes = (
+    workloads ? (process.env.BENCH_SIZES ?? '1000,10000,50000') : ''
+  )
     .split(',')
+    .filter(Boolean)
     .map(Number)
   for (const size of sizes) {
     await start()
@@ -603,7 +622,8 @@ try {
   await start()
   await call('reload')
   await idle()
-  await page.screenshot({ path: '/tmp/table-wamn-fixture.png' })
+  if (process.env.BENCH_SCREENSHOT)
+    await page.screenshot({ path: process.env.BENCH_SCREENSHOT })
   await call('stop')
 } catch (error) {
   report.failure = String(error.stack)

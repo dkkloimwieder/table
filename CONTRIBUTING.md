@@ -51,5 +51,8 @@ Every pull request must follow the [TanStack Table pull request template](.githu
   Browser cases run against source and distribution builds. Heap captures remain separate performance tasks.
   Reports and stage logs remain in `test-results/solid-qualification`, including after a failed stage.
   Use `node scripts/run-solid-qualification.mjs --plan` to inspect the stages without running them.
+  For the isolated WAMN fixture, prepare inputs with [its instructions](packages/solid-table/bench/wamn/README.md#run).
+  Then run `node scripts/run-solid-qualification.mjs --wamn` to add input integrity, types, lint, and three browser builds.
+  This extension uses prepared inputs and does not invoke the external WAMN generator.
 - Every change that affects a published package must include a changeset. Create the changelog entry with `pnpm changeset`; documentation, CI, and development-only changes do not require one.
 - Commit your work, open a pull request, complete the required template, and submit it for review.

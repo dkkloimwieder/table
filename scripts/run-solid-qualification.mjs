@@ -14,7 +14,7 @@ export function selectsSolidQualification(paths) {
   )
 }
 
-export function qualificationStages(output) {
+export function qualificationStages(output, { wamn = false } = {}) {
   const pkg = ['--filter', '@tanstack/solid-table']
   const stage = (name, args, env = {}) => ({ name, args, env })
   const stages = [
@@ -57,6 +57,64 @@ export function qualificationStages(output) {
       )
     }
   }
+  if (wamn) {
+    stages.push(
+      stage('wamn-inputs', [
+        ...pkg,
+        'exec',
+        'node',
+        'bench/wamn/check-inputs.mjs',
+      ]),
+      stage('wamn-types', [
+        ...pkg,
+        'exec',
+        'tsc',
+        '--project',
+        'bench/wamn/tsconfig.json',
+      ]),
+      stage('wamn-lint', [
+        ...pkg,
+        'exec',
+        'eslint',
+        ...[
+          'App.tsx',
+          'createWamnTable.ts',
+          'transport.ts',
+          'main.tsx',
+          'vite.config.ts',
+        ].map((file) => `bench/wamn/${file}`),
+      ]),
+    )
+    for (const mode of ['source', 'distribution', 'development']) {
+      const env = {
+        NODE_ENV: mode === 'development' ? 'development' : 'production',
+        BENCH_DISTRIBUTION: mode === 'distribution' ? '1' : '',
+        BENCH_DEVELOPMENT: mode === 'development' ? '1' : '',
+      }
+      stages.push(
+        stage(
+          `wamn-${mode}-build`,
+          [
+            ...pkg,
+            'exec',
+            'vite',
+            'build',
+            '--config',
+            'bench/wamn/vite.config.ts',
+          ],
+          env,
+        ),
+        stage(
+          `wamn-${mode}-browser`,
+          [...pkg, 'exec', 'node', 'bench/wamn/run.mjs'],
+          {
+            ...env,
+            BENCH_OUTPUT: resolve(output, `wamn-${mode}.json`),
+          },
+        ),
+      )
+    }
+  }
   return stages
 }
 
@@ -84,7 +142,7 @@ async function main() {
     process.env.SOLID_QUALIFICATION_OUTPUT ??
       'test-results/solid-qualification',
   )
-  const stages = qualificationStages(output)
+  const stages = qualificationStages(output, { wamn: args.includes('--wamn') })
   if (args.includes('--plan')) {
     console.log(JSON.stringify(stages, null, 2))
     return

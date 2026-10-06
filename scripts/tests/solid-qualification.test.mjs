@@ -104,3 +104,38 @@ process.exitCode = process.argv.includes('test:ssr') ? 7 : 0
     await rm(scratch, { recursive: true, force: true })
   }
 })
+
+test('optional WAMN stages require prepared inputs and cover three builds', () => {
+  assert.equal(
+    qualificationStages('/tmp/gates').some(({ name }) =>
+      name.startsWith('wamn-'),
+    ),
+    false,
+  )
+  const stages = qualificationStages('/tmp/gates', { wamn: true })
+  const inputs = stages.findIndex(({ name }) => name === 'wamn-inputs')
+  assert.ok(inputs >= 0)
+  assert.equal(stages[inputs].args.at(-1), 'bench/wamn/check-inputs.mjs')
+  assert.equal(
+    stages.some(({ args }) => args.includes('bench/wamn/prepare.mjs')),
+    false,
+  )
+  for (const mode of ['source', 'distribution', 'development']) {
+    const build = stages.findIndex(({ name }) => name === `wamn-${mode}-build`)
+    const browser = stages.find(({ name }) => name === `wamn-${mode}-browser`)
+    assert.ok(inputs < build && build < stages.indexOf(browser))
+    assert.equal(
+      browser.env.NODE_ENV,
+      mode === 'development' ? 'development' : 'production',
+    )
+    assert.equal(
+      browser.env.BENCH_DISTRIBUTION,
+      mode === 'distribution' ? '1' : '',
+    )
+    assert.equal(
+      browser.env.BENCH_DEVELOPMENT,
+      mode === 'development' ? '1' : '',
+    )
+    assert.equal(browser.env.BENCH_OUTPUT, `/tmp/gates/wamn-${mode}.json`)
+  }
+})
