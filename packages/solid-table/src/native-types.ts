@@ -28,6 +28,11 @@ export interface NativeColumnDef<T, TMeta = unknown> {
   id: string
   accessorKey?: keyof T
   accessorFn?: (record: T) => unknown
+  /** Reuse a deterministic value within one record's filter/search match.
+   * Matcher callbacks must not change accessor inputs or returned values during that match.
+   * Defaults to false. Values never survive a match or cross feature passes.
+   */
+  enableFilterValueReuse?: boolean
   filterFn?: (value: unknown, filter: unknown) => boolean
   getUniqueValues?: (record: T) => ReadonlyArray<unknown>
   enableGlobalFilter?: boolean

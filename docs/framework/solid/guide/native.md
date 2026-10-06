@@ -281,6 +281,19 @@ It receives the trimmed query and the current column definition, including its m
 Computed accessors can provide nested fields or application search values.
 `getFilteredRowIds()` exposes the result before sorting.
 
+For an expensive deterministic accessor, set `enableFilterValueReuse: true` on its column definition.
+This option defaults to `false` and also applies to property getters through `accessorKey`.
+The accessor must return a stable value for unchanged inputs during one record match.
+During that match, all accessor and predicate callbacks must preserve those inputs and returned objects.
+Do not use this option for values that depend on time, randomness, invocation counts, or a fresh object identity.
+
+Table can reuse that value between column filters and global search for the same record.
+Predicate order and rejection at the first failed predicate remain unchanged.
+The option also applies to repeated predicates for the same column.
+Values never survive the matcher call or move between records or feature passes.
+Facet value extraction, cell reads, sorting, and aggregates remain independent.
+Facet counts still exclude their own column filter.
+
 By default, each record contributes its accessor value to a facet.
 For multiple values, provide `getUniqueValues(record)` in the column definition.
 Table counts each distinct returned value once per record.
@@ -571,7 +584,8 @@ An active feature processes its full input when a tracked field changes.
 Direct cell reads and active features can evaluate the same accessor separately.
 Expensive computed columns need measurement before adding shared memos.
 The [computed accessor profile](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/heap-findings.md#computed-accessor-profiling-on-2026-10-06) compares temporary value reuse and combined scans.
-Its alternative modes remain experimental and do not change the native package contract.
+The native reuse mode tests `enableFilterValueReuse` against the separate scans.
+The combined scan and fixture implementations remain experimental.
 
 The implementation creates no memo or owner for each loaded record.
 Facet controls add a few lazy memos per column instead.

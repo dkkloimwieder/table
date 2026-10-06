@@ -47,19 +47,53 @@ export function createNativeFiltering<T, TMeta>(
   function createMatcher(conditions = filters()) {
     const term = search()
     if (!conditions.length && !term) return undefined
-    return (record: T) => {
+    const seen = new Set<NativeColumnDef<T, TMeta>>()
+    const reusable = new Set<NativeColumnDef<T, TMeta>>()
+    for (const column of [
+      ...conditions.map(({ column }) => column),
+      ...(term?.columns ?? []),
+    ]) {
+      if (!column.enableFilterValueReuse) continue
+      if (seen.has(column)) reusable.add(column)
+      else seen.add(column)
+    }
+    function matches(record: T, read: typeof access) {
       for (const { column, value } of conditions) {
-        if (!column.filterFn!(access(record, column), value)) return false
+        if (!column.filterFn!(read(record, column), value)) return false
       }
       if (!term) return true
       return term.columns.some((column) => {
-        const value = access(record, column)
+        const value = read(record, column)
         if (term.match) return term.match(value, term.query, column)
         const type = typeof value
         return (
           (type === 'string' || type === 'number' || type === 'bigint') &&
           String(value).toLowerCase().includes(term.lower)
         )
+      })
+    }
+    if (!reusable.size) return (record: T) => matches(record, access)
+    const single =
+      reusable.size === 1 ? reusable.values().next().value : undefined
+    return (record: T) => {
+      let hasValue = false
+      let cachedValue: unknown
+      let values: Map<NativeColumnDef<T, TMeta>, unknown> | undefined
+      return matches(record, (current, column) => {
+        if (single) {
+          if (column !== single) return access(current, column)
+          if (!hasValue) {
+            cachedValue = access(current, column)
+            hasValue = true
+          }
+          return cachedValue
+        }
+        if (!reusable.has(column)) return access(current, column)
+        if (values?.has(column)) return values.get(column)
+        const value = access(current, column)
+        values ??= new Map()
+        values.set(column, value)
+        return value
       })
     }
   }
