@@ -63,7 +63,16 @@ export function createSubTables(options: {
         })
         let active = true
         let request: AbortController | undefined
+        let disposeModel: (() => void) | undefined
         let generation = 0
+        // Failed attempts need the same disposal boundary as released entries.
+        // eslint-disable-next-line require-yield -- Synchronous disposal action.
+        const disposeScope = action(function* (dispose: () => void) {
+          dispose()
+        })
+        onCleanup(() => {
+          if (disposeModel) disposeScope(disposeModel)
+        })
         const current = () =>
           !disposed &&
           active &&
@@ -86,56 +95,66 @@ export function createSubTables(options: {
           const controller = new AbortController()
           request = controller
           const token = ++generation
+          const currentRequest = () =>
+            current() && token === generation && !controller.signal.aborted
           setState({ status: 'loading' })
           counts.loads++
           // Also handles a loader that throws before returning its promise.
           void Promise.resolve()
             .then(() => {
-              if (!current() || token !== generation) return undefined
+              if (!currentRequest()) return undefined
               return options.load({
                 parentId,
                 scope,
                 signal: controller.signal,
               })
             })
-            .then(
-              (records) => {
-                if (
-                  !current() ||
-                  token !== generation ||
-                  controller.signal.aborted
-                ) {
+            .then((records) => {
+              if (!currentRequest()) {
+                counts.ignored++
+                return
+              }
+              if (!Array.isArray(records))
+                throw new Error('The sub-table loader must return records.')
+              let disposeAttempt: (() => void) | undefined
+              let accepted = false
+              try {
+                const model = runWithOwner(owner, () =>
+                  createRoot((dispose) => {
+                    disposeAttempt = dispose
+                    const model = createModel(records, 'table')
+                    options.ready?.(model, scope, parentId)
+                    return model
+                  }),
+                )
+                // The ready callback can remove the parent or start a retry.
+                if (!currentRequest()) {
                   counts.ignored++
                   return
                 }
                 request = undefined
-                const model = runWithOwner(owner, () => {
-                  const model = createModel(records!, 'table')
-                  options.ready?.(model, scope, parentId)
-                  return model
-                })
+                disposeModel = disposeAttempt
                 counts.created++
                 setState({ status: 'ready', model })
-              },
-              (error: unknown) => {
-                if (
-                  !current() ||
-                  token !== generation ||
-                  controller.signal.aborted
-                ) {
-                  counts.ignored++
-                  return
-                }
-                request = undefined
-                setState({
-                  status: 'error',
-                  message:
-                    error instanceof Error
-                      ? error.message
-                      : 'The sub-table could not load.',
-                })
-              },
-            )
+                accepted = true
+              } finally {
+                if (!accepted && disposeAttempt) disposeScope(disposeAttempt)
+              }
+            })
+            .catch((error: unknown) => {
+              if (!currentRequest()) {
+                counts.ignored++
+                return
+              }
+              request = undefined
+              setState({
+                status: 'error',
+                message:
+                  error instanceof Error
+                    ? error.message
+                    : 'The sub-table could not load.',
+              })
+            })
         }
         function closeEditors() {
           const value = state()
