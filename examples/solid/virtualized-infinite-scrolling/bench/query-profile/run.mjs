@@ -89,30 +89,42 @@ try {
       : {},
   )
   const contracts = []
-  for (const pageScoped of [false, true]) {
-    const contractPage = await browser.newPage()
-    const errors = []
-    contractPage.on('pageerror', (error) => errors.push(error.message))
-    contractPage.on('console', (message) => {
-      if (['warning', 'error'].includes(message.type()))
-        errors.push(message.text())
-    })
-    await contractPage.goto(`http://127.0.0.1:${server.address().port}/`)
-    await (
-      await contractPage.waitForFunction(() => window.queryProfile)
-    ).dispose()
-    const result = await contractPage.evaluate(
-      (pageScoped) => window.queryProfile.verifyPageContracts(pageScoped),
-      pageScoped,
-    )
-    assert.equal(result.active, 0)
-    assert.deepEqual(errors, [])
-    contracts.push({ pageScoped, ...result })
-    console.log(
-      `${pageScoped ? 'Page-scoped' : 'Original'} contracts: ${result.steps.length} states passed`,
-    )
-    await contractPage.close()
-  }
+  for (const pageScoped of [false, true])
+    for (const freshPayload of [false, true])
+      for (const structuralSharing of [false, true]) {
+        const contractPage = await browser.newPage()
+        const errors = []
+        contractPage.on('pageerror', (error) => errors.push(error.message))
+        contractPage.on('console', (message) => {
+          if (['warning', 'error'].includes(message.type()))
+            errors.push(message.text())
+        })
+        await contractPage.goto(`http://127.0.0.1:${server.address().port}/`)
+        await (
+          await contractPage.waitForFunction(() => window.queryProfile)
+        ).dispose()
+        const result = await contractPage.evaluate(
+          ({ pageScoped, freshPayload, structuralSharing }) =>
+            window.queryProfile.verifyPageContracts(
+              pageScoped,
+              freshPayload,
+              structuralSharing,
+            ),
+          { pageScoped, freshPayload, structuralSharing },
+        )
+        assert.equal(result.active, 0)
+        assert.deepEqual(errors, [])
+        contracts.push({
+          pageScoped,
+          freshPayload,
+          structuralSharing,
+          ...result,
+        })
+        console.log(
+          `${pageScoped ? 'Page-scoped' : 'Original'} contracts, fresh=${freshPayload}, sharing=${structuralSharing}: ${result.steps.length} states passed`,
+        )
+        await contractPage.close()
+      }
   for (const size of sizes)
     for (const structuralSharing of [true, false])
       for (let repeat = -warmups; repeat < repeats; repeat++) {
@@ -182,10 +194,10 @@ try {
                 sameReference: 0,
                 equalPayload: structuralSharing
                   ? 0
-                  : Math.ceil(size / pageSize) * 2,
-                fieldEdit: 2,
+                  : Math.ceil(size / pageSize),
+                fieldEdit: 1,
                 appendPage: 1,
-                pageReplacement: 2,
+                pageReplacement: 1,
                 removePage: 0,
               }[action]
               assert.equal(

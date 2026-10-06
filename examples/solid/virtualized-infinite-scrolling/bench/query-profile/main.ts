@@ -8,7 +8,10 @@ import {
 } from 'solid-js'
 import { QueryClient, useInfiniteQuery } from '@tanstack/solid-query'
 import { createTable, tableFeatures } from '@tanstack/solid-table'
-import { createInfiniteQueryRows } from '../../src/createInfiniteQueryRows'
+import {
+  createInfiniteQueryRows,
+  getInfiniteQueryReconcileKey,
+} from '../../src/createInfiniteQueryRows'
 import type { InfiniteData } from '@tanstack/solid-query'
 
 type Item = { id: string; name: string; score: number }
@@ -69,6 +72,7 @@ function start(
     const query = useInfiniteQuery(
       () => ({
         queryKey: key,
+        reconcile: getInfiniteQueryReconcileKey,
         initialPageParam: 0,
         queryFn: ({ pageParam }) =>
           Promise.resolve(page(pageParam * pageSize, pageSize)),
@@ -303,9 +307,15 @@ function start(
     },
   }
 }
-async function verifyPageContracts(pageScoped = true) {
+async function verifyPageContracts(
+  pageScoped = true,
+  freshPayload = false,
+  structuralSharing = true,
+) {
   const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: Infinity } },
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity, structuralSharing },
+    },
   })
   const firstKey = ['page-contracts', 0]
   const secondKey = ['page-contracts', 1]
@@ -322,6 +332,7 @@ async function verifyPageContracts(pageScoped = true) {
     const query = useInfiniteQuery(
       () => ({
         queryKey: key(),
+        reconcile: getInfiniteQueryReconcileKey,
         initialPageParam: 0,
         queryFn: ({ pageParam }) =>
           Promise.resolve({ data: [item(10 + pageParam)] }),
@@ -391,7 +402,10 @@ async function verifyPageContracts(pageScoped = true) {
     steps.push(name)
   }
   const write = (name: string, data: Data) => {
-    client.setQueryData(key, structuredClone(data))
+    client.setQueryData(
+      key,
+      freshPayload && name !== 'metadataOnly' ? structuredClone(data) : data,
+    )
     inspect(name)
   }
   try {

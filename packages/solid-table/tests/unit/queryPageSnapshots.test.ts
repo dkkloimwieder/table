@@ -8,11 +8,113 @@ import {
   onCleanup,
 } from 'solid-js'
 import { tableFeatures } from '@tanstack/table-core'
-import { createInfiniteQueryRows } from '../../../../examples/solid/virtualized-infinite-scrolling/src/createInfiniteQueryRows'
+import {
+  createInfiniteQueryRows,
+  getInfiniteQueryReconcileKey,
+} from '../../../../examples/solid/virtualized-infinite-scrolling/src/createInfiniteQueryRows'
 import { createTable } from '../../src/createTable'
 
 type Item = { id: string; name: string; details: { score: number } }
 type Page = { id: string; data: Array<Item> }
+
+test('Query reconciliation keys preserve row IDs and distinguish keyless page arrays', () => {
+  const rows: Array<Item> = []
+  expect(getInfiniteQueryReconcileKey({ data: rows })).toBe(rows)
+  expect(getInfiniteQueryReconcileKey({ data: rows, metadata: 'new' })).toBe(
+    rows,
+  )
+  expect(getInfiniteQueryReconcileKey({ id: 0, data: rows })).toBe(0)
+  expect(getInfiniteQueryReconcileKey({ id: 'row' })).toBe('row')
+  for (const value of [null, undefined, 1, 'id', {}, { pages: [] }, []]) {
+    expect(getInfiniteQueryReconcileKey(value)).toBeUndefined()
+  }
+})
+
+test('keyless Query pages survive edits, retained-object prepend, and reorder without aliases', () => {
+  const f = createRoot((dispose) => {
+    const [source, setSource] = createSignal({
+      pages: [
+        {
+          data: [
+            { id: 'a', score: 0 },
+            { id: 'b', score: 1 },
+          ],
+        },
+        { data: [{ id: 'c', score: 2 }] },
+      ],
+    })
+    // Match Solid Query's wrapper and positional, ID-free pages.
+    const projected = createProjection(
+      () => ({ value: source() }),
+      {},
+      {
+        key: getInfiniteQueryReconcileKey,
+      },
+    )
+    const rows = createInfiniteQueryRows(
+      () => projected.value.pages,
+      (part) => part.data,
+    )
+    const table = createTable({
+      features: tableFeatures({}),
+      columns: [{ accessorKey: 'score' }],
+      get data() {
+        return rows()
+      },
+      getRowId: (row) => row.id,
+    })
+    return { dispose, source, setSource, rows, table }
+  })
+  try {
+    const initial = f.rows()
+    f.table.getCoreRowModel().rows.forEach((row) => row.getValue('score'))
+    const cached = f.source()
+    f.setSource({
+      pages: [
+        { data: [{ id: 'a', score: 99 }, cached.pages[0]!.data[1]!] },
+        cached.pages[1]!,
+      ],
+    })
+    flush()
+    const edited = f.rows()
+    expect(edited[0]!.score).toBe(99)
+    expect(edited[1]).toBe(initial[1])
+    expect(edited[2]).toBe(initial[2])
+    for (let i = 0; i < 20; i++) {
+      const before = f.source()
+      f.setSource({
+        pages: [{ data: [{ id: `d${i}`, score: i }] }, ...before.pages],
+      })
+      flush()
+      f.setSource({ pages: [...f.source().pages].reverse() })
+      flush()
+      const expected = f.source().pages.flatMap((part) => part.data)
+      expect(f.rows()).toEqual(expected)
+      expect(
+        f.table
+          .getCoreRowModel()
+          .rows.map((row) => [row.id, row.getValue('score')]),
+      ).toEqual(expected.map((row) => [row.id, row.score]))
+      f.setSource({
+        pages: f.source().pages.filter((part) => part.data[0]!.id !== `d${i}`),
+      })
+      flush()
+    }
+    const beforeMetadata = f.rows()
+    const beforeModel = f.table.getCoreRowModel()
+    f.setSource({
+      pages: f.source().pages.map((part) => ({ ...part, metadata: 'changed' })),
+    })
+    flush()
+    expect(f.rows()).toBe(beforeMetadata)
+    expect(f.table.getCoreRowModel()).toBe(beforeModel)
+    expect(initial.map((row) => row.score)).toEqual([0, 1, 2])
+    expect(edited.map((row) => row.score)).toEqual([99, 1, 2])
+  } finally {
+    f.dispose()
+  }
+})
+
 const page = (id: string, name: string): Page => ({
   id,
   data: [{ id: `${id}-row`, name, details: { score: 1 } }],
@@ -25,7 +127,7 @@ function fixture() {
     const projected = createProjection(
       () => source(),
       { pages: [] },
-      { key: 'id' },
+      { key: getInfiniteQueryReconcileKey },
     )
     const reads = new Map<string, number>()
     const rows = createInfiniteQueryRows(

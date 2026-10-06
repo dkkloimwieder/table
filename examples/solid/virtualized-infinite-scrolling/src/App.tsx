@@ -13,7 +13,10 @@ import { createAtom } from '@tanstack/store'
 import { For, Show, onSettled } from 'solid-js'
 import { useSelector } from '../../_shared/useSelector'
 import { createVirtualizer } from '../../_shared/createVirtualizer'
-import { createInfiniteQueryRows } from './createInfiniteQueryRows'
+import {
+  createInfiniteQueryRows,
+  getInfiniteQueryReconcileKey,
+} from './createInfiniteQueryRows'
 import { fetchData } from './makeData'
 import type { Person, PersonApiResponse } from './makeData'
 import type { SortingState } from '@tanstack/solid-table'
@@ -71,6 +74,7 @@ function App() {
   const sorting = useSelector(sortingAtom)
 
   const query = useInfiniteQuery<PersonApiResponse>(() => ({
+    reconcile: getInfiniteQueryReconcileKey,
     queryKey: ['people', sorting()],
     queryFn: async ({ pageParam = 0 }) => {
       const start = (pageParam as number) * fetchSize

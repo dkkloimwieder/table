@@ -4,6 +4,80 @@ The store-over-core prototype retains too much memory for the target architectur
 It preserves table-core rows and caches, then adds native Solid bookkeeping around them.
 The replacement must use Solid directly and restrict display objects to consumer demand.
 
+## Query page reconciliation on 2026-10-06
+
+Beads issue `table-rt3.5` qualifies a supported Query configuration for the infinite scrolling example.
+The example now sets `reconcile` to `getInfiniteQueryReconcileKey`.
+A reconciliation key identifies objects that retain their reactive proxy.
+The function keys rows by ID and keyless pages by their `data` array reference.
+It leaves the projection wrapper unkeyed.
+It creates no canonical data copy and does not clone cache writes.
+
+The standalone reproduction fails with default or positional keys in both plain Solid and Solid Query.
+It seeds two keyless pages, edits the first page, and then prepends a page with the existing page references.
+The cache contains `d,a,b,c`, but the projected output contains `d,a,b,a,b`.
+Reorder also fails after this prepend.
+Fresh transport payloads pass the same operations.
+The reproduction imports no Table code and uses the pinned runtime versions from the prior probe.
+
+Source inspection points to Solid's positional adoption, rather than Query's cache contents, as the alias source.
+`applyAdopt` and `descend` adopt new page backings into existing proxy targets.
+`adoptPB` registers the incoming objects, while outgoing raw objects can still resolve to those targets.
+A moved, reused page can then resolve to a target that already represents another page.
+The page-array keys prevent that positional adoption between distinct pages.
+Beads issue `table-rt3.5` stores the exact standalone source, runner, and reproduction commands.
+
+The focused configuration preserves metadata-only updates that retain the same row arrays.
+It also preserves unchanged row snapshots after a field edit.
+Ten unit regressions cover the key shape, nested edits, immutable snapshots, repeated retained-object moves, detached writes, and cleanup.
+They include twenty prepend, reorder, and removal cycles after a field edit.
+
+Both deep bridges pass 33 Query contract states for each of eight configurations.
+These configurations combine the two bridges, fresh and retained-object payloads, and enabled and disabled structural sharing.
+The four source and distribution runs pass 1,056 contract states, 768 measured states, and 256 discarded warmup states.
+All 128 distinct work and identity groups agree across builds.
+Contract states cover metadata, empty results, restoration, fetching, query key changes, immutable old outputs, and bounded disposal.
+Every recorded bundle hash matches its frozen fixture build.
+
+The comparison now configures the same reconciliation key for both deep bridges.
+With 50,000 records and 1,000-row pages, an edit reads 50 pages in the whole-array bridge and one in the page helper.
+The helper samples 1.35–1.40 MiB under deep traversal in source and 0.94–1.46 MiB in distribution.
+Its total sampled allocation is 22.42–23.51 MiB in source and 22.90–24.12 MiB in distribution.
+
+With the example's 50-row pages, an edit reads 1,000 pages in the whole-array bridge and one in the page helper.
+The helper samples 0.03–0.06 MiB under deep traversal in source and 0.03–0.13 MiB in distribution.
+Its totals are 20.76–21.97 MiB in source and 21.47–22.40 MiB in distribution.
+The whole-array totals are 73.52–74.22 MiB in source and 73.19–75.20 MiB in distribution.
+Both bridges still rebuild all 50,000 core rows and read 100,000 cached column values.
+
+The page helper reads one page on append or same-length replacement and no pages on removal.
+With structural sharing disabled, distinct equal payloads still traverse every page and rebuild the core model.
+Stable reads, identical cache references, and default-sharing equal payloads preserve the array and model.
+These results preserve the prior optimization's scope and do not establish zero allocation.
+Sampling estimates temporary bytes, while timings include profiler overhead and shared host load.
+The final runs record one-minute host load from 5.57 to 16.97.
+
+Reports reside in `/tmp/table-query-page-key-{source,distribution}.json` and `/tmp/table-query-page-key-small-{source,distribution}.json`.
+Their sibling summaries and allocation profiles preserve the ranges and stack categories.
+The [fixture README](../../../examples/solid/virtualized-infinite-scrolling/bench/query-profile/README.md) gives reproduction commands.
+The separate standalone matrix resides in `/tmp/table-query-page-repro/matrix.json`.
+
+The Solid package passes 177 unit tests and its type test.
+The example and fixture pass types, production builds, and scoped lint with four existing optional-chain warnings and no errors.
+All six browser tests pass across the three Solid Query examples through the root command with scoped projects.
+
+The Solid qualification passes 15 stages and 282 browser cases, plus server rendering and hydration.
+Reports reside in `test-results/solid-qualification-query-page-key`.
+The first attempt collided with a concurrent package rebuild, and a serial rerun passes every stage.
+The documentation link scan passes.
+The prior broad sweep still records the unrelated tool, manifest, and Knip failures described below.
+This change affects an example and development fixtures, so it needs no published-package changeset.
+
+The upstream positional reconciliation defect remains under Beads issue `table-rt3.6`.
+Remove the focused configuration only after an approved upstream runtime passes the same default-key contracts.
+The change leaves protected dependency pins and application cache semantics unchanged.
+This decision supersedes the unresolved example failure and two-read sparse-edit counts in the prior findings below.
+
 ## Page-scoped Query snapshots on 2026-10-06
 
 Beads issue `table-rt3.4` replaces the infinite scrolling example's whole-array deep bridge with snapshots for individual pages.

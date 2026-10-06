@@ -1,6 +1,6 @@
 # Query snapshot allocations
 
-This fixture measures Beads issues `table-rt3.2` and `table-rt3.4`.
+This fixture measures Beads issues `table-rt3.2`, `table-rt3.4`, and `table-rt3.5`.
 It uses the installed Solid Query client and `useInfiniteQuery` with the root Table adapter.
 A snapshot is a plain data view at one point in time.
 A bridge converts Query data into Table data.
@@ -33,21 +33,26 @@ Structural sharing preserves unchanged cache objects across responses.
 The fixture tests both its default enabled state and an explicit disabled state.
 The disabled comparison forces equal payloads with distinct object references through the Query projection.
 The page helper replaces the bridge in the infinite scrolling example.
-It leaves Query configuration and runtime versions unchanged.
+The example sets Query's `reconcile` option to `getInfiniteQueryReconcileKey`.
+This function keys rows by ID and keyless pages by their `data` array reference.
+It leaves the projection wrapper unkeyed and preserves metadata-only updates that retain the same row array.
+It uses the existing cache objects and leaves runtime versions unchanged.
 
-Before sampling, both deep bridges pass 33 additional contract states through the actual Query client.
+Before sampling, both deep bridges pass 33 additional contract states per configuration through the actual Query client.
 These states cover repeated edits, metadata, prepend, reorder, replacement, row insertion and removal, empty pages, restoration, and query key changes.
 They also call `fetchNextPage()` and require zero active page computations after disposal.
-Structural replacement contracts use fresh objects, as a transport response does.
-The ordinary measured append and removal cases retain cache references.
-The eight unit regressions also cover nested edits, detached page writes, and bounded computations through repeated replacement.
+These contracts run with fresh and retained-object payloads, with structural sharing enabled and disabled.
+The eight configurations cover 264 contract states per build.
+Metadata-only writes retain the row arrays in every configuration.
+The ordinary measured append and removal cases also retain cache references.
+The ten unit regressions cover nested edits, detached writes, bounded computations, and repeated prepend and reorder after an edit.
 
-An inherited runtime failure remains under Beads issue `table-rt3.5`.
-After a field edit, prepending reused page objects can duplicate projected records while the Query cache remains correct.
-The original bridge and the page helper both expose that failure on the pinned versions.
-A standalone reproduction imports no Table code or page helper.
+Default and positional reconciliation still expose an inherited Solid runtime failure.
+After a field edit, prepending reused keyless pages can duplicate projected records while the Query cache remains correct.
+A standalone reproduction exposes this failure in plain Solid and Solid Query without Table imports.
 Fresh response objects pass the same operation.
-This optimization does not repair the upstream projection behavior or change application cache writes.
+The supported page-array key configuration fixes the example and its contracts without cloning cache writes.
+Beads issue `table-rt3.6` tracks removal of this configuration after an upstream fix.
 
 ## Run
 
@@ -99,17 +104,17 @@ If you use an installed Chrome executable, set `BENCH_EXECUTABLE_PATH` to its ab
 For the focused original-versus-page comparison, run these commands after both fixture builds.
 
 ```sh
-PLAYWRIGHT_BROWSERS_PATH=/tmp/table-query-browsers BENCH_MODES=deep,page-deep BENCH_OUTPUT=/tmp/table-query-page-source-final.json node bench/query-profile/run.mjs
-PLAYWRIGHT_BROWSERS_PATH=/tmp/table-query-browsers BENCH_DISTRIBUTION=1 BENCH_MODES=deep,page-deep BENCH_OUTPUT=/tmp/table-query-page-distribution-final.json node bench/query-profile/run.mjs
+PLAYWRIGHT_BROWSERS_PATH=/tmp/table-query-browsers BENCH_MODES=deep,page-deep BENCH_OUTPUT=/tmp/table-query-page-key-source.json node bench/query-profile/run.mjs
+PLAYWRIGHT_BROWSERS_PATH=/tmp/table-query-browsers BENCH_DISTRIBUTION=1 BENCH_MODES=deep,page-deep BENCH_OUTPUT=/tmp/table-query-page-key-distribution.json node bench/query-profile/run.mjs
 ```
 
-Each focused build covers 288 measured states and 96 warmup states, plus the 66 contract states.
+Each focused build covers 288 measured states and 96 warmup states, plus the 264 contract states.
 For the example's smaller pages, set `BENCH_PAGE_SIZE=50` and `BENCH_SIZES=50000` with distinct report names.
 That comparison covers 96 measured states and 32 warmup states per build.
 
 ```sh
-PLAYWRIGHT_BROWSERS_PATH=/tmp/table-query-browsers BENCH_MODES=deep,page-deep BENCH_PAGE_SIZE=50 BENCH_SIZES=50000 BENCH_OUTPUT=/tmp/table-query-page-small-source.json node bench/query-profile/run.mjs
-PLAYWRIGHT_BROWSERS_PATH=/tmp/table-query-browsers BENCH_DISTRIBUTION=1 BENCH_MODES=deep,page-deep BENCH_PAGE_SIZE=50 BENCH_SIZES=50000 BENCH_OUTPUT=/tmp/table-query-page-small-distribution.json node bench/query-profile/run.mjs
+PLAYWRIGHT_BROWSERS_PATH=/tmp/table-query-browsers BENCH_MODES=deep,page-deep BENCH_PAGE_SIZE=50 BENCH_SIZES=50000 BENCH_OUTPUT=/tmp/table-query-page-key-small-source.json node bench/query-profile/run.mjs
+PLAYWRIGHT_BROWSERS_PATH=/tmp/table-query-browsers BENCH_DISTRIBUTION=1 BENCH_MODES=deep,page-deep BENCH_PAGE_SIZE=50 BENCH_SIZES=50000 BENCH_OUTPUT=/tmp/table-query-page-key-small-distribution.json node bench/query-profile/run.mjs
 ```
 
 ## Measurements
