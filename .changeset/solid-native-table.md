@@ -16,6 +16,9 @@ Group identity stays separate from record identity, and only visible groups crea
 One manual-processing flag disables local data features while retaining view state.
 Applications can supply authoritative external totals and facets for partial results.
 Native row sections separate top pins, the scrollable sequence, and bottom pins without duplicating displayed records.
+Column sizing commands clamp widths and update view state without reading records.
+The processing pause holds evaluated row structure while cell values remain live.
+Applications guard configuration changes and retain displayed records while that pause remains active.
 The native virtualized example uses logical keys for measured geometry and creates views only for its rendered window.
 It preserves scroll position through layout changes and keeps edit drafts outside disposable row scopes.
 Browser coverage includes refused saves, concurrent edits, and keyboard navigation across virtual windows.

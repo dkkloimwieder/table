@@ -20,8 +20,26 @@ That record count describes the intended editing workload, not a limit or an aut
 Editing qualification does not require virtualized rendering.
 
 The [inline editing fixture](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/editing/README.md) demonstrates non-virtualized row drafts with plain text controls.
-It tests explicit save/cancel behavior, keyboard focus, revision conflicts, and draft retention through filtering and sorting.
+It tests save and cancel behavior, keyboard focus, revision conflicts, text edits, and native dropdown edits.
+Its application lock holds row structure and configuration while edits remain active.
 Its editing controller remains application example code and does not require Form or a UI component library.
+The separate [popup fixture](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/popup/README.md) tests a focused Kobalte Select port with fixed choices.
+Neither fixture publishes its editing controller, popup components, child-table controls, or named-view storage as a native Table API.
+
+## Choose the entry
+
+Both entries export a function named `createTable`, but their contracts differ.
+The root entry accepts the table-core API and its feature configuration.
+The native entry accepts `source`, explicit column functions, and the state fields described below.
+It exports `createNativeTable` as another name for the same native function.
+Import native types from `@tanstack/solid-table/native`.
+
+Native Table does not build table-core rows, value caches, or feature factories.
+It does not implement the complete root API or accept its row-model factories.
+Native row and group handles read current records through logical IDs.
+The renderer owns headers, content templates, record details, paging controls, and optional virtualization.
+Column `header`, `cell`, and `meta` values remain available to that renderer.
+Table does not render them itself.
 
 ## Supply the collection
 
@@ -564,8 +582,9 @@ Exact memory parity with the array-based table is not a requirement.
 The [WAMN integration fixture](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/wamn/README.md) connects real generated bindings and page helpers to a caller-owned Solid store.
 It tests loading, edits, revision conflicts, partial results, and vertical virtualization with plain controls.
 Production Form and shared DataGrid adoption are deferred and do not block Table qualification.
-Editing, selection, and action behavior still need separate interaction qualification with plain controls.
-Focused component vendoring remains a later assessment after Table is stable.
+The plain-control fixture also tests selection and generated action mappings.
+These mappings do not prove production forms, bulk actions, or searchable and paged reference editors.
+Production component adoption remains deferred.
 
 ## Holding row structure during editing
 
@@ -577,3 +596,22 @@ A structure first requested while paused initializes from current data.
 The caller must guard configuration changes and retain displayed source records until processing resumes.
 This option does not disable controls or manage drafts, transport requests, or record deletion.
 The editing fixture demonstrates those policies, including independent child saves and deferred removal.
+
+## Dispose the owning scope
+
+Native Table has no separate `dispose()` command.
+The component or `createRoot` that creates Table owns its reactive computations.
+Dispose that root when its consumer ends.
+Create each row or group view in its own rendered scope so that leaving the viewport releases its cells.
+
+The application owns transport cancellation, drafts, listeners, and popup resources.
+Those resources need cleanup in their own scopes.
+The editing fixture cancels child initialization and storage requests when their model ends.
+Late responses cannot install a child model or restore table configuration after disposal.
+
+The fixtures retain two workarounds for Solid rc.13.
+Native DOM listeners avoid the delegated-event retention described in the heap report.
+The WAMN fixture drains a disposed pending queue through an `action()` and `flush()` wrapper around its render disposer.
+These workarounds do not change source records or define a new Table API.
+Their retirement remains separate work under `table-gd3.6.4` and `table-gd3.6.5`.
+The popup fixture has its own repair-retirement task under `table-gd3.6.7.9`.

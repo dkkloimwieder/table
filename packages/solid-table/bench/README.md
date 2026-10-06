@@ -21,8 +21,92 @@ The array baseline measures Solid 2 with the old core algorithm, not the Solid 1
 
 The native entry supports explicit accessors, filters, search, facets, sorting, nested groups, and aggregates.
 It implements stable sorting, combined filters, and explicit missing-value placement.
-It does not yet implement the complete WAMN feature contract.
-Production feature work remains tracked in Beads under `table-gd3`.
+The engine also supplies column sizing, pinning, selection, expansion, and a processing pause for application editing locks.
+It does not implement production WAMN screens, Form integration, or shared UI wrappers.
+Those consumers remain deferred in Beads under `table-gd3`.
+
+## Qualification boundary
+
+The root package entry remains the table-core adapter.
+The native entry uses a separate focused contract and imports only Solid at runtime.
+Native qualification covers this contract and the [isolated WAMN fixture](./wamn/README.md).
+That fixture uses real generated bindings with deterministic transport responses.
+Its large synthetic datasets measure Table behavior rather than WAMN server page limits.
+
+The [editing fixture](./editing/README.md) tests non-virtualized text and dropdown editing with application-owned drafts.
+It also demonstrates filters, grouping, summaries, resizing, rearrangement, child tables, locks, and named views.
+The [popup fixture](./popup/README.md) adds a focused Kobalte Select port with fixed choices.
+Their controls and storage callbacks remain application examples.
+The native package does not publish them.
+Production WAMN, Form, shared UI, DataGrid, and generator integration remain deferred.
+Searchable references and undefined row or bulk actions need separate requirements and evidence.
+
+From the repository root, run the automated correctness qualification after installing dependencies and Chromium.
+
+```sh
+pnpm test:solid:qualification
+```
+
+This command covers source and distribution editing and popup cases, package builds, server rendering, and hydration.
+Hydration attaches the client to server-rendered HTML and requires existing cells to survive attachment and respond to edits.
+Reports remain under `test-results/solid-qualification`.
+The command does not capture heaps or replace the performance workloads below.
+
+For the WAMN extension, first prepare the generated inputs with the [WAMN fixture instructions](./wamn/README.md#run).
+Then run the extended qualification from the repository root.
+
+```sh
+node scripts/run-solid-qualification.mjs --wamn
+```
+
+This extension checks prepared input hashes, fixture types, and scoped lint.
+It also tests source, distribution, and development builds of the WAMN fixture.
+The runner uses `bench/wamn/.input` and does not invoke an external generator.
+Default CI does not require a WAMN checkout.
+
+## Handoff evidence on 2026-10-06
+
+The extended qualification passes all 24 stages and 336 browser cases with zero browser errors or Solid diagnostics.
+It runs 122 editing cases and 19 popup cases against each source and distribution build.
+It also runs 18 WAMN cases against each source, distribution, and development build.
+Server rendering and native plus root-adapter hydration pass.
+Hydration preserves existing DOM nodes, applies edits, and releases scopes after disposal.
+Reports and stage logs reside under `test-results/solid-qualification-native`.
+
+The WAMN fixture passes 18 correctness cases in each source, distribution, and development build.
+All 54 cases report zero browser errors and diagnostics.
+Reports reside in `/tmp/table-native-wamn-{source,distribution,development}.json`.
+Fixture types, scoped lint, and all three builds pass.
+The new case disposes the render before its first settlement and rejects late load responses.
+
+The fixture checks all 19 generated input hashes against its provenance record.
+Its current-source audit matches WAMN revision `1931d925f15e3e33ef2fc4899a8a46e96f0b4125` with no scoped source differences.
+The recorded generator inputs use Rust 1.98.1 and Zod 4.6.5.
+These results cover real generated bindings and the HTTP encoder and decoder over deterministic transport responses.
+They do not exercise a live WAMN server, authorization enforcement, production Form, DataGrid, or the RecordSelect Combobox.
+
+All eight TypeScript and TSX examples in the native guide compile against the current package types.
+The documentation link scan passes across 1,263 Markdown files.
+The scoped Solid checks pass 150 unit tests, package types, and source lint.
+The package audit passes strict publint and native import checks.
+The pending native changeset describes the focused engine, sizing commands, and processing pause.
+Production consumer adoption and upstream workaround retirement remain separate tasks.
+The [dated heap findings](./heap-findings.md#qualification-measurements-on-2026-10-06) record memory, active feature costs, and lifecycle evidence.
+The raw report and command index is `/tmp/table-native-qualification-evidence.json`.
+It preserves the environment variables for each fresh workload and capture.
+
+To repeat the matched timing workload, use the built entry with three repetitions and one warmup at each size.
+Run these commands from `packages/solid-table` after the package builds described below.
+
+```sh
+BENCH_DISTRIBUTION=1 pnpm exec vite build --config bench/vite.config.ts
+BENCH_DISTRIBUTION=1 BENCH_MODES=array,deep,native BENCH_SIZES=1000,10000,50000 BENCH_REPEATS=3 BENCH_WARMUPS=1 BENCH_OUTPUT=/tmp/table-native-qualification-matched.json node bench/run.mjs
+```
+
+The fresh feature, grouping, and virtualized runs also use the distribution build and three repetitions at those sizes.
+Their actual captures use `BENCH_PROFILE=1`, one repetition, and the largest size of 50,000 records.
+Matched array and native heaps instead capture all three sizes with the command below.
+The lifecycle capture uses the readable distribution build for 12 cycles at 50,000 records.
 
 ## Run
 
@@ -70,6 +154,18 @@ It captures actual heaps before and after the final disposal.
 `BENCH_OUTPUT_DIR`, `BENCH_CYCLES`, and `BENCH_SIZE` override the output directory, cycle count, and dataset size.
 The default output directory is `/tmp/table-native-lifecycle`.
 
+For matched captures, build the readable distribution variant first.
+Then run the capture command from `packages/solid-table`.
+
+```sh
+BENCH_PROFILE=1 BENCH_DISTRIBUTION=1 pnpm exec vite build --config bench/vite.config.ts
+BENCH_PROFILE=1 BENCH_DISTRIBUTION=1 BENCH_MODES=array,native BENCH_SIZES=1000,10000,50000 BENCH_HEAP_STAGES=empty,loaded,disposed BENCH_OUTPUT_DIR=/tmp/table-native-qualification-matched-heaps node bench/capture-heaps.mjs
+```
+
+Each requested size receives an empty, loaded, and disposed snapshot for each mode.
+The capture records its parameters, source hashes, distribution flag, asset hashes, and actual heap summaries.
+Parse retaining paths with `bench/inspect-heap.mjs` before comparing classified resources.
+
 The feature harness tests search, facets, visibility, field edits, removal, append, sorting, and manual mode in rendered tables.
 Each case compares the complete row sequence, visible cells, and displayed facets with independent calculations.
 Run it against the production build from the same directory.
@@ -116,6 +212,10 @@ These results describe this machine and workload, not every browser or applicati
 The raw output includes the browser, CPU, operating system, runtime, parameters, and host load averages.
 The user reports other development loads on this machine. Expect high timing variance.
 Use allocation counts and correctness as strict gates. Treat timing budgets as advisory until a controlled host reproduces the comparison.
+
+Historical reports below establish earlier feature decisions.
+They do not prove that the current checkout passes.
+The [heap findings](./heap-findings.md) record dated measurements and the remaining costs for the current qualification handoff.
 
 ## Native contract
 

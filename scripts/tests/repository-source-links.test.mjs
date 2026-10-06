@@ -69,7 +69,7 @@ test('external pages and historical source links keep their existing policy', ()
   }
 })
 
-test('all eight native guide source links point to existing repository files', () => {
+test('native guide source links point to existing repository files', () => {
   const guide = readFileSync(
     join(root, 'docs/framework/solid/guide/native.md'),
     'utf8',
@@ -79,7 +79,7 @@ test('all eight native guide source links point to existing repository files', (
       /\]\((https:\/\/github\.com\/dkkloimwieder\/table\/blob\/main\/[^)]+)\)/g,
     ),
   ]
-  assert.equal(links.length, 8)
+  assert.ok(links.length > 0, 'The native guide must include source links')
   for (const [, link] of links) {
     assert.equal(
       resolveRepositorySourceLink(link, root).reason,

@@ -4,6 +4,114 @@ The store-over-core prototype retains too much memory for the target architectur
 It preserves table-core rows and caches, then adds native Solid bookkeeping around them.
 The replacement must use Solid directly and restrict display objects to consumer demand.
 
+## Qualification measurements on 2026-10-06
+
+The matched timing comparison uses the built package with Chromium 153.0.8010.12.
+The matched comparison uses array, deep-bridge, and native modes at 1,000, 10,000, and 50,000 records.
+Each combination uses one warmup and three measured repetitions, for 27 measured samples.
+The host runs other development work.
+Its recorded one-minute load ranges from 1.04 to 1.75 during this comparison.
+Timings describe this workload and remain advisory.
+
+At 50,000 records, loaded heap ranges are 36.833–36.835 MiB for array and 105.238–105.241 MiB for deep-bridge.
+Native retains 39.260–39.262 MiB, approximately 6.59 percent above the array baseline.
+The array baseline includes the table-core row and cache machinery.
+It does not represent raw record storage alone.
+Exact parity with this baseline remains outside the acceptance requirements.
+
+Native append, visible edit, unused edit, and same-ID replacement create no rows, cells, or DOM mounts in this fixed-window workload.
+Their accessor counts are zero, one, zero, and eight respectively.
+All measured correctness, construction, and disposal gates pass.
+The report is `/tmp/table-native-qualification-matched.json`.
+
+At 50,000 records, native visible edits take 0.4–0.5 ms, compared with 24.5–24.8 ms for array.
+The deep-bridge edit range is 159.7–180.3 ms.
+Native filtering takes 59.2–72.2 ms, compared with 19.2–25.6 ms for array.
+Sparse refresh takes 109.1–111.5 ms for native and 82.7–87.3 ms for array.
+These comparisons show the remaining full-input cost of active features.
+They do not establish a controlled-host latency pass or a production regression.
+
+Search and facets pass nine samples, with three repetitions at each dataset size.
+The feature and grouping reports use Chromium 153.0.8010.12.
+Each sample compares 17 states with independent results, for 153 state comparisons.
+Grouping passes nine samples with 18 states each, for 162 state comparisons.
+The reports are `/tmp/table-native-qualification-features.json` and `/tmp/table-native-qualification-grouping.json`.
+
+At 50,000 records, the facet workload retains 78.140 MiB with its controls open.
+Closing those controls leaves 37.367–37.368 MiB.
+Disposal leaves 3.860–3.861 MiB.
+The first opening performs 100,000 accessor reads and 50,000 unique-value reads without replacing display resources.
+An active score filter with three facets performs 150,000 predicate reads.
+The search workload reaches 486,299 accessor reads.
+Closed-facet edits and unrelated updates perform no measured work.
+These counts distinguish lazy closed controls from active full-input scans.
+Repeated feature scans and sharing of aggregate work remain optimization tasks under `table-gd3.1.5`.
+
+At 50,000 records, nested grouping retains 49.355–49.356 MiB.
+One group per record retains 56.332 MiB, compared with 24.563 MiB after grouping is disabled.
+An amount edit reads 2,751 amounts for two aggregates without reading grouping fields or creating rows or cells.
+The group-sort workload reads 72,291 amounts for 164 aggregates and 315 comparisons.
+Visible summaries and aggregate ordering still perform separate work.
+
+The virtualized workload passes nine samples with 43 states each, for 387 independent state comparisons.
+This report uses Chromium 153.0.8010.12.
+Each sample also traverses the result for 90 animation frames.
+At 50,000 records, the peak remains 22 mounted rows.
+Scrolling creates 1,777 newly visible views and 8,885 cells.
+It reads exactly 8,885 cell values without repeating filtering or sorting.
+Loaded heap ranges from 28.701 to 28.702 MiB.
+Disposed heap ranges from 5.294 to 5.296 MiB, including the page baseline.
+The report is `/tmp/table-native-qualification-virtualized.json`.
+
+The WAMN workload passes its 18 integration cases and synthetic 1,000, 10,000, and 50,000-record workloads.
+Its report is `/tmp/table-native-qualification-wamn.json`.
+The actual loaded and disposed snapshots reside under `/tmp/table-native-qualification-wamn-heaps`.
+The runner requires zero classified records, stores, owners, computations, views, cells, and virtualizers after disposal.
+All those disposal assertions pass.
+
+Actual matched heaps use Chromium 153.0.8010.12 and include empty, loaded, and disposed captures at all three dataset sizes.
+Compressed snapshots and parsed summaries reside under `/tmp/table-native-qualification-matched-heaps`.
+Each `.summary.json` file preserves the classified counts and retaining paths for its snapshot.
+Native retains 40 row views, 320 cells, 525 computations, and 771 owners at every size in this fixed-window workload.
+It retains no classified table-core rows.
+All classified application categories reach zero after disposal in both native and array captures.
+
+At 50,000 records, native retains 53,103 store targets and 151,463 links.
+The parser counts 50,603 physical record objects, compared with 50,600 for array.
+Retaining paths include fixture history, Solid previous-property values, and parent metadata for nested stores.
+Two extra objects belong to row-zero metadata and one to an appended record's previous value.
+The focused row-zero probe records these paths in `/tmp/table-native-row-zero-paths.json`.
+Those objects do not constitute a second writable record dataset.
+The array capture retains 50,100 table-core rows and 19,520 cached cells.
+These counts explain the different runtime structures rather than imposing equal heap sizes.
+
+The actual facet captures retain 50,000 records, 40 views, and 160 cells while controls remain open.
+Closing the controls reduces tracked links from 400,784 to 758.
+Computations fall from 318 to 315, while 447 owned scopes remain stable.
+The disposed capture contains zero classified application resources.
+
+Nested groups retain 222 membership nodes, 21 group views, and 84 cells in the captured workload.
+One group per record creates 50,000 membership nodes but only 40 visible group views and 160 cells.
+Disabling grouping releases all membership nodes and retains 40 visible record views.
+The virtualized capture retains 15 views, 75 cells, and one virtualizer.
+It also retains 1,808 geometry entries for previously visited offsets.
+Those entries describe measurements rather than mounted display objects.
+The WAMN capture retains 19 views, 114 cells, one virtualizer, and 46 geometry entries at 50,000 records.
+
+The full capture set contains 31 actual snapshots with parsed retaining paths.
+The evidence index is `/tmp/table-native-qualification-evidence.json`.
+Compressed snapshots reside in `/tmp/table-native-qualification-{matched,features,grouping,virtualized,wamn}-heaps` and `/tmp/table-native-qualification-lifecycle`.
+All disposed or cleaned captures contain zero classified application records, Table resources, Solid graphs, groups, and virtualizers.
+The lifecycle report is `/tmp/table-native-qualification-lifecycle/lifecycle.json`.
+Its 12 cycles each load 50,000 records and dispose 2,499 created views.
+Each cleaned page retains 31 baseline DOM nodes.
+Cleaned heap moves from 3.53 to 3.81 MiB across the cycles without classified application resources.
+
+These results qualify the measured ownership and disposal boundaries.
+Shared accessors and combined feature scans remain unmeasured alternatives under `table-gd3.1.5`.
+Query page and deep-bridge allocation probes remain separate work under `table-rt3.2`.
+The current native source contract does not require an implicit Query bridge.
+
 ## Native virtualized grid
 
 The virtualized example reads one Solid record store and passes display keys to TanStack virtual-core.
