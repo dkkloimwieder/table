@@ -570,6 +570,8 @@ Sorting reads each sort key once per record during a derivation and uses a stabl
 An active feature processes its full input when a tracked field changes.
 Direct cell reads and active features can evaluate the same accessor separately.
 Expensive computed columns need measurement before adding shared memos.
+The [computed accessor profile](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/heap-findings.md#computed-accessor-profiling-on-2026-10-06) compares temporary value reuse and combined scans.
+Its alternative modes remain experimental and do not change the native package contract.
 
 The implementation creates no memo or owner for each loaded record.
 Facet controls add a few lazy memos per column instead.

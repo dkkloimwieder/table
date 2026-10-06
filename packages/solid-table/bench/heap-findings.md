@@ -4,6 +4,74 @@ The store-over-core prototype retains too much memory for the target architectur
 It preserves table-core rows and caches, then adds native Solid bookkeeping around them.
 The replacement must use Solid directly and restrict display objects to consumer demand.
 
+## Computed accessor profiling on 2026-10-06
+
+The focused fixture measures repeated computed values across filtering, search, and two open facets.
+It compares the native implementation with independent scans, temporary matcher reuse, and a combined scan.
+All modes read one caller-owned record store.
+None creates a second writable record dataset or a permanent memo for each record.
+The [benchmark instructions](./README.md#computed-accessor-profiling) give the source and distribution commands.
+
+The temporary matcher candidate reuses a value only inside one predicate call.
+It leaves row and facet scans independent.
+The combined candidate shares a scan and reactive dependencies across its active outputs.
+Both candidates assume pure deterministic accessors, which return the same value for unchanged inputs.
+This fixture does not prove that every application callback meets that condition.
+Neither candidate changes the published native implementation.
+
+Each facet excludes its own column filter and retains the search and other column filters.
+An own-filter change must preserve that facet's counts without another scan in the native implementation.
+An edit to a closed facet's field must perform no accessor work.
+A field edit outside observed columns must perform no accessor work.
+The fixture compares complete row IDs and facet counts with independent calculations after every state change.
+It also tests same-ID replacement and requires zero accessor work from source updates after disposal.
+
+The distribution run passes 72 measured samples across four modes, three sizes, and two accessor costs.
+Each combination uses three repetitions and one discarded warmup, for 1,008 measured state comparisons and 336 warmup comparisons.
+All 14 states match independent row and facet results, with zero browser errors.
+Native and independent scans match every measured work counter.
+The source smoke passes eight samples at 1,000 records across both accessor costs.
+Both reports use Chromium 153.0.8010.12.
+
+At 50,000 records, filter plus search reads the computed accessor 62,500 times in native and independent modes.
+Temporary matcher reuse reduces that count to 50,000 without changing source visits, predicates, or facet counts.
+Opening both facets reads 123,611 computed values in native mode, compared with 111,111 for matcher reuse.
+A relevant record edit reads 186,109 values in native mode and 161,111 with matcher reuse.
+An own-filter change reads 125,002 values in native mode and 100,000 with matcher reuse.
+The native own-filter change visits 100,000 records across rows and the other facet, without rescanning its own facet.
+
+The combined candidate reads 50,000 computed values in each of those states.
+Its shared dependencies also repeat row work when only the active color facet changes.
+That color edit runs 50,000 search predicates in the combined mode, compared with 12,499 in native and matcher modes.
+The native color edit visits 50,000 records for the color facet alone.
+Unrelated edits and closed-color edits perform zero measured work in all four modes.
+Source updates after disposal also perform zero accessor work.
+
+With 64 calculation steps, native search takes 54.5–56.8 ms at 50,000 records.
+Matcher reuse takes 44.9–51.2 ms in that state.
+Native facet opening takes 130.2–134.2 ms, compared with 122.6–133.7 ms for matcher reuse and 50.7–57.2 ms for the combined mode.
+The recorded one-minute host load ranges from 0.93 to 2.02.
+These timings remain advisory and establish no production latency budget.
+The fixture captures no heaps, so these counts establish no retained-memory improvement.
+
+The package retains independent lazy scans.
+They preserve the measured own-filter and field dependency boundaries.
+Temporary matcher reuse warrants a focused review of the accessor contract before any package change.
+Bead `table-gd3.1.6` tracks that contract and tests for application callbacks, dynamic columns, and controlled state.
+Combined scans remain an experiment because they couple outputs and add work for some edits.
+The reports reside in `/tmp/table-accessor-profile-distribution.json` and `/tmp/table-accessor-profile-source-smoke.json`.
+Their asset hashes identify the measured bundles.
+The final scoped regression passes all 15 stages and 282 editing and popup cases, plus server rendering and hydration.
+The profiling fixture passes types, lint, syntax, and formatting.
+The documentation link scan passes across 1,263 Markdown files.
+
+Sorting and grouping remain outside this fixture.
+Native sorting already reads each key once per surviving record in an ordering pass.
+Generic aggregate reuse needs a separate contract for custom functions, median, distinct values, and ordered summaries.
+Floating-point addition order also affects numerical results.
+A count aggregate reads no accessor values.
+These differences prevent a general claim that combined scans improve every feature.
+
 ## Qualification measurements on 2026-10-06
 
 The matched timing comparison uses the built package with Chromium 153.0.8010.12.
@@ -45,7 +113,8 @@ An active score filter with three facets performs 150,000 predicate reads.
 The search workload reaches 486,299 accessor reads.
 Closed-facet edits and unrelated updates perform no measured work.
 These counts distinguish lazy closed controls from active full-input scans.
-Repeated feature scans and sharing of aggregate work remain optimization tasks under `table-gd3.1.5`.
+The [computed accessor profile](#computed-accessor-profiling-on-2026-10-06) measures repeated filtering and search work.
+Sharing aggregate work remains outside that fixture.
 
 At 50,000 records, nested grouping retains 49.355–49.356 MiB.
 One group per record retains 56.332 MiB, compared with 24.563 MiB after grouping is disabled.
@@ -108,7 +177,7 @@ Each cleaned page retains 31 baseline DOM nodes.
 Cleaned heap moves from 3.53 to 3.81 MiB across the cycles without classified application resources.
 
 These results qualify the measured ownership and disposal boundaries.
-Shared accessors and combined feature scans remain unmeasured alternatives under `table-gd3.1.5`.
+The [computed accessor profile](#computed-accessor-profiling-on-2026-10-06) records the later comparison of temporary reuse and combined scans.
 Query page and deep-bridge allocation probes remain separate work under `table-rt3.2`.
 The current native source contract does not require an implicit Query bridge.
 
