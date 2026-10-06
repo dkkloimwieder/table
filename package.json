@@ -32,6 +32,7 @@
     "test:ci": "pnpm run test:compiler-examples && nx run-many --targets=test:eslint,test:sherif,test:knip,test:lib,test:types,test:build,build",
     "test:compiler-examples": "node scripts/verify-react-compiler-examples.mjs",
     "test:docs": "node scripts/verify-links.ts",
+    "test:solid:qualification": "node scripts/run-solid-qualification.mjs",
     "test:e2e": "pnpm run test:e2e:infrastructure && node scripts/run-e2e-with-retry.mjs",
     "test:e2e:affected": "pnpm run test:e2e:infrastructure && node scripts/run-e2e-with-retry.mjs --affected",
     "test:e2e:install": "playwright install chromium",

@@ -40,8 +40,16 @@ Every pull request must follow the [TanStack Table pull request template](.githu
 - Fork the repository and create a branch for your contribution. We prefer the `feat-*` branch name style.
 - Ensure you have `pnpm` installed, then install dependencies from the repository root with `pnpm i`. Do not install dependencies separately inside an example.
 - Build the affected packages with `pnpm build`. Use `pnpm build:all` when you need to build every package.
+- Builds do not format source files. Use `pnpm format` to apply formatting explicitly.
+- For Solid changes, use `pnpm --filter @tanstack/table-core run build` and `pnpm --filter @tanstack/solid-table run build` for scoped builds.
 - Implement your change, including relevant tests and documentation.
 - To run an example, change into its directory and run `pnpm dev` or `pnpm start`. Examples run on [http://localhost:7777](http://localhost:7777) by default.
 - Before opening a pull request with code changes, run both `pnpm test` and `pnpm test:e2e` from the repository root. On the first end-to-end test run, you may need to install the browser with `pnpm test:e2e:install`. Documentation, configuration, and other non-code changes do not require these test suites.
+- For Solid runtime or fixture changes, also run `pnpm test:solid:qualification` from the repository root after you install dependencies and Chromium.
+  This command builds core and Solid packages, prepares pinned popup inputs, and tests fixture types, fixture lint, server rendering, hydration, and browser interactions.
+  Hydration attaches the client to server HTML. Its test requires existing cells to survive attachment and respond to an edit.
+  Browser cases run against source and distribution builds. Heap captures remain separate performance tasks.
+  Reports and stage logs remain in `test-results/solid-qualification`, including after a failed stage.
+  Use `node scripts/run-solid-qualification.mjs --plan` to inspect the stages without running them.
 - Every change that affects a published package must include a changeset. Create the changelog entry with `pnpm changeset`; documentation, CI, and development-only changes do not require one.
 - Commit your work, open a pull request, complete the required template, and submit it for review.

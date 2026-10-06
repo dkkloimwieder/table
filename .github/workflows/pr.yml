@@ -20,6 +20,39 @@ permissions:
   contents: read
 
 jobs:
+  solid-qualification:
+    name: Solid Qualification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Select Solid Changes
+        id: solid
+        env:
+          NX_BASE: ${{ github.event.pull_request.base.sha }}
+        run: node scripts/run-solid-qualification.mjs --affected --select
+      - name: Setup Tools
+        if: steps.solid.outputs.selected == 'true'
+        uses: tanstack/config/.github/setup@e4b48f16568324f76f467aa4c2aac2f05db632c3 # main
+      - name: Install Chromium
+        if: steps.solid.outputs.selected == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Test Qualification Runner
+        if: steps.solid.outputs.selected == 'true'
+        run: node --test scripts/tests/solid-qualification.test.mjs
+      - name: Qualify Solid
+        if: steps.solid.outputs.selected == 'true'
+        run: pnpm test:solid:qualification
+      - name: Retain Qualification Reports
+        if: always() && steps.solid.outputs.selected == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: solid-qualification
+          path: test-results/solid-qualification
+          if-no-files-found: warn
   test:
     name: Test
     runs-on: ubuntu-latest
