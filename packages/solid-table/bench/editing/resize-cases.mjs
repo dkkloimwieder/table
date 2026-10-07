@@ -62,9 +62,11 @@ export async function resizeCases({
           (sum, col) => sum + parseFloat(col.style.width),
           0,
         ),
-        columns: headings.map((heading, index) => {
+        columns: headings.map((heading) => {
           const header = heading.getBoundingClientRect()
-          const body = row?.children[index]?.getBoundingClientRect()
+          const body = row
+            ?.querySelector(`[data-column="${heading.dataset.columnHeader}"]`)
+            ?.getBoundingClientRect()
           return {
             id: heading.dataset.columnHeader,
             headerWidth: header.width,

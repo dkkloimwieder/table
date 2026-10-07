@@ -89,7 +89,10 @@ export function Table(props: {
   const tableWidth = createMemo(() =>
     table
       .getVisibleColumns()
-      .reduce((sum, column) => sum + column.getSize(), 230),
+      .reduce(
+        (sum, column) => sum + column.getSize(),
+        props.details ? 176 : 144,
+      ),
   )
   // One DOM effect updates structural row controls. Each row must not subscribe
   // to a table-wide lock; that would fan out to every rendered row per edit.
@@ -538,6 +541,11 @@ export function Table(props: {
           class="sub-table-toggle"
           data-subtable-toggle={id}
           aria-label={`${props.details!.expanded(id) ? 'Collapse' : 'Expand'} sub-table ${id}`}
+          aria-describedby={
+            props.details!.draftCount(id)
+              ? domId(`child-drafts-${id}`)
+              : undefined
+          }
           aria-expanded={props.details!.expanded(id) ? 'true' : 'false'}
           aria-controls={
             props.details!.expanded(id) ? domId(`child-${id}`) : undefined
@@ -550,10 +558,13 @@ export function Table(props: {
             },
           })}
         >
-          {props.details!.expanded(id) ? '▾' : '▸'} Sub-table
+          <span aria-hidden="true">
+            {props.details!.expanded(id) ? '▾' : '▸'}
+          </span>
           <Show when={props.details!.draftCount(id)}>
-            {' '}
-            ({props.details!.draftCount(id)} drafts)
+            <span id={domId(`child-drafts-${id}`)} class="sr-only">
+              {props.details!.draftCount(id)} drafts
+            </span>
           </Show>
         </button>
       </Show>
@@ -571,7 +582,9 @@ export function Table(props: {
           class="sub-table-row"
           data-child-row={id}
         >
-          <td colspan={table.getVisibleColumns().length + 1}>
+          <td
+            colspan={table.getVisibleColumns().length + (props.details ? 2 : 1)}
+          >
             {props.details!.render(id)}
           </td>
         </tr>
@@ -589,6 +602,9 @@ export function Table(props: {
     return (
       <tbody>
         <tr data-row={id}>
+          <Show when={props.details}>
+            <td class="sub-table-control">{SubTableToggle(id)}</td>
+          </Show>
           <For each={row.getVisibleCells()}>
             {(cell) => {
               counts.cells++
@@ -601,7 +617,7 @@ export function Table(props: {
               )
             }}
           </For>
-          <td class="row-actions">{SubTableToggle(id)}</td>
+          <td class="row-actions" />
         </tr>
         {SubTableDetail(id, (node) => {
           detail = node
@@ -631,6 +647,9 @@ export function Table(props: {
             editing.drafts[id]?.status === 'pending' ? 'true' : 'false'
           }
         >
+          <Show when={props.details}>
+            <td class="sub-table-control">{SubTableToggle(id)}</td>
+          </Show>
           <For each={row.getVisibleCells()}>
             {(cell) => {
               counts.cells++
@@ -676,7 +695,7 @@ export function Table(props: {
                         <Show when={changed()}>
                           <span
                             id={domId(`edited-${id}-${field}`)}
-                            class="edited-marker"
+                            class="edited-marker sr-only"
                           >
                             Edited
                           </span>
@@ -748,13 +767,9 @@ export function Table(props: {
             <Show
               when={editing.drafts[id]?.expanded}
               fallback={
-                <span class="muted">
-                  {editing.drafts[id]?.status === 'pending'
-                    ? 'Saving…'
-                    : editing.drafts[id]
-                      ? 'Unsaved changes'
-                      : 'No changes'}
-                </span>
+                <Show when={editing.drafts[id]?.status === 'pending'}>
+                  <span role="status">Saving…</span>
+                </Show>
               }
             >
               <div class="buttons">
@@ -788,7 +803,6 @@ export function Table(props: {
             <p id={domId(`message-${id}`)} role="alert" class="message">
               {editing.drafts[id]?.message}
             </p>
-            {SubTableToggle(id)}
           </td>
         </tr>
         {SubTableDetail(id, (node) => {
@@ -817,6 +831,9 @@ export function Table(props: {
     return (
       <tbody>
         <tr data-group={key} class="group-row">
+          <Show when={props.details}>
+            <td class="sub-table-control" />
+          </Show>
           <For each={group.getVisibleCells()}>
             {(cell) => {
               counts.groupCells++
@@ -1096,6 +1113,9 @@ export function Table(props: {
             {isGrouped() ? 'Grouped records' : 'Editable records'}
           </caption>
           <colgroup>
+            <Show when={props.details}>
+              <col style={{ width: '32px' }} />
+            </Show>
             <For each={table.getVisibleColumns()}>
               {(column) => (
                 <col
@@ -1104,10 +1124,15 @@ export function Table(props: {
                 />
               )}
             </For>
-            <col style={{ width: '230px' }} />
+            <col style={{ width: '144px' }} />
           </colgroup>
           <thead>
             <tr>
+              <Show when={props.details}>
+                <th scope="col" class="sub-table-control">
+                  <span class="sr-only">Sub-table</span>
+                </th>
+              </Show>
               <For each={table.getVisibleColumns()}>
                 {(column) => (
                   <th
@@ -1179,6 +1204,9 @@ export function Table(props: {
             </tr>
             <Show when={isGrouped()}>
               <tr class="group-summary-headers">
+                <Show when={props.details}>
+                  <th class="sub-table-control" />
+                </Show>
                 <For each={table.getVisibleColumns()}>
                   {(column) => (
                     <th scope="col" data-summary-header={column.id}>

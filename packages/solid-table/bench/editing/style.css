@@ -69,7 +69,7 @@ select {
 }
 input[readonly],
 select:disabled {
-  background: #efefed;
+  background: #f0f0f0;
 }
 input[aria-invalid='true'],
 select[aria-invalid='true'] {
@@ -115,12 +115,12 @@ td {
   vertical-align: middle;
 }
 thead {
-  background: #efefed;
+  background: #f0f0f0;
   color: #555;
   font-size: 11px;
 }
 tbody tr[data-row]:hover {
-  background: #f6f6f4;
+  background: #f6f6f6;
 }
 .row-actions .buttons {
   display: inline-flex;
@@ -304,6 +304,7 @@ aside {
 }
 thead .table-filter {
   clear: both;
+  margin-top: 4px;
   font-weight: 400;
   font-size: 11px;
 }
@@ -395,7 +396,7 @@ thead .table-filter {
 
 .sub-table-row > td {
   padding: 10px;
-  background: #efefed;
+  background: #f0f0f0;
 }
 .sub-table {
   min-width: 0;
@@ -404,9 +405,22 @@ thead .table-filter {
 .sub-table h2 {
   font-size: 16px;
 }
+.sub-table-control {
+  padding: 4px;
+  text-align: center;
+}
 .sub-table-toggle {
   display: inline-flex;
-  margin: 0 0 0 8px;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 26px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+}
+.sub-table-toggle:hover {
+  border-color: #ccc;
 }
 .child-dataset {
   display: grid;
@@ -436,7 +450,7 @@ thead .table-filter {
 
 .column-header {
   position: relative;
-  padding-right: 28px;
+  padding-right: 14px;
 }
 .column-header .column-sort,
 .column-header .column-title {
@@ -477,12 +491,29 @@ thead .table-filter {
 }
 .column-move {
   float: left;
-  padding: 2px 4px;
-  margin-right: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin: 2px 6px 2px 0;
+  border-color: #d8d8d8;
+  background: transparent;
   touch-action: none;
   user-select: none;
   cursor: grab;
   color: #666;
+}
+.column-move-dots {
+  display: grid;
+  grid-template-columns: repeat(2, 2px);
+  grid-template-rows: repeat(2, 2px);
+  gap: 2px;
+}
+.column-move-dots span {
+  background: #888;
+  border-radius: 50%;
 }
 .column-move:active {
   cursor: grabbing;
@@ -525,4 +556,13 @@ fieldset.display-fields {
 }
 .editing-lock {
   color: #734b00;
+}
+
+thead .filter-input input,
+thead .filter-input select {
+  padding: 3px 4px;
+  font-size: 11px;
+}
+thead .clear-input {
+  padding: 2px 4px;
 }

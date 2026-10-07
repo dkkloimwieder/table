@@ -65,9 +65,11 @@ async function aligned(page, order) {
       cells: [...row.querySelectorAll('[data-column]')].map(
         (node) => node.dataset.column,
       ),
-      aligned: headers.every((node, index) => {
+      aligned: headers.every((node) => {
         const head = node.getBoundingClientRect()
-        const body = row.children[index].getBoundingClientRect()
+        const body = row
+          .querySelector(`[data-column="${node.dataset.columnHeader}"]`)
+          .getBoundingClientRect()
         return (
           Math.abs(head.left - body.left) < 1 &&
           Math.abs(head.width - body.width) < 1

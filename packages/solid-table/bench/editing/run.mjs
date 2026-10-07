@@ -763,6 +763,16 @@ try {
     'keyboard entry, native Tab and Shift+Tab, Escape, and no navigation saves',
     async () => {
       await start()
+      const toggle = page.locator('[data-subtable-toggle="R0001"]')
+      assert.equal(
+        await toggle.locator('..').evaluate((node) => node.cellIndex),
+        0,
+      )
+      await toggle.focus()
+      await page.keyboard.press('Tab')
+      assert.ok(await focused(edit()))
+      await page.keyboard.press('Shift+Tab')
+      assert.ok(await focused(toggle))
       await edit().focus()
       await page.keyboard.press('Enter')
       assert.ok(await focused(input()))
@@ -783,8 +793,6 @@ try {
       assert.ok(await focused(edit()))
       assert.equal(value.sample[0].note, 'Note 1')
       await edit('R0008', 'priority').focus()
-      await page.keyboard.press('Tab')
-      assert.ok(await focused(page.locator('[data-subtable-toggle="R0008"]')))
       await page.keyboard.press('Tab')
       assert.ok(
         await focused(

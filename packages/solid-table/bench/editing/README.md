@@ -27,8 +27,13 @@ An empty source instead reports that there are no records yet.
 The fixture parent in `App.tsx` supplies display configuration to `Table.tsx`.
 Display options can place filters above the table, in headers, in both places, or hide the controls.
 Header sorting and global search have separate switches.
+For a compact header-filter preview, add `&filters=headers` to the running demo URL, such as `http://localhost:7777/?size=25&save=all&filters=headers`.
+Display options can switch filter placement during the demo.
 Both filter presentations share Table state. Hiding or moving controls preserves their values.
 External state changes update the controls without another filter store.
+The fixture uses CSS for colors, spacing, and drag handles.
+The `details` prop supplies sub-table callbacks and content. Its icon-only toggle occupies a narrow first column.
+Changed fields stay highlighted. The fixture keeps edit descriptions available to screen readers without visible row status text.
 `TableFilter.tsx` accepts a value and change callback, so a parent can compose its own filter panel.
 
 The parent owns named views and storage through the existing controlled Table API.

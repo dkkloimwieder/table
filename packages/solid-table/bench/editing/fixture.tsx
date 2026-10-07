@@ -366,4 +366,8 @@ export function mountEditingFixture(editor?: Component<PriorityEditorProps>) {
     Number(parameters.get('size')) || 8,
     parameters.get('save') === 'all' ? 'table' : 'row',
   )
+  if (parameters.get('filters') === 'headers') {
+    configureControls!({ filters: 'headers' })
+    flush()
+  }
 }
