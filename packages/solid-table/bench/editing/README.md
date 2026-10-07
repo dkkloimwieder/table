@@ -7,7 +7,8 @@ The measured editing subsets contain 25, 250, and 999 records. These sizes are n
 
 ## Column filters and search
 
-Column filters appear above the table by default.
+The demo initially shows filters in column headers.
+Sub-tables and restarted test sessions show filters above the table.
 Record, Name, and Note use text matching. Priority uses an exact choice.
 Amount matches numeric text. Due date matches its UTC date text.
 Text matching ignores case and surrounding whitespace.
@@ -27,7 +28,8 @@ An empty source instead reports that there are no records yet.
 The fixture parent in `App.tsx` supplies display configuration to `Table.tsx`.
 Display options can place filters above the table, in headers, in both places, or hide the controls.
 Header sorting and global search have separate switches.
-For a compact header-filter preview, add `&filters=headers` to the running demo URL, such as `http://localhost:7777/?size=25&save=all&filters=headers`.
+The demo opens with compact header filters, such as `http://localhost:7777/?size=25&save=all`.
+For filters above the table, add `&filters=external` to the demo URL.
 Display options can switch filter placement during the demo.
 Both filter presentations share Table state. Hiding or moving controls preserves their values.
 External state changes update the controls without another filter store.
