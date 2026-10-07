@@ -302,12 +302,6 @@ aside {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-thead .table-filter {
-  clear: both;
-  margin-top: 4px;
-  font-weight: 400;
-  font-size: 11px;
-}
 .result-count {
   color: #666;
   font-size: 11px;
@@ -558,11 +552,90 @@ fieldset.display-fields {
   color: #734b00;
 }
 
-thead .filter-input input,
-thead .filter-input select {
-  padding: 3px 4px;
-  font-size: 11px;
+.column-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
 }
-thead .clear-input {
-  padding: 2px 4px;
+.column-heading .column-move {
+  float: none;
+  flex: 0 0 18px;
+  margin: 0;
+}
+.column-heading .column-sort,
+.column-heading .column-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.header-filter {
+  display: inline-flex;
+  flex: 0 0 18px;
+}
+.header-filter-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 22px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: #888;
+}
+.header-filter-trigger svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+  stroke-linejoin: round;
+}
+.header-filter-trigger[data-filtered='true'] {
+  color: #1657a8;
+}
+.header-filter-trigger[data-filtered='true']::after {
+  content: '';
+  position: absolute;
+  width: 3px;
+  height: 3px;
+  right: 1px;
+  top: 2px;
+  border-radius: 50%;
+  background: #1657a8;
+}
+.header-filter-popup {
+  position: fixed;
+  inset: auto;
+  width: 220px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #999;
+  background: white;
+  color: #191919;
+  font-size: 12px;
+  font-weight: 400;
+  box-shadow: 3px 3px 0 #ddd;
+}
+.header-filter-popup .table-filter {
+  margin: 0;
+}
+.header-filter-popup .table-filter label {
+  margin-right: 24px;
+}
+.header-filter-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: #666;
 }

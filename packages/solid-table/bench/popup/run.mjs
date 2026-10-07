@@ -382,13 +382,21 @@ try {
       await choose('High')
       await trigger().click()
       await settle()
-      await edit('R0002').click()
+      // The priority list can cover the next row's priority cell.
+      await root()
+        .getByRole('button', { name: 'Edit name R0002', exact: true })
+        .click()
       await settle()
       const state = await read()
       assert.equal(state.drafts.R0001.expanded, false)
       assert.equal(state.drafts.R0001.priority, 'high')
       assert.equal(state.drafts.R0002.expanded, true)
-      assert.equal(await focused(trigger('R0002')), true)
+      assert.equal(
+        await focused(
+          root().getByRole('textbox', { name: 'Name R0002', exact: true }),
+        ),
+        true,
+      )
       assert.equal(await page.getByRole('listbox').count(), 0)
     },
   )

@@ -16,6 +16,7 @@ import { aggregateCases } from './aggregate-cases.mjs'
 import { resizeCases, resizeWorkload } from './resize-cases.mjs'
 import { reorderCases, reorderWorkload } from './reorder-cases.mjs'
 import { viewCases, viewWorkload } from './view-cases.mjs'
+import { headerFilterCases } from './header-filter-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -247,6 +248,16 @@ try {
     save,
   })
   await subtableCases({ page, start, call, read, record, settle, idle })
+  await headerFilterCases({
+    page,
+    start,
+    call,
+    read,
+    record,
+    settle,
+    edit,
+    input,
+  })
   await reorderCases({
     page,
     cdp,
@@ -336,9 +347,14 @@ try {
         exact: true,
       })
       await placement.selectOption('both')
-      const header = page
-        .locator('thead')
-        .getByRole('textbox', { name: 'Filter saved names', exact: true })
+      await page
+        .getByRole('button', { name: 'Filter Name', exact: true })
+        .click()
+      const header = page.locator('thead').getByRole('textbox', {
+        name: 'Filter saved names',
+        exact: true,
+        includeHidden: true,
+      })
       assert.equal(await header.inputValue(), '0001')
       await header.fill('0002')
       await settle()

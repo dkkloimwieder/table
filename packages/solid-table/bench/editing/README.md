@@ -7,7 +7,14 @@ The measured editing subsets contain 25, 250, and 999 records. These sizes are n
 
 ## Column filters and search
 
-The demo initially shows filters in column headers.
+The demo initially shows filter icons in column headers.
+Click a filter icon to open its popup and change the value.
+A blue dot marks an active filter. The header keeps its value hidden.
+Reopening the popup shows the current value and a clear control.
+
+Escape closes the popup and keeps the filter applied. Enter in a text field also closes the popup.
+Outside clicks close the popup without moving focus from the destination.
+
 Sub-tables and restarted test sessions show filters above the table.
 Record, Name, and Note use text matching. Priority uses an exact choice.
 Amount matches numeric text. Due date matches its UTC date text.
@@ -19,7 +26,7 @@ It searches saved values in visible, searchable columns and combines with the co
 Record, Amount, and Due date are excluded from global search in this example. Their column filters remain available.
 An explicit column filter still applies when its column is hidden.
 
-Each control has its own clear button. Escape clears a text filter or global search and keeps focus in that control.
+Each control has its own clear button. Outside header popups, Escape clears a text filter or global search and keeps focus in that control.
 Composition input waits until the composed text is committed. Dropdown keys retain their browser behavior.
 Clear all filters resets both column filters and global search.
 The result count reports matching and loaded records. An empty result offers a Show all records action.
@@ -28,7 +35,7 @@ An empty source instead reports that there are no records yet.
 The fixture parent in `App.tsx` supplies display configuration to `Table.tsx`.
 Display options can place filters above the table, in headers, in both places, or hide the controls.
 Header sorting and global search have separate switches.
-The demo opens with compact header filters, such as `http://localhost:7777/?size=25&save=all`.
+The demo opens with compact header filter popups, such as `http://localhost:7777/?size=25&save=all`.
 For filters above the table, add `&filters=external` to the demo URL.
 Display options can switch filter placement during the demo.
 Both filter presentations share Table state. Hiding or moving controls preserves their values.

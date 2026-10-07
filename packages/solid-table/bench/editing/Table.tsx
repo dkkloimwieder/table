@@ -13,6 +13,7 @@ import {
 import { Dynamic } from '@solidjs/web'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { TableFilter } from './TableFilter'
+import { TableHeaderFilter } from './TableHeaderFilter'
 import { TableGrouping } from './TableGrouping'
 import { TableColumnResize } from './TableColumnResize'
 import { TableColumnMove, moveColumn } from './TableColumnMove'
@@ -76,7 +77,7 @@ export function Table(props: {
   const domPrefix = createUniqueId()
   const domId = (value: string) => `${domPrefix}-${value}`
   let externalFilter: HTMLInputElement | undefined
-  let headerFilter: HTMLInputElement | undefined
+  let headerFilter: HTMLButtonElement | undefined
   let search: HTMLInputElement | undefined
   let element!: HTMLTableElement
   let modeControl!: HTMLSelectElement
@@ -418,19 +419,34 @@ export function Table(props: {
     column: ReturnType<EditingModel['table']['getColumns']>[number],
     placement: 'external' | 'headers',
   ) {
+    if (placement === 'headers')
+      return (
+        <TableHeaderFilter
+          columnId={column.id}
+          columnLabel={String(column.columnDef?.header)}
+          label={filterLabels[column.id]!}
+          clearLabel={`Clear ${String(column.columnDef?.header)} filter`}
+          value={String(column.getFilterValue() ?? '')}
+          onValueChange={(value) => column.setFilterValue(value || undefined)}
+          disabled={!model.localProcessing() || model.locked()}
+          choices={column.id === 'priority' ? priorityChoices : undefined}
+          triggerRef={(node) => {
+            if (column.id === 'name') headerFilter = node
+          }}
+          onRemovalFocus={restoreAfterRemoval}
+        />
+      )
     return (
       <TableFilter
         label={filterLabels[column.id]!}
         clearLabel={`Clear ${String(column.columnDef?.header)} filter`}
-        hideLabel={placement === 'headers'}
         value={String(column.getFilterValue() ?? '')}
         onValueChange={(value) => column.setFilterValue(value || undefined)}
         disabled={!model.localProcessing() || model.locked()}
         choices={column.id === 'priority' ? priorityChoices : undefined}
         inputRef={(node) => {
           if (column.id === 'name') {
-            if (placement === 'external') externalFilter = node
-            else headerFilter = node
+            externalFilter = node
           }
         }}
       />
@@ -1148,44 +1164,46 @@ export function Table(props: {
                           : 'descending'
                     }
                   >
-                    <Show when={props.controls?.columnReordering !== false}>
-                      <ColumnMove column={column} />
-                    </Show>
-                    <Show
-                      when={props.controls?.headerSorting !== false}
-                      fallback={
-                        <span class="column-title">
-                          {String(column.columnDef?.header)}
-                        </span>
-                      }
-                    >
-                      <button
-                        class="column-sort"
-                        aria-label={`Sort by ${String(column.columnDef?.header)}`}
-                        disabled={!model.localProcessing() || model.locked()}
-                        ref={nativeEvents<HTMLElement>({
-                          click: (event) =>
-                            column.toggleSorting(undefined, event.shiftKey),
-                        })}
+                    <div class="column-heading">
+                      <Show when={props.controls?.columnReordering !== false}>
+                        <ColumnMove column={column} />
+                      </Show>
+                      <Show
+                        when={props.controls?.headerSorting !== false}
+                        fallback={
+                          <span class="column-title">
+                            {String(column.columnDef?.header)}
+                          </span>
+                        }
                       >
-                        {String(column.columnDef?.header)}{' '}
-                        <span aria-hidden="true">
-                          {column.getIsSorted() === 'asc'
-                            ? '↑'
-                            : column.getIsSorted() === 'desc'
-                              ? '↓'
-                              : '↕'}
-                        </span>
-                      </button>
-                    </Show>
-                    <Show
-                      when={
-                        filterPlacement() === 'headers' ||
-                        filterPlacement() === 'both'
-                      }
-                    >
-                      {columnFilter(column, 'headers')}
-                    </Show>
+                        <button
+                          class="column-sort"
+                          aria-label={`Sort by ${String(column.columnDef?.header)}`}
+                          disabled={!model.localProcessing() || model.locked()}
+                          ref={nativeEvents<HTMLElement>({
+                            click: (event) =>
+                              column.toggleSorting(undefined, event.shiftKey),
+                          })}
+                        >
+                          {String(column.columnDef?.header)}{' '}
+                          <span aria-hidden="true">
+                            {column.getIsSorted() === 'asc'
+                              ? '↑'
+                              : column.getIsSorted() === 'desc'
+                                ? '↓'
+                                : '↕'}
+                          </span>
+                        </button>
+                      </Show>
+                      <Show
+                        when={
+                          filterPlacement() === 'headers' ||
+                          filterPlacement() === 'both'
+                        }
+                      >
+                        {columnFilter(column, 'headers')}
+                      </Show>
+                    </div>
                     <Show
                       when={
                         props.controls?.columnResizing !== false &&

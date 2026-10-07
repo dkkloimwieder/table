@@ -1,7 +1,7 @@
 import { For, Show, createUniqueId } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 
-export function TableFilter(props: {
+export type TableFilterProps = {
   label: string
   clearLabel: string
   value: string
@@ -11,7 +11,11 @@ export function TableFilter(props: {
   hideLabel?: boolean
   choices?: ReadonlyArray<{ value: string; label: string }>
   inputRef?: (node: HTMLInputElement) => void
-}) {
+  controlRef?: (node: HTMLInputElement | HTMLSelectElement) => void
+  onEscape?: () => void
+}
+
+export function TableFilter(props: TableFilterProps) {
   const id = createUniqueId()
   let control!: HTMLInputElement | HTMLSelectElement
   function clear() {
@@ -38,6 +42,7 @@ export function TableFilter(props: {
                 (node) => {
                   control = node
                   props.inputRef?.(node)
+                  props.controlRef?.(node)
                 },
                 nativeEvents<HTMLInputElement>({
                   input: (event) => {
@@ -52,7 +57,8 @@ export function TableFilter(props: {
                     if (event.key === 'Escape' && !event.isComposing) {
                       event.preventDefault()
                       event.stopPropagation()
-                      clear()
+                      if (props.onEscape) props.onEscape()
+                      else clear()
                     }
                   },
                 }),
@@ -68,6 +74,7 @@ export function TableFilter(props: {
               ref={[
                 (node) => {
                   control = node
+                  props.controlRef?.(node)
                 },
                 nativeEvents<HTMLSelectElement>({
                   change: (event) => {
