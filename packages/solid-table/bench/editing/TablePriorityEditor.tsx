@@ -1,10 +1,14 @@
+import { For } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import type { FieldChoice } from './fields'
 
 export type PriorityEditorProps = {
   value: string
   disabled: boolean
   invalid: boolean
   label: string
+  choices: ReadonlyArray<FieldChoice>
+  placeholder?: string
   editorId: string
   ownerId: string
   describedBy: string
@@ -27,11 +31,15 @@ export function TablePriorityEditor(props: PriorityEditorProps) {
       })}
     >
       <option value="" disabled>
-        Choose priority
+        {props.placeholder}
       </option>
-      <option value="low">Low</option>
-      <option value="normal">Normal</option>
-      <option value="high">High</option>
+      <For each={props.choices}>
+        {(choice) => (
+          <option value={choice.value} disabled={choice.disabled}>
+            {choice.label}
+          </option>
+        )}
+      </For>
     </select>
   )
 }

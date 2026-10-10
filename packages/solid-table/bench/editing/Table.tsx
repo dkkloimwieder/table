@@ -47,20 +47,6 @@ function sameIds(left: ReadonlyArray<string>, right: ReadonlyArray<string>) {
   )
 }
 
-const filterLabels: Record<string, string> = {
-  id: 'Filter record IDs',
-  name: 'Filter saved names',
-  note: 'Filter saved notes',
-  priority: 'Filter priority',
-  amount: 'Filter amounts',
-  dueDate: 'Filter due dates',
-}
-const priorityChoices = [
-  { value: 'low', label: 'Low' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'high', label: 'High' },
-]
-
 export function Table(props: {
   model: EditingModel
   /** Matched benchmark presentation; the model and column configuration stay shared. */
@@ -431,12 +417,15 @@ export function Table(props: {
         <TableHeaderFilter
           columnId={column.id}
           columnLabel={String(column.columnDef?.header)}
-          label={filterLabels[column.id]!}
+          label={
+            column.columnDef?.meta?.filterLabel ??
+            `Filter ${String(column.columnDef?.header ?? column.id)}`
+          }
           clearLabel={`Clear ${String(column.columnDef?.header)} filter`}
           value={String(column.getFilterValue() ?? '')}
           onValueChange={(value) => column.setFilterValue(value || undefined)}
           disabled={!model.localProcessing() || model.locked()}
-          choices={column.id === 'priority' ? priorityChoices : undefined}
+          choices={column.columnDef?.meta?.editor?.choices}
           triggerRef={(node) => {
             if (column.id === 'name') headerFilter = node
           }}
@@ -445,12 +434,15 @@ export function Table(props: {
       )
     return (
       <TableFilter
-        label={filterLabels[column.id]!}
+        label={
+          column.columnDef?.meta?.filterLabel ??
+          `Filter ${String(column.columnDef?.header ?? column.id)}`
+        }
         clearLabel={`Clear ${String(column.columnDef?.header)} filter`}
         value={String(column.getFilterValue() ?? '')}
         onValueChange={(value) => column.setFilterValue(value || undefined)}
         disabled={!model.localProcessing() || model.locked()}
-        choices={column.id === 'priority' ? priorityChoices : undefined}
+        choices={column.columnDef?.meta?.editor?.choices}
         inputRef={(node) => {
           if (column.id === 'name') {
             externalFilter = node
@@ -698,7 +690,9 @@ export function Table(props: {
                     {id}
                   </th>
                 )
-              if (column === 'amount' || column === 'dueDate')
+              // This fixture chooses its field configuration at model creation.
+              const editor = untrack(() => cell.column.columnDef?.meta?.editor)
+              if (!editor)
                 return (
                   <td data-column={column} class="read-only-value">
                     {cell.column.columnDef?.meta?.formatValue?.(
@@ -719,7 +713,7 @@ export function Table(props: {
                       <button
                         class="cell-value"
                         data-edit={`${id}/${field}`}
-                        aria-label={`Edit ${field} ${id}`}
+                        aria-label={`Edit ${editor.label.toLowerCase()} ${id}`}
                         aria-describedby={`${domId(`edited-${id}-${field}`)} ${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
                         data-edited={changed() ? 'true' : undefined}
                         disabled={editing.drafts[id]?.status === 'pending'}
@@ -728,7 +722,7 @@ export function Table(props: {
                         <span data-value>
                           {String(
                             editing.drafts[id]?.[field] ?? cell.getValue(),
-                          ) || (field === 'note' ? 'Add note' : 'Empty value')}
+                          ) || editor.emptyLabel}
                         </span>
                         <Show when={changed()}>
                           <span
@@ -741,17 +735,19 @@ export function Table(props: {
                       </button>
                     }
                   >
-                    {field === 'priority' ? (
+                    {editor.choices ? (
                       <Dynamic
                         component={props.priorityEditor ?? TablePriorityEditor}
                         editorId={`${id}/${field}`}
                         ownerId={domId(`editor-${id}`)}
-                        label={`Priority ${id}`}
+                        label={`${editor.label} ${id}`}
+                        choices={editor.choices}
+                        placeholder={editor.placeholder}
                         describedBy={`${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
                         invalid={Boolean(
                           editing.drafts[id]?.fieldErrors[field],
                         )}
-                        value={editing.drafts[id]?.priority ?? ''}
+                        value={editing.drafts[id]?.[field] ?? ''}
                         disabled={editing.drafts[id]?.status === 'pending'}
                         onFocus={() => editing.focus(id, field)}
                         onValueChange={(value: string) =>
@@ -761,7 +757,7 @@ export function Table(props: {
                     ) : (
                       <input
                         data-editor={`${id}/${field}`}
-                        aria-label={`${field === 'name' ? 'Name' : 'Note'} ${id}`}
+                        aria-label={`${editor.label} ${id}`}
                         aria-describedby={`${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
                         aria-invalid={
                           editing.drafts[id]?.fieldErrors[field]

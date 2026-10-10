@@ -9,7 +9,8 @@ import {
 } from 'solid-js'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
 import { createEditing } from './createEditing'
-import { validateEdits } from './validation'
+import { createEditValidator } from './validation'
+import { defaultFields } from './fields'
 import {
   compareValues,
   day,
@@ -18,6 +19,7 @@ import {
   sameSummary,
   summaryChoices,
 } from './aggregates'
+import type { EditingField, EditingFields } from './fields'
 import type { Summary, SummaryChoice, ValueKind } from './aggregates'
 import type {
   NativeAggregationFn,
@@ -35,6 +37,8 @@ const contains = (value: unknown, query: unknown) =>
   String(value).toLowerCase().includes(String(query).trim().toLowerCase())
 
 export type ColumnMeta = {
+  filterLabel?: string
+  editor?: EditingField
   groupingLabel?: string
   summaryLabel?: string
   summaryChoices?: ReadonlyArray<SummaryChoice>
@@ -42,12 +46,16 @@ export type ColumnMeta = {
   formatSummary?: (value: unknown) => string
 }
 
-export function createRecords(size: number, prefix = '') {
+export function createRecords(
+  size: number,
+  prefix = '',
+  priority = defaultFields.priority.initialValue,
+) {
   return Array.from({ length: size }, (_, index): RecordData => ({
     id: `R${String(index + 1).padStart(4, '0')}`,
     name: `${prefix}Record ${String(index + 1).padStart(4, '0')}`,
     note: `Note ${index + 1}`,
-    priority: 'normal',
+    priority,
     amount: index % 11 === 10 ? null : ((index * 37) % 500) + 10,
     dueDate:
       index % 13 === 12 ? null : Date.UTC(2026, 9, 1) + (index % 31) * day,
@@ -58,8 +66,16 @@ export function createRecords(size: number, prefix = '') {
 export function createModel(
   data: number | Array<RecordData>,
   mode: 'row' | 'table' = 'row',
+  fields: EditingFields = defaultFields,
 ) {
-  const initial = typeof data === 'number' ? createRecords(data) : data
+  const initial =
+    typeof data === 'number'
+      ? createRecords(data, '', fields.priority.initialValue)
+      : data
+  const validateEdits = createEditValidator(fields)
+  const priorityOrder = fields.priority.choices
+    .filter((choice) => choice.value && !choice.disabled)
+    .map((choice) => choice.value)
   const [saveMode, writeSaveMode] = createSignal(mode)
   const [records, setRecords] = createStore<
     Record<string, RecordData | undefined>
@@ -143,6 +159,10 @@ export function createModel(
   > = {}
   function aggregated(id: string, kind: ValueKind, groupingLabel?: string) {
     const choices = summaryChoices[kind]
+    const editor =
+      id === 'name' || id === 'note' || id === 'priority'
+        ? fields[id]
+        : undefined
     const functions = Object.fromEntries(
       choices.flatMap(({ value }) => {
         if (value === 'none') return []
@@ -167,6 +187,16 @@ export function createModel(
     aggregateFunctions[id] = functions
     const meta = Object.assign(Object.create(null) as ColumnMeta, {
       groupingLabel,
+      editor,
+      filterLabel:
+        editor?.filterLabel ??
+        (
+          {
+            id: 'Filter record IDs',
+            amount: 'Filter amounts',
+            dueDate: 'Filter due dates',
+          } as Record<string, string>
+        )[id],
       summaryChoices: choices,
       formatValue: (value: unknown) => formatValue(value, kind),
       formatSummary: (value: unknown) =>
@@ -196,12 +226,12 @@ export function createModel(
       enableGlobalFilter: false,
     },
     {
-      ...aggregated('name', 'text', 'Name initial'),
+      ...aggregated('name', 'text', `${fields.name.label} initial`),
       id: 'name',
       size: 220,
       minSize: 140,
       maxSize: 640,
-      header: 'Name',
+      header: fields.name.label,
       filterFn: contains,
       sortFn: compareValues,
       getGroupingValue: (row) => {
@@ -218,7 +248,7 @@ export function createModel(
       size: 260,
       minSize: 140,
       maxSize: 800,
-      header: 'Note',
+      header: fields.note.label,
       filterFn: contains,
       ...aggregated('note', 'text'),
       sortFn: compareValues,
@@ -232,8 +262,8 @@ export function createModel(
       size: 140,
       minSize: 120,
       maxSize: 280,
-      header: 'Priority',
-      ...aggregated('priority', 'text', 'Priority'),
+      header: fields.priority.label,
+      ...aggregated('priority', 'text', fields.priority.label),
       getGroupingValue: (row) => {
         counts.groupReads++
         return row.priority || null
@@ -242,8 +272,8 @@ export function createModel(
       sortFn: (left, right) =>
         typeof left === 'number' && typeof right === 'number'
           ? left - right
-          : ['low', 'normal', 'high'].indexOf(String(left)) -
-            ['low', 'normal', 'high'].indexOf(String(right)),
+          : priorityOrder.indexOf(String(left)) -
+            priorityOrder.indexOf(String(right)),
       accessorFn: (row) => {
         counts.priority++
         return row.priority

@@ -7,8 +7,10 @@ import {
   subscriptions,
 } from 'solid-js/attribution'
 import { App } from './App'
+import { defaultFields, workflowFields } from './fields'
 import { createChildLoader } from './childLoader'
 import { createViewStorageFixture } from './viewStorageFixture'
+import type { EditingFields } from './fields'
 import type { ViewStorageFixture } from './viewStorageFixture'
 import type { TableViews } from './createTableViews'
 import type { ChildLoader } from './childLoader'
@@ -18,6 +20,7 @@ import type { EditingModel } from './model'
 import type { Component } from 'solid-js'
 import type { PriorityEditorProps } from './TablePriorityEditor'
 
+let fixtureFields: EditingFields = defaultFields
 let priorityEditor: Component<PriorityEditorProps> | undefined
 
 const root = document.getElementById('root')!
@@ -67,16 +70,22 @@ function stop() {
   remembered = undefined
   flush()
 }
-function start(size = 8, saveMode: SaveMode = 'row') {
+function start(
+  size = 8,
+  saveMode: SaveMode = 'row',
+  configuration: 'default' | 'workflow' = 'default',
+) {
+  const fields = configuration === 'workflow' ? workflowFields : fixtureFields
   stop()
   events.push(...(capture?.stop() ?? []))
   capture = OBSERVE?.diagnostics.capture()
   dispose = render(() => {
-    childLoader = createChildLoader()
+    childLoader = createChildLoader(fields.priority.initialValue)
     viewStorage = createViewStorageFixture()
     return (
       <App
         size={size}
+        fields={fields}
         priorityEditor={priorityEditor}
         saveMode={saveMode}
         loadChildren={childLoader.load}
@@ -358,13 +367,18 @@ declare global {
     editingFixture: typeof api
   }
 }
-export function mountEditingFixture(editor?: Component<PriorityEditorProps>) {
+export function mountEditingFixture(
+  editor?: Component<PriorityEditorProps>,
+  fields: EditingFields = defaultFields,
+) {
+  fixtureFields = fields
   priorityEditor = editor
   window.editingFixture = api
   const parameters = new URLSearchParams(location.search)
   start(
     Number(parameters.get('size')) || 8,
     parameters.get('save') === 'all' ? 'table' : 'row',
+    parameters.get('fields') === 'workflow' ? 'workflow' : 'default',
   )
   configureControls!({
     filters: parameters.get('filters') === 'external' ? 'external' : 'headers',

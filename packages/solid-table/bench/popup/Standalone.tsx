@@ -1,5 +1,6 @@
 import { createSignal, flush } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { popupFields } from '../editing/fields'
 import { PopupPriorityEditor } from './PopupPriorityEditor'
 
 export function Standalone() {
@@ -31,6 +32,8 @@ export function Standalone() {
           disabled={disabled()}
           invalid={invalid()}
           label="Priority"
+          choices={popupFields.priority.choices}
+          placeholder={popupFields.priority.placeholder}
           editorId="standalone/priority"
           ownerId="standalone"
           describedBy="standalone-message"

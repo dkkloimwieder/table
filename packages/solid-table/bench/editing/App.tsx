@@ -3,11 +3,13 @@ import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/na
 import { Table } from './Table'
 import { TableOptions } from './TableOptions'
 import { createModel } from './model'
+import { defaultFields } from './fields'
 import { createSubTables } from './createSubTables'
 import { createChildLoader } from './childLoader'
 import { createTableViews } from './createTableViews'
 import { createMemoryViewStorage } from './viewStorage'
 import { TableViews } from './TableViews'
+import type { EditingFields } from './fields'
 import type { SaveMode, TableControls, TableRowAction } from './Table'
 import type { EditingModel } from './model'
 import type { ChildLoad, SubTables } from './createSubTables'
@@ -78,6 +80,7 @@ function ChildTable(props: {
 
 export function App(props: {
   size: number
+  fields?: EditingFields
   saveMode?: SaveMode
   loadChildren?: (
     request: ChildLoad,
@@ -93,9 +96,11 @@ export function App(props: {
     viewFor: (model: EditingModel) => ViewBinding,
   ) => void
 }) {
+  const fields = untrack(() => props.fields ?? defaultFields)
   const model = createModel(
     untrack(() => props.size),
     untrack(() => props.saveMode ?? 'row'),
+    fields,
   )
   const [controls, setControls] = createSignal(defaultControls)
   const [scope, setScope] = createSignal('current')
@@ -117,8 +122,9 @@ export function App(props: {
   })
   const childViews = new WeakMap<EditingModel, ViewBinding>()
   const viewFor = (model: EditingModel) => childViews.get(model)!
-  const defaultLoader = createChildLoader()
+  const defaultLoader = createChildLoader(fields.priority.initialValue)
   const children = createSubTables({
+    fields,
     ids: model.table.getSourceIds,
     locked: model.locked,
     onEditingChange: model.setDescendantEditing,

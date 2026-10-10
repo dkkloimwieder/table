@@ -9,6 +9,7 @@ import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { loadavg } from 'node:os'
 import { chromium } from '@playwright/test'
+import { fieldConfigurationCases } from '../editing/field-configuration-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -157,6 +158,15 @@ async function record(name, work) {
 }
 try {
   await page.goto(url)
+  await fieldConfigurationCases({
+    page,
+    call,
+    read,
+    record,
+    settle,
+    idle,
+    popup: true,
+  })
   await record(
     'standalone popup keeps scalar values separate from labels and permits empty selection',
     async () => {

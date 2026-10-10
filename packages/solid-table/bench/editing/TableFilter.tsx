@@ -1,5 +1,6 @@
 import { For, Show, createUniqueId } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import type { FieldChoice } from './fields'
 
 export type TableFilterProps = {
   label: string
@@ -9,7 +10,7 @@ export type TableFilterProps = {
   disabled?: boolean
   search?: boolean
   hideLabel?: boolean
-  choices?: ReadonlyArray<{ value: string; label: string }>
+  choices?: ReadonlyArray<FieldChoice>
   inputRef?: (node: HTMLInputElement) => void
   controlRef?: (node: HTMLInputElement | HTMLSelectElement) => void
   onEscape?: () => void
@@ -85,9 +86,11 @@ export function TableFilter(props: TableFilterProps) {
               ]}
             >
               <option value="">All</option>
-              <For each={choices()}>
+              <For each={choices().filter((choice) => choice.value !== '')}>
                 {(choice) => (
-                  <option value={choice.value}>{choice.label}</option>
+                  <option value={choice.value} disabled={choice.disabled}>
+                    {choice.label}
+                  </option>
                 )}
               </For>
             </select>

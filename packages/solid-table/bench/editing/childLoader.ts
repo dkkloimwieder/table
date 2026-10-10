@@ -6,7 +6,7 @@ import type { RecordData } from './createEditing'
 type LoadFault = 'none' | 'hold' | 'late' | 'empty' | 'refuse' | 'throw'
 
 // Replace this transport at the App boundary. No parent record is copied.
-export function createChildLoader() {
+export function createChildLoader(priority = 'normal') {
   let next: LoadFault = 'none'
   const held = new Set<() => void>()
   const pending = new Set<() => void>()
@@ -44,6 +44,7 @@ export function createChildLoader() {
               createRecords(
                 fault === 'empty' ? 0 : 5,
                 `${request.parentId} ${request.scope} · `,
+                priority,
               ),
             )
         }

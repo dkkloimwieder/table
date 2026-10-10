@@ -18,6 +18,7 @@ import { reorderCases, reorderWorkload } from './reorder-cases.mjs'
 import { viewCases, viewWorkload } from './view-cases.mjs'
 import { headerFilterCases } from './header-filter-cases.mjs'
 import { rowActionCases } from './row-action-cases.mjs'
+import { fieldConfigurationCases } from './field-configuration-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -250,6 +251,7 @@ try {
   })
   await subtableCases({ page, start, call, read, record, settle, idle })
   await rowActionCases({ page, start, call, read, record, settle, edit, input })
+  await fieldConfigurationCases({ page, call, read, record, settle, idle })
   await headerFilterCases({
     page,
     start,

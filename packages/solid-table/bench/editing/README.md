@@ -56,6 +56,31 @@ Search and filters use committed values. During editing, the table holds its dis
 After the last edit resolves, the table applies current saved values to the existing filters and sort.
 If a save removes the focused row from global search, focus returns to that search control.
 
+## Application field configuration
+
+The application supplies an `EditingFields` configuration when it creates the model.
+`App.fields` accepts the same configuration for the demo and its child tables.
+Each editable field supplies its label, filter label, and empty-value text.
+Dropdown fields also supply value/label choices and a placeholder.
+A choice can be disabled.
+The model places this configuration in column metadata for Table and its editors to read.
+
+The demo application derives dropdown validation and sorting order from its configured choices.
+Blank and disabled choices cannot pass its save validation.
+The native editor, popup editor, external filters, and header filters read those supplied choices.
+The popup demo adds blank and disabled choices through application configuration for its validation tests.
+Neither editor defines the demo choices.
+
+The default configuration retains Name, Note, and Priority with Low, Normal, and High values.
+Add `&fields=workflow` to the demo URL to use Work item, Description, and Workflow instead.
+The Workflow choices use `queued`, `active`, and `done` values with Queued, Active, and Done labels.
+Blocked appears as a disabled choice.
+The browser tests exercise both editor implementations with this second configuration.
+
+Choose the configuration when creating the model.
+This change configures the existing editable fields. It does not introduce an arbitrary record schema or a live schema switch.
+The application still owns validation and save behavior.
+
 ## Row actions
 
 The application passes optional `rowActions` props to `Table`.

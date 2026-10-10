@@ -1,17 +1,17 @@
 import { Select } from '@kobalte/core/select'
-import { createEffect, createSignal, onCleanup, untrack } from 'solid-js'
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  untrack,
+} from 'solid-js'
 import type { PriorityEditorProps } from '../editing/TablePriorityEditor'
+import type { FieldChoice } from '../editing/fields'
 import './style.css'
 
-export const priorityOptions = [
-  { value: '', label: 'No priority' },
-  { value: 'low', label: 'Low' },
-  { value: 'normal', label: 'Normal' },
-  { value: 'high', label: 'High' },
-  { value: 'unavailable', label: 'Unavailable', disabled: true },
-]
-
 export function PopupPriorityEditor(props: PriorityEditorProps) {
+  const options = createMemo(() => [...props.choices])
   let trigger: HTMLButtonElement | undefined
   let content: HTMLDivElement | undefined
   let disposed = false
@@ -28,12 +28,12 @@ export function PopupPriorityEditor(props: PriorityEditorProps) {
   )
   return (
     <Select
-      options={priorityOptions}
+      options={options()}
       optionValue="value"
       optionTextValue="label"
       optionDisabled="disabled"
-      placeholder="Choose priority"
-      value={priorityOptions.find((option) => option.value === props.value)}
+      placeholder={props.placeholder}
+      value={options().find((option) => option.value === props.value)}
       disabled={props.disabled}
       open={open()}
       validationState={props.invalid ? 'invalid' : 'valid'}
@@ -60,7 +60,7 @@ export function PopupPriorityEditor(props: PriorityEditorProps) {
         aria-invalid={props.invalid ? 'true' : undefined}
         onFocus={() => untrack(() => props.onFocus())}
       >
-        <Select.Value<(typeof priorityOptions)[number]>>
+        <Select.Value<FieldChoice>>
           {(state) => state.selectedOption().label}
         </Select.Value>
         <span aria-hidden="true">▾</span>
