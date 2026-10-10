@@ -9,6 +9,7 @@ import {
 import { App } from './App'
 import { defaultFields, workflowFields } from './fields'
 import { createChildLoader } from './childLoader'
+import { createEditingCallbackFixture } from './editingCallbackFixture'
 import { createViewStorageFixture } from './viewStorageFixture'
 import type { EditingFields } from './fields'
 import type { ViewStorageFixture } from './viewStorageFixture'
@@ -27,6 +28,8 @@ const root = document.getElementById('root')!
 let model: EditingModel | undefined
 let children: SubTables | undefined
 let childLoader: ChildLoader | undefined
+let applicationEditing:
+  ReturnType<typeof createEditingCallbackFixture> | undefined
 let views: TableViews | undefined
 let childViews: ((model: EditingModel) => { views: TableViews }) | undefined
 let viewStorage: ViewStorageFixture | undefined
@@ -74,9 +77,14 @@ function start(
   size = 8,
   saveMode: SaveMode = 'row',
   configuration: 'default' | 'workflow' = 'default',
+  callbacks: 'default' | 'application' = 'default',
 ) {
   const fields = configuration === 'workflow' ? workflowFields : fixtureFields
   stop()
+  applicationEditing =
+    callbacks === 'application'
+      ? createEditingCallbackFixture(fields)
+      : undefined
   events.push(...(capture?.stop() ?? []))
   capture = OBSERVE?.diagnostics.capture()
   dispose = render(() => {
@@ -86,6 +94,7 @@ function start(
       <App
         size={size}
         fields={fields}
+        createEditingCallbacks={applicationEditing?.createCallbacks}
         priorityEditor={priorityEditor}
         saveMode={saveMode}
         loadChildren={childLoader.load}
@@ -236,6 +245,13 @@ const api = {
     traceRuns.length = 0
   },
   read: () => readModel(model!),
+  applicationRead: () => applicationEditing?.read(),
+  applicationFault: (
+    value: Parameters<
+      ReturnType<typeof createEditingCallbackFixture>['fault']
+    >[0],
+  ) => applicationEditing!.fault(value),
+  applicationRelease: () => applicationEditing!.release(),
   draft: (id: string, value: string) => {
     model!.editing.begin(id)
     flush()

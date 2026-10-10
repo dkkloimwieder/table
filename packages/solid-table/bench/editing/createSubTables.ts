@@ -12,6 +12,7 @@ import {
 import { createModel } from './model'
 import type { EditingModel } from './model'
 import type { EditingFields } from './fields'
+import type { EditingCallbackFactory } from './editingCallbacks'
 import type { RecordData } from './createEditing'
 
 export type ChildLoad = {
@@ -28,6 +29,7 @@ type ChildState =
 // (dataset scope, parent ID), until the source removes that identity.
 export function createSubTables(options: {
   fields?: EditingFields
+  createEditingCallbacks?: EditingCallbackFactory
   ids: () => ReadonlyArray<string>
   scope: () => string
   locked: () => boolean
@@ -124,7 +126,16 @@ export function createSubTables(options: {
                 const model = runWithOwner(owner, () =>
                   createRoot((dispose) => {
                     disposeAttempt = dispose
-                    const model = createModel(records, 'table', options.fields)
+                    const model = createModel(
+                      records,
+                      'table',
+                      options.fields,
+                      options.createEditingCallbacks?.({
+                        kind: 'child',
+                        scope,
+                        parentId,
+                      }),
+                    )
                     options.ready?.(model, scope, parentId)
                     return model
                   }),

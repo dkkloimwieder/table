@@ -20,6 +20,7 @@ import {
   summaryChoices,
 } from './aggregates'
 import type { EditingField, EditingFields } from './fields'
+import type { EditingCallbacks } from './editingCallbacks'
 import type { Summary, SummaryChoice, ValueKind } from './aggregates'
 import type {
   NativeAggregationFn,
@@ -67,12 +68,14 @@ export function createModel(
   data: number | Array<RecordData>,
   mode: 'row' | 'table' = 'row',
   fields: EditingFields = defaultFields,
+  editingCallbacks?: EditingCallbacks,
 ) {
   const initial =
     typeof data === 'number'
       ? createRecords(data, '', fields.priority.initialValue)
       : data
-  const validateEdits = createEditValidator(fields)
+  const validateEdits =
+    editingCallbacks?.validate ?? createEditValidator(fields)
   const priorityOrder = fields.priority.choices
     .filter((choice) => choice.value && !choice.disabled)
     .map((choice) => choice.value)
@@ -337,6 +340,7 @@ export function createModel(
     async commit(request, signal) {
       counts.requests++
       sent.push(request)
+      if (editingCallbacks) return editingCallbacks.commit(request, signal)
       const next = fault
       fault = 'none'
       if (next === 'hold') {

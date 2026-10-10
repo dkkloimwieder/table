@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { loadavg } from 'node:os'
 import { chromium } from '@playwright/test'
 import { fieldConfigurationCases } from '../editing/field-configuration-cases.mjs'
+import { editingCallbackCases } from '../editing/editing-callback-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -158,6 +159,15 @@ async function record(name, work) {
 }
 try {
   await page.goto(url)
+  await editingCallbackCases({
+    page,
+    call,
+    read,
+    record,
+    settle,
+    idle,
+    popup: true,
+  })
   await fieldConfigurationCases({
     page,
     call,

@@ -81,6 +81,33 @@ Choose the configuration when creating the model.
 This change configures the existing editable fields. It does not introduce an arbitrary record schema or a live schema switch.
 The application still owns validation and save behavior.
 
+## Application editing callbacks
+
+`createModel` accepts optional `EditingCallbacks` as its fourth argument.
+The application supplies both `validate(values)` and `commit(request, signal)`.
+Validation returns field errors or parsed values synchronously.
+The controller sends only changes from the parsed values, with the record ID and expected revision.
+The save callback returns a promise with a saved, refused, conflict, or uncertain result.
+A saved result supplies the same record ID and the new revision string.
+
+`App.createEditingCallbacks` accepts a factory that creates these callbacks for each collection.
+The root collection has `{ kind: 'root' }`.
+A child collection has `{ kind: 'child', scope, parentId }`.
+The application uses this identity to route saves because root and child collections can contain the same row IDs.
+The factory runs when the model is created, including child load retries.
+Each child model keeps its callbacks when its table collapses.
+
+If the application omits callbacks, the model uses the existing demo validation and simulated saves.
+If it supplies callbacks, those callbacks replace both defaults.
+The model applies accepted changes to its existing record store after the controller checks the response ID and current revision.
+The application callback does not need to change that store.
+This callback contract returns revisions and accepts changes as sent. Applications that return server-normalized records need a separate record update contract.
+
+The controller preserves drafts after failures and rejects stale success responses.
+Each save receives its own `AbortSignal`. Disposal aborts pending signals and ignores late responses, even if the transport ignores cancellation.
+The Table renderer does not receive transport functions or application validation rules.
+The browser tests supply alternate application callbacks for both editors and scoped child tables.
+
 ## Row actions
 
 The application passes optional `rowActions` props to `Table`.
