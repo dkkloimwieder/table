@@ -59,6 +59,8 @@ const priorityChoices = [
 
 export function Table(props: {
   model: EditingModel
+  /** Matched benchmark presentation; the model and column configuration stay shared. */
+  readOnly?: boolean
   title?: string
   scope?: string
   controls?: Partial<TableControls>
@@ -1240,7 +1242,11 @@ export function Table(props: {
           </thead>
           <Show
             when={isGrouped()}
-            fallback={<For each={table.getRowIds()}>{(id) => Row(id)}</For>}
+            fallback={
+              <For each={table.getRowIds()}>
+                {(id) => (props.readOnly ? ReadOnlyRow(id) : Row(id))}
+              </For>
+            }
           >
             <For each={table.getDisplayKeys()}>
               {(key) => {

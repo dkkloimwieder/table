@@ -71,7 +71,7 @@
     "test:lib": "vitest --passWithNoTests",
     "test:lib:dev": "pnpm test:lib --watch",
     "test:types": "tsc",
-    "test:fixtures:types": "tsc --project bench/editing/tsconfig.json && tsc --project bench/popup/tsconfig.json && tsc --project bench/hydration/tsconfig.json",
+    "test:fixtures:types": "tsc --project bench/editing/tsconfig.json && tsc --project bench/popup/tsconfig.json && tsc --project bench/hydration/tsconfig.json && tsc --project bench/editing-overhead/tsconfig.json",
     "test:fixtures:eslint": "node scripts/lint-fixtures.mjs",
     "test:build": "publint --strict && node ./scripts/test-native-imports.mjs",
     "build": "rimraf ./dist && tsdown && node ./scripts/build-solid.mjs",

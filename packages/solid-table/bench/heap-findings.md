@@ -4,6 +4,141 @@ The store-over-core prototype retains too much memory for the target architectur
 It preserves table-core rows and caches, then adds native Solid bookkeeping around them.
 The replacement must use Solid directly and restrict display objects to consumer demand.
 
+## Matched editing overhead on 2026-10-10
+
+Beads issue `table-sog` measures the actual editing fixture against its existing read-only row renderer.
+The [benchmark README](./editing-overhead/README.md) describes the comparison and reproduction commands.
+Both presentations use identical records, six columns, formatting, the native engine, and the same Table shell.
+The editing controller owns drafts and save operations.
+Both also keep the same editing controller, so their difference isolates additional row presentation costs.
+
+The five modes cover the record store, isolated editing controller, complete fixture model, read-only rows, and editable rows.
+The model measurement includes shared demo state and controller ownership, so it does not measure engine memory alone.
+The isolated controller contrast cannot be added to the model contrast as an independent part of its total.
+
+The two builds pass 210 measured samples and 1,070 measured states across 21 exact contracts.
+Each build also discards one repetition for each size and mode.
+Fresh browser pages isolate samples, and mode order rotates across five measured repetitions.
+The campaign uses Solid `2.0.0-rc.13`, the compiler plugin `3.0.0-next.47`, and Chromium `153.0.8010.12`.
+The module audit excludes table-core, TanStack Store, virtualization, Form, and Kobalte from the measured bundle.
+
+### Retained memory
+
+Garbage collection releases unreachable objects before each memory measurement.
+Each value subtracts the same browser page's baseline before model creation.
+These values measure retained JavaScript memory, not peak allocations or total process memory.
+A MiB contains 1,048,576 bytes, and a KiB contains 1,024 bytes.
+
+The editable presentation adds the following memory over the matched read-only presentation:
+
+| Rendered records | Source minimum to maximum | Distribution minimum to maximum |
+| ---------------- | ------------------------- | ------------------------------- |
+| 25               | 0.411 to 0.427 MiB        | 0.407 to 0.422 MiB              |
+| 250              | 3.798 to 3.799 MiB        | 3.797 to 3.799 MiB              |
+| 999              | 14.816 to 14.820 MiB      | 14.815 to 14.821 MiB            |
+
+Idle controller ownership adds about 23.93 KiB at sizes 25, 250, and 999.
+Large-page contrasts include negative estimates and vary by tens of KiB, so they cannot establish an exact byte cost.
+
+Reactive computations update their results when tracked inputs change.
+Actual snapshots show the same controller graph at 999 and 50,000 records: one computation, two dependency links, and three store targets.
+A dependency link connects a computation to an input.
+A store target holds the raw object behind a reactive proxy.
+The controller adds no per-record views or cells while idle.
+
+At 50,000 records, the complete fixture model adds 0.537 to 0.661 MiB over the store in source.
+The distribution range is 0.554 to 0.629 MiB.
+This includes ID arrays, column definitions, demo state, and the editing controller.
+All model-only cases create zero row views and zero cells.
+
+### Row bindings and drafts
+
+Both presentations create exactly 999 native row views and 5,994 cells in the largest rendered case.
+They also read the same column values and preserve those views through twelve committed name updates.
+Each update reads only the changed name accessor once, without additional reads of the other column accessors.
+The editable presentation adds ten HTML elements and three owned event listeners per row.
+
+The snapshots locate the additional reactive work:
+
+| Resource at 999 rows     | Read-only | Editable | Additional resources |
+| ------------------------ | --------- | -------- | -------------------- |
+| Computations and effects | 24,547    | 63,508   | 38,961               |
+| Dependency links         | 27,635    | 67,595   | 39,960               |
+| Owner scopes             | 15,026    | 15,026   | 0                    |
+| Store property signals   | 7,022     | 7,022    | 0                    |
+| Store targets            | 1,007     | 1,007    | 0                    |
+
+A draft stores editable values separately from the committed record.
+The benchmark opens ten rows through the controller directly, while ordinary pointer entry collapses the prior editor.
+At 999 rows, ten active drafts add 146.70 to 158.89 KiB over the updated source presentation.
+The distribution range is 149.40 to 161.11 KiB.
+These operation differences also include compiled code and store caches, so they are not a pure byte cost per draft.
+
+Cancel removes every logical draft and editor, but memory does not immediately return to the idle baseline.
+After twenty edit/cancel cycles, the editable mode retains 349.95 to 355.64 KiB over its updated source state.
+The distribution range is 355.41 to 361.97 KiB.
+The controller-only case keeps twelve store targets after those cycles, compared with three before editing.
+The nine additional targets remain after the ten-record editing history.
+These results distinguish active drafts from remaining store and code resources.
+
+### Versions and disposal
+
+The final campaigns capture 68 actual heap snapshots across both builds.
+Mounted snapshots contain one record object per input record.
+After twelve updates, each rendered mode retains one prior backing for the one changed record.
+A backing is the raw object behind a store proxy.
+
+The extra object contains the initial `R0001` name and revision through the Solid property signal's `ce` field.
+The current backing appears through `pxv` and `TargetShape.v`.
+Twenty edit/cancel cycles retain the same single prior record version.
+The controller-only and model-only captures retain exactly the input record count.
+
+Every disposed capture contains zero classified records, row views, cells, store targets, property signals, computations, owners, plain signals, or dependency links.
+The benchmark preserves the qualified generator-action disposal workaround for Solid rc.13.
+The first strict run rejected the extra prior version rather than hiding it in a memory tolerance.
+The focused diagnosis established its exact count and lifetime before the final campaigns.
+
+### Host load and decision
+
+The machine exposes eight logical CPUs and runs other development workloads.
+The source campaign records one-minute load from 4.05 to 9.71.
+The distribution campaign records load from 5.67 to 19.83.
+The benchmark itself also adds load through browser work, garbage collection, and heap inspection.
+No samples are rejected because of their timings.
+
+At 999 rows, paired editable mount differences range from 50.0 to 162.4 ms in source.
+The distribution range spans -5.4 to 271.9 ms.
+Even the 25-row source range spans 3.9 to 195.7 ms.
+These timings establish no fixed latency budget, speedup, or regression on this host.
+The exact resource counts and repeated memory scaling support the architecture decision.
+
+Keep one native engine and one caller-owned record store.
+Use separate read-only and editable row presentations, or select them through an explicit presentation mode.
+Create editing policy at the editable table's scope, outside each rendered row's lifetime.
+This preserves drafts when optional virtualization removes a row from the viewport.
+Read-only analytical tables can avoid per-cell editing controls and their reactive bindings.
+The controller's idle cost alone does not justify a separate engine or another canonical dataset.
+
+This comparison does not measure a 50,000-row rendered analytics table or a virtualized presentation.
+It does not change production WAMN, Form, shared UI, or the published native API.
+The fixture's `Table.readOnly` prop is a comparison seam, not a new package API.
+
+Raw reports reside in `/tmp/table-editing-overhead-{source,distribution}.json`.
+Their matched summary is `/tmp/table-editing-overhead-source.json.summary.json`.
+Snapshots and classification reports reside in `/tmp/table-editing-overhead-{source,distribution}-heaps`.
+The initial failure and focused diagnosis remain in sibling `source-first` and `diagnostic` reports and directories.
+Reports include host CPU counters, load samples, browser identity, and compiled asset hashes.
+
+The scoped root `pnpm test` run passes ten core and Solid build, unit, type, lint, and package tasks.
+The root `pnpm test:e2e` run passes infrastructure tests and the Solid filters example.
+Solid qualification passes all fifteen stages, including 298 browser cases, server rendering, hydration, and fixture type and lint tests.
+Reports reside in `test-results/solid-qualification-editing-overhead`.
+
+The documentation scan finds no broken links across 1,263 Markdown files.
+Formatting and whitespace tests pass for the changed files.
+These scoped results do not claim a repository-wide test sweep.
+The changes affect development fixtures and documentation, so they need no published-package changeset.
+
 ## Query page reconciliation on 2026-10-06
 
 Beads issue `table-rt3.5` qualifies a supported Query configuration for the infinite scrolling example.
