@@ -30,7 +30,7 @@ export function qualificationStages(output, { wamn = false } = {}) {
   ]
   for (const mode of ['source', 'distribution']) {
     const env = { BENCH_DISTRIBUTION: mode === 'distribution' ? '1' : '' }
-    for (const fixture of ['editing', 'popup']) {
+    for (const fixture of ['editing', 'popup', 'analytics']) {
       stages.push(
         stage(
           `${fixture}-${mode}-build`,

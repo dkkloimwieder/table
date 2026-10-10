@@ -2,7 +2,13 @@ import { spawnSync } from 'node:child_process'
 import { readdir } from 'node:fs/promises'
 
 const files = []
-for (const fixture of ['editing', 'popup', 'hydration', 'editing-overhead']) {
+for (const fixture of [
+  'editing',
+  'popup',
+  'hydration',
+  'editing-overhead',
+  'analytics',
+]) {
   const directory = `bench/${fixture}`
   files.push(
     ...(await readdir(directory))

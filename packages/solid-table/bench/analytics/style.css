@@ -1,0 +1,136 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #17223b;
+  background: #f8fafc;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1100px;
+  margin: auto;
+  padding: 1rem;
+}
+button,
+input,
+select {
+  font: inherit;
+  padding: 0.4rem;
+}
+button {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: default;
+}
+label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+input {
+  min-width: 0;
+}
+input[type='text'],
+input[type='search'] {
+  width: 10rem;
+  max-width: 100%;
+}
+.toolbar,
+.column-control {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.8rem 0;
+}
+.table-filter {
+  display: grid;
+  gap: 0.3rem;
+}
+.filter-input {
+  display: flex;
+}
+details {
+  margin: 1rem 0;
+}
+summary {
+  cursor: pointer;
+}
+.table-scroll {
+  max-width: 100%;
+  overflow: auto;
+}
+table {
+  border-collapse: collapse;
+  background: white;
+  width: 100%;
+}
+th,
+td {
+  border: 1px solid #cbd5e1;
+  padding: 0.6rem;
+  text-align: left;
+}
+th button {
+  background: none;
+  border: none;
+}
+caption {
+  text-align: left;
+  font-weight: 600;
+  padding: 0.5rem 0;
+}
+button:focus-visible,
+input:focus-visible,
+summary:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.header-filter-trigger {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  width: 20px;
+  height: 24px;
+  padding: 0;
+  color: #888;
+}
+.header-filter-trigger svg {
+  width: 12px;
+  height: 12px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.2;
+}
+.header-filter-trigger[data-filtered='true'] {
+  color: #1657a8;
+}
+.header-filter-popup {
+  position: fixed;
+  inset: auto;
+  width: 220px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100vh - 16px);
+  overflow: auto;
+  margin: 0;
+  padding: 10px;
+  border: 1px solid #999;
+  background: white;
+  color: #191919;
+  font-weight: 400;
+}
+.header-filter-close {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
