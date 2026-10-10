@@ -17,6 +17,7 @@ import { resizeCases, resizeWorkload } from './resize-cases.mjs'
 import { reorderCases, reorderWorkload } from './reorder-cases.mjs'
 import { viewCases, viewWorkload } from './view-cases.mjs'
 import { headerFilterCases } from './header-filter-cases.mjs'
+import { rowActionCases } from './row-action-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -248,6 +249,7 @@ try {
     save,
   })
   await subtableCases({ page, start, call, read, record, settle, idle })
+  await rowActionCases({ page, start, call, read, record, settle, edit, input })
   await headerFilterCases({
     page,
     start,
@@ -716,12 +718,24 @@ try {
         ),
       )
       await page.keyboard.press('Tab')
+      assert.ok(
+        await focused(
+          page.getByRole('button', { name: 'Inspect R0001', exact: true }),
+        ),
+      )
+      await page.keyboard.press('Tab')
       await settle()
       assert.ok(await focused(edit('R0002')))
       assert.equal(await select().count(), 0)
       assert.equal(
         await edit('R0001', 'priority').getAttribute('data-edited'),
         'true',
+      )
+      await page.keyboard.press('Shift+Tab')
+      assert.ok(
+        await focused(
+          page.getByRole('button', { name: 'Inspect R0001', exact: true }),
+        ),
       )
       await page.keyboard.press('Shift+Tab')
       assert.ok(await focused(edit('R0001', 'priority')))
@@ -809,6 +823,12 @@ try {
       assert.ok(await focused(edit()))
       assert.equal(value.sample[0].note, 'Note 1')
       await edit('R0008', 'priority').focus()
+      await page.keyboard.press('Tab')
+      assert.ok(
+        await focused(
+          page.getByRole('button', { name: 'Inspect R0008', exact: true }),
+        ),
+      )
       await page.keyboard.press('Tab')
       assert.ok(
         await focused(

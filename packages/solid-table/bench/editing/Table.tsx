@@ -26,6 +26,10 @@ import type { EditColumn } from './createEditing'
 import './style.css'
 
 export type SaveMode = 'row' | 'table'
+export type TableRowAction = {
+  label: string
+  onClick: (id: string) => void
+}
 export type TableControls = {
   filters: 'external' | 'headers' | 'both' | 'none'
   headerSorting: boolean
@@ -65,6 +69,7 @@ export function Table(props: {
   scope?: string
   controls?: Partial<TableControls>
   settings?: JSX.Element
+  rowActions?: ReadonlyArray<TableRowAction>
   priorityEditor?: Component<PriorityEditorProps>
   details?: {
     expanded: (id: string) => boolean
@@ -609,6 +614,21 @@ export function Table(props: {
       </Show>
     )
   }
+  function RowActions(id: string) {
+    return (
+      <For each={props.rowActions}>
+        {(action) => (
+          <button
+            type="button"
+            aria-label={`${action.label} ${id}`}
+            ref={nativeEvents({ click: () => action.onClick(id) })}
+          >
+            {action.label}
+          </button>
+        )}
+      </For>
+    )
+  }
   function ReadOnlyRow(id: string) {
     const row = table.createRowView(id)
     counts.views++
@@ -635,7 +655,7 @@ export function Table(props: {
               )
             }}
           </For>
-          <td class="row-actions" />
+          <td class="row-actions">{RowActions(id)}</td>
         </tr>
         {SubTableDetail(id, (node) => {
           detail = node
@@ -818,6 +838,7 @@ export function Table(props: {
                 </Show>
               </div>
             </Show>
+            {RowActions(id)}
             <p id={domId(`message-${id}`)} role="alert" class="message">
               {editing.drafts[id]?.message}
             </p>

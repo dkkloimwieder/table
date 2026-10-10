@@ -8,7 +8,7 @@ import { createChildLoader } from './childLoader'
 import { createTableViews } from './createTableViews'
 import { createMemoryViewStorage } from './viewStorage'
 import { TableViews } from './TableViews'
-import type { SaveMode, TableControls } from './Table'
+import type { SaveMode, TableControls, TableRowAction } from './Table'
 import type { EditingModel } from './model'
 import type { ChildLoad, SubTables } from './createSubTables'
 import type { TableViews as Views } from './createTableViews'
@@ -100,6 +100,10 @@ export function App(props: {
   const [controls, setControls] = createSignal(defaultControls)
   const [scope, setScope] = createSignal('current')
   const [scopeNotice, setScopeNotice] = createSignal('')
+  const [inspectedRow, setInspectedRow] = createSignal('')
+  const rowActions: ReadonlyArray<TableRowAction> = [
+    { label: 'Inspect', onClick: (id) => setInspectedRow(id) },
+  ]
   const storage = untrack(() => props.viewStorage) ?? createMemoryViewStorage()
   const configure = (value: Partial<TableControls>) => {
     if (!model.locked()) setControls((previous) => ({ ...previous, ...value }))
@@ -160,8 +164,14 @@ export function App(props: {
   return (
     <main>
       <h1>Table</h1>
+      <Show when={inspectedRow()}>
+        <p role="status" data-row-action-result>
+          Inspected row {inspectedRow()}.
+        </p>
+      </Show>
       <Table
         model={model}
+        rowActions={rowActions}
         priorityEditor={props.priorityEditor}
         controls={controls()}
         ready={() =>

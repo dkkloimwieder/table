@@ -56,6 +56,24 @@ Search and filters use committed values. During editing, the table holds its dis
 After the last edit resolves, the table applies current saved values to the existing filters and sort.
 If a save removes the focused row from global search, focus returns to that search control.
 
+## Row actions
+
+The application passes optional `rowActions` props to `Table`.
+Each action supplies a label and a synchronous `onClick(id)` callback.
+Table renders a native button with the label and row ID as its accessible name.
+The callback receives the stable record ID after sorting and filtering.
+Group summaries do not have record actions.
+
+The demo application supplies an Inspect action that shows the selected row ID in a status message.
+The application owns that message and its state.
+Inspection does not change records, save drafts, or send requests.
+Child tables omit the prop and display no custom actions.
+The same optional prop supports the read-only Table presentation.
+
+The application owns the action behavior and any record changes.
+This first example implements no asynchronous operation or request policy.
+Existing Save and Cancel controls keep their editing behavior.
+
 ## Named views
 
 The parent renders `TableViews.tsx` through the Table settings slot.
