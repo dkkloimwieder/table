@@ -40,8 +40,13 @@ npm install @tanstack/vue-devtools @tanstack/vue-table-devtools
 
 # Solid
 
+The Solid devtools adapter currently uses Solid 1. The Table adapter and migrated examples use Solid 2.
+Solid 2 devtools integration remains deferred until the companion packages support it.
+
+For an existing Solid 1 integration, install the devtools adapter:
+
 ```sh
-npm install @tanstack/solid-devtools @tanstack/solid-table-devtools
+npm install @tanstack/solid-table-devtools
 ```
 
 # Angular
@@ -194,38 +199,29 @@ See the [Vue row-selection example](./framework/vue/examples/row-selection).
 
 # Solid
 
+Render the panel and register the table inside a Solid 1 owner, the scope that manages reactive cleanup.
+Do not use this component inside a Solid 2 owner.
+Pass a stable table instance with a unique `options.key` to the component:
+
 ```tsx
-import { render } from 'solid-js/web'
-import { createTable } from '@tanstack/solid-table'
-import { TanStackDevtools } from '@tanstack/solid-devtools'
 import {
-  tableDevtoolsPlugin,
+  TableDevtoolsPanel,
   useTanStackTableDevtools,
 } from '@tanstack/solid-table-devtools'
+import type { RowData, Table, TableFeatures } from '@tanstack/table-core'
 
-function App() {
-  const table = createTable({
-    key: 'users-table', // needed for devtools
-    // ...
-  })
-
-  useTanStackTableDevtools(table)
-
-  return <AppContent table={table} />
+export function TableInspector<
+  TFeatures extends TableFeatures,
+  TData extends RowData,
+>(props: { table: Table<TFeatures, TData> }) {
+  useTanStackTableDevtools(props.table)
+  return <TableDevtoolsPanel />
 }
-
-render(
-  () => (
-    <>
-      <App />
-      <TanStackDevtools plugins={[tableDevtoolsPlugin()]} />
-    </>
-  ),
-  document.getElementById('root')!,
-)
 ```
 
-See the [Solid row-selection example](./framework/solid/examples/row-selection).
+The standalone panel does not require a devtools host package.
+Use `tableDevtoolsPlugin()` only with a compatible Solid 1 devtools host.
+The [migrated Solid examples](./framework/solid/guide/solid-2) omit devtools.
 
 # Angular
 

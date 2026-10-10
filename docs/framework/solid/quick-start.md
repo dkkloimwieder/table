@@ -98,7 +98,7 @@ export function PersonTable() {
 
   // 5. Create the table instance, passing data through a getter so it stays reactive
   const table = createTable({
-    key: 'person-table', // registers this table with the devtools
+    key: 'person-table', // optional table identifier
     features,
     columns,
     get data() {
@@ -151,7 +151,7 @@ A few things to note:
 - `tableFeatures({})` declares which optional features the table uses. Registering only what you need keeps bundles small and gives TypeScript accurate types for the table instance.
 - The `get data()` getter keeps the table reactive. When the signal updates, the table sees the new data. Passing `data: data()` would capture a one-time snapshot.
 - `FlexRender` renders the `header`, `cell`, and `footer` definitions from your columns, whether they are plain values or Solid components. It is also available on the table instance as `table.FlexRender`.
-- The `key` option is optional unless you use the [TanStack Table Devtools](../../devtools). The devtools identify tables by `key`, and you register a table by calling `useTanStackTableDevtools(table)` from `@tanstack/solid-table-devtools`.
+- The `key` option identifies the table. It does not register devtools. The [Solid devtools adapter](../../devtools) still uses Solid 1, so the migrated Solid 2 examples omit it.
 
 See the full [Basic createTable example](./examples/basic-use-table) for a runnable version with more columns and a footer.
 

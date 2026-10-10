@@ -1,7 +1,7 @@
 ---
 name: devtools
 description: >
-  Connect Solid Table v9 instances to Devtools with tableDevtoolsPlugin and useTanStackTableDevtools in the proper reactive owner. Load for missing targets, required options.key, enabled state, cleanup, or development versus explicit production exports.
+  Inspect table instances from a Solid 1 owner with TableDevtoolsPanel and useTanStackTableDevtools. Load for missing targets, required options.key, enabled state, cleanup, production exports, or the deferred Solid 2 integration.
 metadata:
   type: framework
   library: '@tanstack/solid-table-devtools'
@@ -13,6 +13,7 @@ requires:
 sources:
   - 'TanStack/table:docs/devtools.md'
   - 'TanStack/table:packages/solid-table-devtools/src/index.ts'
+  - 'TanStack/table:packages/solid-table-devtools/src/TableDevtools.tsx'
   - 'TanStack/table:packages/solid-table-devtools/src/useTanStackTableDevtools.ts'
 ---
 
@@ -20,31 +21,37 @@ This skill builds on @tanstack/table-core#core and @tanstack/table-devtools#devt
 
 ## Setup
 
+The devtools adapter currently uses Solid 1. The Table adapter and migrated examples use Solid 2.
+Do not call the devtools hook or render its components inside a Solid 2 owner.
+An owner is the Solid scope that manages reactive cleanup.
+Solid 2 devtools integration remains deferred until the companion packages support it.
+
+For an existing Solid 1 integration, pass a stable table instance to this panel component.
+Set a unique `options.key` on that table before registration.
+
+<!-- skill-snippet:check -->
+
 ```tsx
-import { TanStackDevtools } from '@tanstack/solid-devtools'
-import { createTable, tableFeatures } from '@tanstack/solid-table'
 import {
-  tableDevtoolsPlugin,
+  TableDevtoolsPanel,
   useTanStackTableDevtools,
 } from '@tanstack/solid-table-devtools'
+import type { RowData, Table, TableFeatures } from '@tanstack/table-core'
 
-const features = tableFeatures({})
-
-export function App() {
-  const table = createTable({
-    key: 'users-table',
-    features,
-    columns: [],
-    data: [],
-  })
-  useTanStackTableDevtools(table)
-  return <TanStackDevtools plugins={[tableDevtoolsPlugin()]} />
+export function TableInspector<
+  TFeatures extends TableFeatures,
+  TData extends RowData,
+>(props: { table: Table<TFeatures, TData> }) {
+  useTanStackTableDevtools(props.table)
+  return <TableDevtoolsPanel />
 }
 ```
 
 ## Hooks and Components
 
-Register inside the component's Solid owner. Pass `{ enabled }` to the hook for conditional registration.
+Register inside the component's Solid 1 owner. Pass `{ enabled }` to the hook for conditional registration.
+Use `tableDevtoolsPlugin()` only with a compatible Solid 1 devtools host.
+The standalone panel above does not require a host package.
 
 ## Common Mistakes
 
