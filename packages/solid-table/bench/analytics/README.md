@@ -2,7 +2,10 @@
 
 This development demo shows query results in a read-only Table. The application supplies the query state, column definitions, and records.
 The table supports search, column filters, sorting, column visibility, column order, header renaming, and CSV export.
-Header filters reuse the compact popups from the editing demo.
+Drag the handle in a header to reorder columns. Arrow keys, Home, and End also move the focused column.
+Click the pencil in a header to rename it. Enter or focus loss saves the name. Escape cancels the rename.
+Column filters appear under Filter results. Headers contain no filter controls.
+Search results searches the supplied records. It does not search or change the query.
 
 ## Query results
 

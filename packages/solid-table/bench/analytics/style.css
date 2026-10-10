@@ -96,41 +96,80 @@ summary:focus-visible {
   clip-path: inset(50%);
   white-space: nowrap;
 }
-.header-filter-trigger {
-  position: relative;
+.column-move {
+  float: left;
   display: inline-flex;
   align-items: center;
-  width: 20px;
-  height: 24px;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
   padding: 0;
-  color: #888;
+  margin: 2px 6px 2px 0;
+  border-color: #d8d8d8;
+  background: transparent;
+  touch-action: none;
+  user-select: none;
+  cursor: grab;
+  color: #666;
 }
-.header-filter-trigger svg {
-  width: 12px;
-  height: 12px;
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 1.2;
+.column-move-dots {
+  display: grid;
+  grid-template-columns: repeat(2, 2px);
+  grid-template-rows: repeat(2, 2px);
+  gap: 2px;
 }
-.header-filter-trigger[data-filtered='true'] {
-  color: #1657a8;
+.column-move-dots span {
+  background: #888;
+  border-radius: 50%;
 }
-.header-filter-popup {
+.column-move:active {
+  cursor: grabbing;
+}
+.column-move-menu {
   position: fixed;
   inset: auto;
-  width: 220px;
-  max-width: calc(100vw - 16px);
-  max-height: calc(100vh - 16px);
-  overflow: auto;
   margin: 0;
-  padding: 10px;
+  padding: 6px;
+  width: 180px;
   border: 1px solid #999;
-  background: white;
-  color: #191919;
-  font-weight: 400;
+  border-radius: 0;
+  box-shadow: 3px 3px 0 #ddd;
 }
-.header-filter-close {
-  position: absolute;
-  top: 4px;
-  right: 4px;
+.column-move-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: 0;
+}
+[data-column-moving] {
+  background: #edf3fb;
+}
+[data-column-drop='before'] {
+  box-shadow: inset 3px 0 #1657a8;
+}
+[data-column-drop='after'] {
+  box-shadow: inset -3px 0 #1657a8;
+}
+.column-heading {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.column-heading .column-move {
+  flex: 0 0 18px;
+}
+.column-heading .header-sort {
+  text-align: left;
+}
+.header-rename {
+  color: #666;
+}
+.header-name {
+  width: 10rem;
+  max-width: 100%;
+}
+.column-filters fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
 }

@@ -2,7 +2,8 @@ import { For, Show, createMemo, createSignal } from 'solid-js'
 import { createTable } from '@tanstack/solid-table/native'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { TableFilter } from '../editing/TableFilter'
-import { TableHeaderFilter } from '../editing/TableHeaderFilter'
+import { TableColumnMove, moveColumn } from '../editing/TableColumnMove'
+import { TableHeaderName } from './TableHeaderName'
 import { downloadCsv, toCsv } from './csv'
 import type { QueryRecord, QueryResult, QueryState, QueryValue } from './types'
 
@@ -102,14 +103,9 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
       ),
     )
   }
-  function move(id: string, offset: number) {
-    const order = table.getColumns().map((column) => column.id)
-    const index = order.indexOf(id)
-    const target = index + offset
-    if (!props.available || target < 0 || target >= order.length) return
-    ;[order[index], order[target]] = [order[target]!, order[index]!]
-    table.setColumnOrder(order)
-  }
+  const columnIds = createMemo(() =>
+    table.getColumns().map((column) => column.id),
+  )
   return (
     <div class="analytics-table">
       <div class="toolbar">
@@ -117,6 +113,7 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
           label="Search results"
           clearLabel="Clear search"
           search
+          placeholder="Search results…"
           value={table.state.globalFilter}
           disabled={!props.available}
           onValueChange={(value) => table.setGlobalFilter(value)}
@@ -148,7 +145,7 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
       <details>
         <summary>Display columns</summary>
         <fieldset disabled={!props.available}>
-          <legend>Column names and order</legend>
+          <legend>Visible columns</legend>
           <For each={table.getColumns()}>
             {(column) => (
               <div class="column-control" data-column={column.id}>
@@ -163,37 +160,26 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
                   />
                   Show {label(column.id)}
                 </label>
-                <label>
-                  Header for {column.id}
-                  <input
-                    type="text"
-                    value={label(column.id)}
-                    ref={nativeEvents<HTMLInputElement>({
-                      input: (event) =>
-                        setLabels((previous) => ({
-                          ...previous,
-                          [column.id]: event.currentTarget.value,
-                        })),
-                    })}
-                  />
-                </label>
-                <button
-                  type="button"
-                  aria-label={'Move ' + column.id + ' earlier'}
-                  disabled={table.getColumns()[0]?.id === column.id}
-                  ref={nativeEvents({ click: () => move(column.id, -1) })}
-                >
-                  Earlier
-                </button>
-                <button
-                  type="button"
-                  aria-label={'Move ' + column.id + ' later'}
-                  disabled={table.getColumns().at(-1)?.id === column.id}
-                  ref={nativeEvents({ click: () => move(column.id, 1) })}
-                >
-                  Later
-                </button>
               </div>
+            )}
+          </For>
+        </fieldset>
+      </details>
+      <details class="column-filters">
+        <summary>Filter results</summary>
+        <fieldset disabled={!props.available}>
+          <legend>Column filters</legend>
+          <For each={table.getColumns()}>
+            {(column) => (
+              <TableFilter
+                label={'Filter ' + label(column.id)}
+                clearLabel={'Clear filter ' + label(column.id)}
+                value={String(column.getFilterValue() ?? '')}
+                disabled={!props.available}
+                onValueChange={(value) =>
+                  column.setFilterValue(value || undefined)
+                }
+              />
             )}
           </For>
         </fieldset>
@@ -216,6 +202,7 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
                       <th
                         scope="col"
                         data-column={column.id}
+                        data-column-header={column.id}
                         aria-sort={
                           column.getIsSorted() === 'asc'
                             ? 'ascending'
@@ -224,30 +211,33 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
                               : 'none'
                         }
                       >
-                        <button
-                          type="button"
-                          aria-label={'Sort ' + label(column.id)}
-                          ref={nativeEvents({
-                            click: () => column.toggleSorting(),
-                          })}
-                        >
-                          {label(column.id)}
-                          {column.getIsSorted() === 'asc'
-                            ? ' ↑'
-                            : column.getIsSorted() === 'desc'
-                              ? ' ↓'
-                              : ''}
-                        </button>
-                        <TableHeaderFilter
-                          columnId={column.id}
-                          columnLabel={label(column.id)}
-                          label={'Filter ' + label(column.id)}
-                          clearLabel={'Clear filter ' + label(column.id)}
-                          value={String(column.getFilterValue() ?? '')}
-                          onValueChange={(value) =>
-                            column.setFilterValue(value || undefined)
-                          }
-                        />
+                        <div class="column-heading">
+                          <TableColumnMove
+                            id={column.id}
+                            label={label(column.id)}
+                            ids={columnIds()}
+                            onMove={(destination) =>
+                              table.setColumnOrder([
+                                ...moveColumn(
+                                  columnIds(),
+                                  column.id,
+                                  destination,
+                                ),
+                              ])
+                            }
+                          />
+                          <TableHeaderName
+                            label={label(column.id)}
+                            sorted={column.getIsSorted()}
+                            onSort={() => column.toggleSorting()}
+                            onRename={(value) =>
+                              setLabels((previous) => ({
+                                ...previous,
+                                [column.id]: value,
+                              }))
+                            }
+                          />
+                        </div>
                       </th>
                     )}
                   </For>

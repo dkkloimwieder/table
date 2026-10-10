@@ -101,15 +101,42 @@ try {
       .locator('thead th')
       .evaluateAll((nodes) => nodes.map((node) => node.dataset.column))
   async function filter(name, value) {
-    await page
-      .getByRole('button', { name: `Filter ${name}`, exact: true })
-      .click()
+    const details = page.locator('details.column-filters')
+    if (!(await details.evaluate((node) => node.open)))
+      await details.locator('summary').click()
     await page
       .getByRole('textbox', { name: `Filter ${name}`, exact: true })
       .fill(value)
+  }
+  async function rename(name, value) {
     await page
-      .getByRole('textbox', { name: `Filter ${name}`, exact: true })
-      .press('Enter')
+      .getByRole('button', { name: `Rename ${name} header`, exact: true })
+      .click()
+    const editor = page.getByRole('textbox', {
+      name: `Header name for ${name}`,
+      exact: true,
+    })
+    await editor.fill(value)
+    await editor.press('Enter')
+  }
+  async function drag(id, target, side = 'before') {
+    const handle = await page
+      .locator(`th[data-column="${id}"] .column-move`)
+      .boundingBox()
+    const destination = await page
+      .locator(`th[data-column="${target}"]`)
+      .boundingBox()
+    await page.mouse.move(
+      handle.x + handle.width / 2,
+      handle.y + handle.height / 2,
+    )
+    await page.mouse.down()
+    await page.mouse.move(
+      destination.x + (side === 'before' ? 4 : destination.width - 4),
+      destination.y + destination.height / 2,
+      { steps: 8 },
+    )
+    await page.mouse.up()
   }
   async function csv() {
     const waiting = page.waitForEvent('download')
@@ -133,6 +160,11 @@ try {
 
   await test('Runtime columns and scalar cells are read-only', async () => {
     assert.deepEqual(await headers(), ['region', 'revenue', 'active'])
+    assert.equal(
+      await page.locator('thead input, [data-header-filter]').count(),
+      0,
+    )
+    assert.equal(await page.getByPlaceholder('Search results…').count(), 1)
     assert.deepEqual(await rows(), ['west', 'east', 'north'])
     assert.equal(
       await page
@@ -174,12 +206,8 @@ try {
   })
   await test('Display labels, visibility and order control headers without changing query data', async () => {
     await page.getByText('Display columns', { exact: true }).click()
-    await page
-      .getByLabel('Header for revenue', { exact: true })
-      .fill('Net, "€"')
-    await page
-      .getByRole('button', { name: 'Move revenue earlier', exact: true })
-      .click()
+    await rename('Revenue', 'Net, "€"')
+    await drag('revenue', 'region')
     await page.getByLabel('Show Active', { exact: true }).uncheck()
     assert.deepEqual(await headers(), ['revenue', 'region'])
     assert.equal(
@@ -224,7 +252,7 @@ try {
   })
   await test('Same-schema query refresh preserves display state and replaces values', async () => {
     await page.getByText('Display columns', { exact: true }).click()
-    await page.getByLabel('Header for revenue', { exact: true }).fill('Amount')
+    await rename('Revenue', 'Amount')
     await filter('Region', 'east')
     await publish({ status: 'loading' })
     assert.equal(
@@ -280,7 +308,7 @@ try {
   })
   await test('Different query or schema resets display choices and stale filters', async () => {
     await page.getByText('Display columns', { exact: true }).click()
-    await page.getByLabel('Header for revenue', { exact: true }).fill('Amount')
+    await rename('Revenue', 'Amount')
     await page.getByLabel('Show Active', { exact: true }).uncheck()
     await filter('Region', 'west')
     await page
@@ -327,6 +355,127 @@ try {
       await csv(),
       'Text,Value\r\n"雪,""quoted""\nnext",\'=1+1\r\n\'-text,-5\r\n',
     )
+  })
+  await test('Inline header rename commits Enter and blur, cancels Escape, and preserves sorting', async () => {
+    await page
+      .getByRole('button', { name: 'Sort Revenue', exact: true })
+      .click()
+    await page
+      .getByRole('button', { name: 'Rename Revenue header', exact: true })
+      .click()
+    const editor = page.getByRole('textbox', {
+      name: 'Header name for Revenue',
+      exact: true,
+    })
+    assert.equal(
+      await editor.evaluate((node) => node === document.activeElement),
+      true,
+    )
+    await editor.fill('Discarded')
+    await editor.press('Escape')
+    assert.equal(
+      await page
+        .getByRole('button', { name: 'Sort Revenue', exact: true })
+        .count(),
+      1,
+    )
+    assert.deepEqual(await rows(), ['east', 'west', 'north'])
+    await rename('Revenue', 'Amount')
+    await page
+      .getByRole('button', { name: 'Rename Region header', exact: true })
+      .click()
+    await page
+      .getByRole('textbox', { name: 'Header name for Region', exact: true })
+      .fill('Area')
+    await page
+      .getByRole('textbox', { name: 'Header name for Region', exact: true })
+      .press('Tab')
+    assert.equal(
+      await csv(),
+      'Area,Amount,Active\r\nEast,7,false\r\nWest,42,true\r\nNorth,,true\r\n',
+    )
+  })
+  await test('Drag and keyboard reorder preserve hidden columns and export order', async () => {
+    await page.getByText('Display columns', { exact: true }).click()
+    await page.getByLabel('Show Revenue', { exact: true }).uncheck()
+    await drag('active', 'region')
+    assert.deepEqual(await headers(), ['active', 'region'])
+    assert.equal(
+      await csv(),
+      'Active,Region\r\ntrue,West\r\nfalse,East\r\ntrue,North\r\n',
+    )
+    await page
+      .getByRole('button', { name: 'Move Active column', exact: true })
+      .focus()
+    await page.keyboard.press('ArrowRight')
+    assert.deepEqual(await headers(), ['region', 'active'])
+    await page.getByLabel('Show Revenue', { exact: true }).check()
+    assert.deepEqual(await headers(), ['region', 'active', 'revenue'])
+    assert.equal(await page.locator('th[aria-sort="none"]').count(), 3)
+  })
+  await test('Touch dragging reorders columns without sorting them', async () => {
+    const cdp = await page.context().newCDPSession(page)
+    try {
+      const handle = await page
+        .locator('th[data-column=active] .column-move')
+        .boundingBox()
+      const target = await page.locator('th[data-column=region]').boundingBox()
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchStart',
+        touchPoints: [
+          { x: handle.x + handle.width / 2, y: handle.y + handle.height / 2 },
+        ],
+      })
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: [{ x: target.x + 4, y: target.y + target.height / 2 }],
+      })
+      await cdp.send('Input.dispatchTouchEvent', {
+        type: 'touchEnd',
+        touchPoints: [],
+      })
+      assert.deepEqual(await headers(), ['active', 'region', 'revenue'])
+      assert.equal(await page.locator('th[aria-sort="none"]').count(), 3)
+      assert.equal(
+        await csv(),
+        'Active,Region,Revenue\r\ntrue,West,42\r\nfalse,East,7\r\ntrue,North,\r\n',
+      )
+    } finally {
+      await cdp.detach()
+    }
+  })
+  await test('Escape and query loading cancel a drag without changing order', async () => {
+    const handle = await page
+      .locator('th[data-column=active] .column-move')
+      .boundingBox()
+    const target = await page.locator('th[data-column=region]').boundingBox()
+    await page.mouse.move(
+      handle.x + handle.width / 2,
+      handle.y + handle.height / 2,
+    )
+    await page.mouse.down()
+    await page.mouse.move(target.x + 4, target.y + target.height / 2)
+    assert.equal(await page.locator('[data-column-drop]').count(), 1)
+    await page.keyboard.press('Escape')
+    await page.mouse.up()
+    assert.deepEqual(await headers(), ['region', 'revenue', 'active'])
+    assert.equal(await page.locator('[data-column-drop]').count(), 0)
+    await page.mouse.move(
+      handle.x + handle.width / 2,
+      handle.y + handle.height / 2,
+    )
+    await page.mouse.down()
+    await page.mouse.move(target.x + 4, target.y + target.height / 2)
+    await publish({ status: 'loading' })
+    await page.mouse.up()
+    await page.evaluate(() =>
+      window.analyticsFixture.publish({
+        status: 'ready',
+        result: window.analyticsFixture.sales,
+      }),
+    )
+    assert.deepEqual(await headers(), ['region', 'revenue', 'active'])
+    assert.equal(await page.locator('[data-column-drop]').count(), 0)
   })
   await test('Initial loading, empty records and zero columns render without errors', async () => {
     await start({ status: 'loading' })
