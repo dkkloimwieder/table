@@ -667,6 +667,20 @@ try {
     assert.equal(after.counts.cells, counts.cells)
     assert.equal(after.counts.requests, 0)
     if (cycles[0].counts) {
+      for (const cycle of cycles) {
+        assert.equal(cycle.counts['Data records'], 100)
+        assert.equal(cycle.counts['Native row views'], 100)
+        assert.equal(cycle.counts['Table cells'], 600)
+        for (const key of [
+          'Solid store targets',
+          'Solid store property signals',
+          'Solid owner scopes',
+          'Solid computations and effects',
+          'Solid dependency links',
+          'Solid plain signals',
+        ])
+          assert.ok(cycle.counts[key] > 0, `${key} recognized in loaded heap`)
+      }
       const application = (value) =>
         Object.fromEntries(
           Object.entries(value).filter(

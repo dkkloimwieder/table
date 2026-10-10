@@ -4,7 +4,7 @@ title: Solid 2
 
 The Solid adapter requires `solid-js` and `@solidjs/web` version `2.0.0-rc.13` or newer in the Solid 2 line. Use Node 22.12 or newer. Solid 1 applications must keep the earlier adapter.
 
-Install matching versions of `solid-js` and `@solidjs/web`. Use `@solidjs/vite-plugin` version `3.0.0-next.47` with these runtime versions. Set `jsxImportSource` to `@solidjs/web` in your TypeScript configuration.
+Install matching versions of `solid-js` and `@solidjs/web`. The tested runtime version is `2.0.0-rc.14` with `@solidjs/vite-plugin` version `3.0.0-next.49`. Set `jsxImportSource` to `@solidjs/web` in your TypeScript configuration.
 
 The [official Solid 2 cheatsheet](https://github.com/solidjs/solid/blob/next/packages/solid/CHEATSHEET.md) describes the runtime changes. The [migration guide](https://github.com/solidjs/solid/blob/next/documentation/solid-2.0/MIGRATION.md) provides more detail.
 

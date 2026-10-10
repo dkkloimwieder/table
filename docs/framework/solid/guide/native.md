@@ -625,7 +625,7 @@ Those resources need cleanup in their own scopes.
 The editing fixture cancels child initialization and storage requests when their model ends.
 Late responses cannot install a child model or restore table configuration after disposal.
 
-The fixtures retain two workarounds for Solid rc.13.
+The fixtures retain two runtime workarounds first observed with Solid rc.13.
 Native DOM listeners avoid the delegated-event retention described in the heap report.
 The WAMN fixture drains a disposed pending queue through an `action()` and `flush()` wrapper around its render disposer.
 These workarounds do not change source records or define a new Table API.

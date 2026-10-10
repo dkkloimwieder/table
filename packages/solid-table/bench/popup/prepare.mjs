@@ -81,9 +81,9 @@ await symlink(
 await writeFile(
   join(input, 'provenance.json'),
   JSON.stringify(
-    { revision, archiveSha, lockSha: digest(lock), solid: '2.0.0-rc.13' },
+    { revision, archiveSha, lockSha: digest(lock), solid: '2.0.0-rc.14' },
     null,
     2,
   ) + '\n',
 )
-console.log(`Prepared Kobalte ${revision} with Solid rc.13 under ${input}`)
+console.log(`Prepared Kobalte ${revision} with Solid rc.14 under ${input}`)

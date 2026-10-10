@@ -63,7 +63,7 @@ export function portSelect(code: string, id: string) {
 \t\t\t}`
     if (!code.includes(before))
       throw new Error('Kobalte positioner ref source changed')
-    // The rc.13 compiler drops a ref wrapped in a TypeScript assertion.
+    // The rc.13 and rc.14 compilers drop a ref wrapped in a TypeScript assertion.
     // A plain array preserves both callbacks through JSX compilation.
     return code.replace(before, 'ref={[context.setPositionerRef, props.ref]}')
   }

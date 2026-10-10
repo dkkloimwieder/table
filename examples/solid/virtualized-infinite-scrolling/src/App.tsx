@@ -103,7 +103,7 @@ function App() {
       const { scrollHeight, scrollTop, clientHeight } = containerRefElement
       if (
         scrollHeight - scrollTop - clientHeight < 500 &&
-        !query.isFetching &&
+        query.fetchStatus !== 'fetching' &&
         totalFetched() < totalDBRowCount()
       ) {
         void query.fetchNextPage()
@@ -255,7 +255,7 @@ function App() {
           </tbody>
         </table>
       </div>
-      <Show when={query.isFetching}>
+      <Show when={query.fetchStatus === 'fetching'}>
         <div>Fetching More...</div>
       </Show>
     </div>

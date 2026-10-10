@@ -98,6 +98,14 @@ export function createTable<
     constructTable(resolvedOptions),
   ) as unknown as SolidTable<TFeatures, TData>
 
+  // Core construction snapshots options. Restore getters before any consumer
+  // reads them, so initial computations subscribe to their reactive sources.
+  untrack(() => {
+    table.setOptions(
+      (prev) => merge(prev, mergedOptions) as TableOptions<TFeatures, TData>,
+    )
+  })
+
   createRenderEffect(
     () => {
       const userState = tableOptions.state

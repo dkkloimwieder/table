@@ -1,6 +1,6 @@
 # Kobalte popup editing
 
-This fixture uses the real Kobalte Select with Table and Solid 2 rc.13.
+This fixture uses the real Kobalte Select with Table and Solid 2 rc.14.
 It replaces the Priority editor through a component supplied by the parent.
 The regular editing fixture continues to use an HTML select.
 The published Table package gains no Kobalte dependency.
@@ -21,7 +21,7 @@ It excludes upstream tests, applications, and documentation.
 
 `dependencies-lock.json` fixes the complete npm dependency graph in a separate scratch directory.
 It includes Kobalte core `2.0.0-alpha.2`, utils `2.0.0-alpha.0`, and scroll primitives `3.0.0-next.4`.
-Overrides pin Solid, web, and signals to rc.13.
+Overrides pin Solid, web, and signals to rc.14.
 The fixture uses the workspace compiler and TypeScript 6.0.3.
 Preparation records source and dependency hashes in `.input/provenance.json`.
 

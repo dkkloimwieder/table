@@ -4,12 +4,12 @@
   "type": "module",
   "dependencies": {
     "@kobalte/core": "2.0.0-alpha.2",
-    "solid-js": "2.0.0-rc.13",
-    "@solidjs/web": "2.0.0-rc.13"
+    "solid-js": "2.0.0-rc.14",
+    "@solidjs/web": "2.0.0-rc.14"
   },
   "overrides": {
-    "solid-js": "2.0.0-rc.13",
-    "@solidjs/web": "2.0.0-rc.13",
-    "@solidjs/signals": "2.0.0-rc.13"
+    "solid-js": "2.0.0-rc.14",
+    "@solidjs/web": "2.0.0-rc.14",
+    "@solidjs/signals": "2.0.0-rc.14"
   }
 }

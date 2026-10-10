@@ -7,14 +7,14 @@ TanStack Table is a headless table library. It manages your table's state and lo
 ## Installation
 
 Use Node 22.12 or newer with a Solid 2 app. Solid 1 apps require the earlier adapter.
-The tested runtime versions are `solid-js@2.0.0-rc.13` and `@solidjs/web@2.0.0-rc.13`.
+The tested runtime versions are `solid-js@2.0.0-rc.14` and `@solidjs/web@2.0.0-rc.14`.
 Keep both runtime packages on the same version.
 
 Install the runtime packages and Table in your app directory:
 
 ```bash
-npm install @tanstack/solid-table solid-js@2.0.0-rc.13 @solidjs/web@2.0.0-rc.13
-npm install --save-dev @solidjs/vite-plugin@3.0.0-next.47 vite@8.3.0 typescript@6.0.3
+npm install @tanstack/solid-table solid-js@2.0.0-rc.14 @solidjs/web@2.0.0-rc.14
+npm install --save-dev @solidjs/vite-plugin@3.0.0-next.49 vite@8.3.0 typescript@6.0.3
 ```
 
 The Vite plugin compiles Solid JSX, the markup syntax in TypeScript components.

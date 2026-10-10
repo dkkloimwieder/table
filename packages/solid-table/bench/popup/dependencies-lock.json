@@ -7,8 +7,8 @@
       "name": "table-kobalte-popup-qualification",
       "dependencies": {
         "@kobalte/core": "2.0.0-alpha.2",
-        "@solidjs/web": "2.0.0-rc.13",
-        "solid-js": "2.0.0-rc.13"
+        "@solidjs/web": "2.0.0-rc.14",
+        "solid-js": "2.0.0-rc.14"
       }
     },
     "node_modules/@floating-ui/core": {
@@ -408,18 +408,18 @@
       }
     },
     "node_modules/@solidjs/signals": {
-      "version": "2.0.0-rc.13",
-      "resolved": "https://registry.npmjs.org/@solidjs/signals/-/signals-2.0.0-rc.13.tgz",
-      "integrity": "sha512-4+pRdrAHtfyE9BUJWBup3TpzJojJjgW2mV1vm/Jik4tWa5epxXB/YrLkwqP1v8+S9XjyKKZu5BSLqmcpswMYeQ==",
+      "version": "2.0.0-rc.14",
+      "resolved": "https://registry.npmjs.org/@solidjs/signals/-/signals-2.0.0-rc.14.tgz",
+      "integrity": "sha512-s3v1wpPcX3wfNO0WUERrPrXS+qqJ4ylzH9QTIRKqrgcMVeLEOXgFa3hZrhEoVTp+lVAgido2NH6GCI79twe2fg==",
       "license": "MIT",
       "engines": {
         "node": ">=22.12.0"
       }
     },
     "node_modules/@solidjs/web": {
-      "version": "2.0.0-rc.13",
-      "resolved": "https://registry.npmjs.org/@solidjs/web/-/web-2.0.0-rc.13.tgz",
-      "integrity": "sha512-vI/7v/XM8B/3U/oKAzCW2VjTLFkM5IArB2DFnrjxyPRYD3FX9KAXg9QuAnPIPQHC/xvg/LgxmvoVfZUfJ96gOQ==",
+      "version": "2.0.0-rc.14",
+      "resolved": "https://registry.npmjs.org/@solidjs/web/-/web-2.0.0-rc.14.tgz",
+      "integrity": "sha512-MhHqUoVBdgAG7EZOANx7Y5SuCFH7sBxzt9uBSYLpJxE503tqoi7pX1UhV7PWxw4LvmPe1PZkdkSOZ8BLchZkhQ==",
       "license": "MIT",
       "dependencies": {
         "seroval": "~1.6.7",
@@ -429,7 +429,7 @@
         "node": ">=22.12.0"
       },
       "peerDependencies": {
-        "solid-js": "^2.0.0-rc.13"
+        "solid-js": "^2.0.0-rc.14"
       }
     },
     "node_modules/@swc/helpers": {
@@ -469,12 +469,12 @@
       }
     },
     "node_modules/solid-js": {
-      "version": "2.0.0-rc.13",
-      "resolved": "https://registry.npmjs.org/solid-js/-/solid-js-2.0.0-rc.13.tgz",
-      "integrity": "sha512-62bYOI4JZ15KOqL5eReKyWSwAXrGb0fbX8SDnHsbJk2UX+SzSyy1gobas2cxW/0BXcobGfQ1V6ffPyQkMIBdoQ==",
+      "version": "2.0.0-rc.14",
+      "resolved": "https://registry.npmjs.org/solid-js/-/solid-js-2.0.0-rc.14.tgz",
+      "integrity": "sha512-fmaqUHgbITf18Hedur6gPnaPE4GrdPgkTbLujHqM5Vl5jxWf9rxwFh6hZMXQs+Kg1pu8KYuOMfqnuSizFQ9I6Q==",
       "license": "MIT",
       "dependencies": {
-        "@solidjs/signals": "^2.0.0-rc.13",
+        "@solidjs/signals": "^2.0.0-rc.14",
         "csstype": "^3.1.0",
         "seroval": "~1.6.7",
         "seroval-plugins": "~1.6.7"

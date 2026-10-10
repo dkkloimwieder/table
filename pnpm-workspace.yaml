@@ -5,6 +5,10 @@ packages:
 
 overrides:
   '@internationalized/date': '3.12.4'
+  # These tools still use Solid 1 APIs despite broad peer dependency ranges.
+  '@tanstack/devtools@0.14.2>solid-js': '1.9.15'
+  '@tanstack/devtools-ui@0.7.1>solid-js': '1.9.15'
+  'vite-plugin-solid@2.11.14>solid-js': '1.9.15'
   '@tanstack/alpine-table': 'workspace:*'
   '@tanstack/angular-table-devtools': 'workspace:*'
   '@tanstack/angular-table': 'workspace:*'

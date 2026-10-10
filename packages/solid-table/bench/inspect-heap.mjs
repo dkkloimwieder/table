@@ -158,29 +158,39 @@ for (let i = 0; i < count; i++) {
   else if (
     properties.has('acc') &&
     properties.has('pxv') &&
-    properties.has('Bn')
+    (properties.has('Bn') || (properties.has('ot') && properties.has('rt')))
   )
     category = 'Solid store property signals'
   else if (
-    properties.has('Wn') &&
+    (properties.has('Wn') || properties.has('Et')) &&
     properties.has('dispose') &&
     properties.has('_parent')
   )
     category = 'Solid owner scopes'
   else if (
-    properties.has('he') &&
-    properties.has('Ie') &&
+    ((properties.has('he') && properties.has('Ie')) ||
+      (properties.has('re') && properties.has('We'))) &&
     properties.has('_parent')
   )
     category = 'Solid computations and effects'
   else if (
-    properties.has('Oe') &&
-    properties.has('ge') &&
-    properties.has('Ne') &&
-    properties.has('Ae')
+    (properties.has('Oe') &&
+      properties.has('ge') &&
+      properties.has('Ne') &&
+      properties.has('Ae')) ||
+    (properties.has('I') &&
+      properties.has('o') &&
+      properties.has('en') &&
+      properties.has('Ue'))
   )
     category = 'Solid dependency links'
-  else if (properties.has('De') && properties.has('Ue') && properties.has('Yn'))
+  else if (
+    (properties.has('De') && properties.has('Ue') && properties.has('Yn')) ||
+    (properties.has('We') &&
+      properties.has('qe') &&
+      properties.has('ze') &&
+      properties.has('Ae'))
+  )
     category = 'Solid plain signals'
   else if (type === 'object' && name === 'TargetShape')
     category = 'Solid store targets'
@@ -296,7 +306,7 @@ const result = {
   shapes: summarize(shapes),
   categories: summarize(categories),
   categoryNote:
-    'Self sizes plus directly owned property/element/Map tables, counted once. No transitive retained-size claim. Runtime shapes match Solid rc.13. V8 allocation-site templates have a separate category, not live instance counts.',
+    'Self sizes plus directly owned property/element/Map tables, counted once. No transitive retained-size claim. Runtime shapes match Solid rc.13 and rc.14. V8 allocation-site templates have a separate category, not live instance counts.',
 }
 await writeFile(file + '.summary.json', JSON.stringify(result, null, 2) + '\n')
 console.log(

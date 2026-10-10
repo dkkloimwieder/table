@@ -4,6 +4,48 @@ The store-over-core prototype retains too much memory for the target architectur
 It preserves table-core rows and caches, then adds native Solid bookkeeping around them.
 The replacement must use Solid directly and restrict display objects to consumer demand.
 
+## Upstream release review on 2026-10-10
+
+The upgrade uses Solid `2.0.0-rc.14` and `@solidjs/vite-plugin` `3.0.0-next.49`.
+The upgrade passes 1,507 package tests and all 38 supported consumers' type tests and builds.
+The 24 fixture stages pass, including 352 browser cases with the isolated WAMN fixture.
+
+The upgrade exposes an adapter initialization bug in the cursor Query example.
+Core construction copies the initial options before the adapter restores their getters in a render effect.
+Some initial readers use that copy and never subscribe to later data changes.
+The adapter now restores live option getters before the first consumer read.
+The existing cursor browser test requires new rows after an async page fetch and reuse of the cached previous page.
+The infinite-scrolling example uses Query's `fetchStatus` for its network indicator and duplicate-request guard.
+The combined `isFetching` getter leaves the indicator stale after an async page append on rc.14.
+The request status follows the actual fetch through completion.
+Issue `table-0zk.4.3` tracks removal of this workaround after an upstream fix.
+The workspace upgrades all supported consumers to rc.14 and plugin next.49, with Query rc.5 in its three integrations.
+
+The isolated rc.14 comparison passes 102 browser cases and 120 heap captures across production and development builds.
+All three existing compiler, scroll, and ownership defects still reproduce, so their repairs remain necessary.
+The asserted component ref array still drops both callbacks.
+The unpositioned popup still moves the document during `scrollIntoView`.
+The global signal still retains its first development owner and record batch.
+The ownerless signal and registry deletion controls release the records.
+
+The rc.14 popup passes 200 edit, open, choose, and cancel cycles against the distribution build.
+Captures after 10, 100, and 200 cycles contain identical classified application resources.
+Each contains 100 records, 100 row views, 600 cells, 111 store targets, and 830 property signals.
+Each also contains 8,235 computations, 1,541 owners, 8,565 dependency links, 54 plain signals, and one view controller.
+Disposal leaves one ownerless scroll registry signal and no other classified application objects.
+The retaining path identifies the window registry.
+
+The heap inspector recognizes both rc.13 and rc.14 object shapes.
+The popup runner requires 100 records, 100 row views, 600 cells, and positive counts for every Solid resource category before disposal.
+These assertions prevent an unrecognized runtime shape from passing cleanup through zero counts.
+The rc.13 reference snapshots retain their original counts with the updated inspector.
+
+Candidate manifests, lockfiles, traces, reports, and heap captures reside in `test-results/solid-upstream-release-review`.
+Final package and consumer reports reside in `test-results/solid-upstream-release-review/final-rc14`.
+Final fixture reports reside in `test-results/solid-qualification-rc14-final`.
+The shared host runs other development loads, so timing remains advisory.
+The adapter fix includes a patch changeset for `@tanstack/solid-table`.
+
 ## Matched editing overhead on 2026-10-10
 
 Beads issue `table-sog` measures the actual editing fixture against its existing read-only row renderer.
