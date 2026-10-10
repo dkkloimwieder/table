@@ -20,6 +20,7 @@ import { headerFilterCases } from './header-filter-cases.mjs'
 import { rowActionCases } from './row-action-cases.mjs'
 import { fieldConfigurationCases } from './field-configuration-cases.mjs'
 import { editingCallbackCases } from './editing-callback-cases.mjs'
+import { applicationRecordCases } from './application-record-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -254,6 +255,7 @@ try {
   await rowActionCases({ page, start, call, read, record, settle, edit, input })
   await fieldConfigurationCases({ page, call, read, record, settle, idle })
   await editingCallbackCases({ page, call, read, record, settle, idle })
+  await applicationRecordCases({ page, call, read, record, settle, idle })
   await headerFilterCases({
     page,
     start,

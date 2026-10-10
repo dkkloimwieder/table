@@ -11,6 +11,7 @@ import { createMemoryViewStorage } from './viewStorage'
 import { TableViews } from './TableViews'
 import type { EditingFields } from './fields'
 import type { EditingCallbackFactory } from './editingCallbacks'
+import type { RecordData } from './createEditing'
 import type { SaveMode, TableControls, TableRowAction } from './Table'
 import type { EditingModel } from './model'
 import type { ChildLoad, SubTables } from './createSubTables'
@@ -80,7 +81,8 @@ function ChildTable(props: {
 }
 
 export function App(props: {
-  size: number
+  size?: number
+  records?: ReadonlyArray<RecordData>
   fields?: EditingFields
   createEditingCallbacks?: EditingCallbackFactory
   saveMode?: SaveMode
@@ -101,7 +103,7 @@ export function App(props: {
   const fields = untrack(() => props.fields ?? defaultFields)
   const createEditingCallbacks = untrack(() => props.createEditingCallbacks)
   const model = createModel(
-    untrack(() => props.size),
+    untrack(() => props.records ?? props.size ?? 8),
     untrack(() => props.saveMode ?? 'row'),
     fields,
     createEditingCallbacks?.({ kind: 'root' }),

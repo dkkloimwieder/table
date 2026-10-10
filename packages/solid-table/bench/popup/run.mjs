@@ -11,6 +11,7 @@ import { loadavg } from 'node:os'
 import { chromium } from '@playwright/test'
 import { fieldConfigurationCases } from '../editing/field-configuration-cases.mjs'
 import { editingCallbackCases } from '../editing/editing-callback-cases.mjs'
+import { applicationRecordCases } from '../editing/application-record-cases.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -159,6 +160,15 @@ async function record(name, work) {
 }
 try {
   await page.goto(url)
+  await applicationRecordCases({
+    page,
+    call,
+    read,
+    record,
+    settle,
+    idle,
+    popup: true,
+  })
   await editingCallbackCases({
     page,
     call,

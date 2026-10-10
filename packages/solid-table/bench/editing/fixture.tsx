@@ -20,6 +20,7 @@ import type { SaveMode, TableControls } from './Table'
 import type { EditingModel } from './model'
 import type { Component } from 'solid-js'
 import type { PriorityEditorProps } from './TablePriorityEditor'
+import type { RecordData } from './createEditing'
 
 let fixtureFields: EditingFields = defaultFields
 let priorityEditor: Component<PriorityEditorProps> | undefined
@@ -78,6 +79,7 @@ function start(
   saveMode: SaveMode = 'row',
   configuration: 'default' | 'workflow' = 'default',
   callbacks: 'default' | 'application' = 'default',
+  records?: ReadonlyArray<RecordData>,
 ) {
   const fields = configuration === 'workflow' ? workflowFields : fixtureFields
   stop()
@@ -93,6 +95,7 @@ function start(
     return (
       <App
         size={size}
+        records={records}
         fields={fields}
         createEditingCallbacks={applicationEditing?.createCallbacks}
         priorityEditor={priorityEditor}

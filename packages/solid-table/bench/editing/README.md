@@ -56,6 +56,31 @@ Search and filters use committed values. During editing, the table holds its dis
 After the last edit resolves, the table applies current saved values to the existing filters and sort.
 If a save removes the focused row from global search, focus returns to that search control.
 
+## Application records
+
+`App.records` accepts a readonly array of initial `RecordData` values.
+The supplied IDs, fields, and revision strings reach the model unchanged.
+The application supplies unique, stable IDs.
+Records take precedence over `App.size`, including an empty array.
+If the application omits records, the demo generates `size` records. The default size is eight.
+
+`createModel` also accepts a readonly record array directly.
+The model places these records in its existing store.
+The table, drafts, and save controller use that store.
+The records prop supplies initial data. Replacing the prop or changing the original array does not synchronize the model.
+Use the model from `App.ready` for later updates and deletions.
+
+Call `model.patch(id, { ...changes, revision })` with the new application revision.
+The numeric revision increment remains a convenience for generated demo records.
+Supply application save callbacks when the backend uses revision strings that are not numbers.
+
+Background changes update saved values and revisions while local drafts remain separate.
+Filter membership and sorting stay fixed until editing ends.
+The controller rejects saves against older revisions and ignores stale success responses.
+`model.remove(id)` defers removal during editing and prevents saves for the removed record.
+After the drafts resolve, the model removes the record from the table.
+The browser tests use application records with custom IDs and revision strings in both editors.
+
 ## Application field configuration
 
 The application supplies an `EditingFields` configuration when it creates the model.

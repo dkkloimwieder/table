@@ -65,7 +65,7 @@ export function createRecords(
 }
 
 export function createModel(
-  data: number | Array<RecordData>,
+  data: number | ReadonlyArray<RecordData>,
   mode: 'row' | 'table' = 'row',
   fields: EditingFields = defaultFields,
   editingCallbacks?: EditingCallbacks,
@@ -574,13 +574,14 @@ export function createModel(
     release: () => {
       for (const release of [...waiting]) release()
     },
-    patch(id: string, changes: Partial<Omit<RecordData, 'id' | 'revision'>>) {
+    patch(id: string, changes: Partial<Omit<RecordData, 'id'>>) {
       if (disposed) return
       setRecords((all) => {
         const row = all[id]
         if (row) {
+          const revision = changes.revision ?? String(BigInt(row.revision) + 1n)
           Object.assign(row, changes)
-          row.revision = String(BigInt(row.revision) + 1n)
+          row.revision = revision
         }
       })
     },
