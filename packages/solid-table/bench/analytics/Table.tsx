@@ -1,8 +1,9 @@
 import { For, Show, createMemo, createSignal } from 'solid-js'
 import { createTable } from '@tanstack/solid-table/native'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import { TableColumnMove, moveColumn } from '../editing/TableColumnMove'
-import { TableHeaderName } from './TableHeaderName'
+import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
+import { Table as TablePresentation } from '../table/Table'
+import { TableHeaderName } from '../table/TableHeaderName'
 import { downloadCsv, toCsv } from './csv'
 import type { QueryRecord, QueryResult, QueryState, QueryValue } from './types'
 
@@ -157,72 +158,36 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
           fallback={<p>Show a column to view or export results.</p>}
         >
           <div class="table-scroll">
-            <table>
-              <caption>Query results</caption>
-              <thead>
-                <tr>
-                  <For each={table.getVisibleColumns()}>
-                    {(column) => (
-                      <th
-                        scope="col"
-                        data-column={column.id}
-                        data-column-header={column.id}
-                        aria-sort={
-                          column.getIsSorted() === 'asc'
-                            ? 'ascending'
-                            : column.getIsSorted() === 'desc'
-                              ? 'descending'
-                              : 'none'
-                        }
-                      >
-                        <div class="column-heading">
-                          <TableColumnMove
-                            id={column.id}
-                            label={label(column.id)}
-                            ids={columnIds()}
-                            onMove={(destination) =>
-                              table.setColumnOrder([
-                                ...moveColumn(
-                                  columnIds(),
-                                  column.id,
-                                  destination,
-                                ),
-                              ])
-                            }
-                          />
-                          <TableHeaderName
-                            label={label(column.id)}
-                            sorted={column.getIsSorted()}
-                            onSort={() => column.toggleSorting()}
-                            onRename={(value) =>
-                              setLabels((previous) => ({
-                                ...previous,
-                                [column.id]: value,
-                              }))
-                            }
-                          />
-                        </div>
-                      </th>
-                    )}
-                  </For>
-                </tr>
-              </thead>
-              <tbody>
-                <For each={table.getRowIds()}>
-                  {(id) => (
-                    <tr data-row={id}>
-                      <For each={table.getVisibleColumns()}>
-                        {(column) => (
-                          <td data-column={column.id}>
-                            {String(table.getValue(id, column.id) ?? '')}
-                          </td>
-                        )}
-                      </For>
-                    </tr>
-                  )}
-                </For>
-              </tbody>
-            </table>
+            <TablePresentation
+              table={table}
+              caption="Query results"
+              grouped={false}
+              header={(column) => (
+                <>
+                  <TableColumnMove
+                    id={column.id}
+                    label={label(column.id)}
+                    ids={columnIds()}
+                    onMove={(destination) =>
+                      table.setColumnOrder([
+                        ...moveColumn(columnIds(), column.id, destination),
+                      ])
+                    }
+                  />
+                  <TableHeaderName
+                    label={label(column.id)}
+                    sorted={column.getIsSorted()}
+                    onSort={() => column.toggleSorting()}
+                    onRename={(value) =>
+                      setLabels((previous) => ({
+                        ...previous,
+                        [column.id]: value,
+                      }))
+                    }
+                  />
+                </>
+              )}
+            />
           </div>
           <Show when={!table.getRowIds().length}>
             <p>The query returned no rows.</p>

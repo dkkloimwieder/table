@@ -38,6 +38,9 @@ It also demonstrates filters, grouping, summaries, resizing, rearrangement, chil
 The [popup fixture](./popup/README.md) adds a focused Kobalte Select port with fixed choices.
 Their controls and storage callbacks remain application examples.
 The native package does not publish them.
+The [read-only fixture](./read-only/README.md) supports sorting, filtering, and grouping without an editing model.
+It shares its presentation with the editing and analytics fixtures.
+
 The [analytics fixture](./analytics/README.md) shows application-owned query results without editing state.
 It adds display-only header names and CSV export to the native display controls.
 Production WAMN, Form, shared UI, DataGrid, and generator integration remain deferred.
@@ -54,7 +57,7 @@ From the repository root, run the automated correctness qualification after inst
 pnpm test:solid:qualification
 ```
 
-This command covers source and distribution editing, popup, and analytics cases, package builds, server rendering, and hydration.
+This command covers source and distribution editing, popup, analytics, and read-only cases, package builds, server rendering, and hydration.
 Hydration attaches the client to server-rendered HTML and requires existing cells to survive attachment and respond to edits.
 Reports remain under `test-results/solid-qualification`.
 The command does not capture heaps or replace the performance workloads below.

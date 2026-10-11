@@ -1,5 +1,6 @@
 import { Show, createSignal, onSettled } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { TableSort } from './TableSort'
 
 export function TableHeaderName(props: {
   label: string
@@ -14,19 +15,14 @@ export function TableHeaderName(props: {
       <Show
         when={editing()}
         fallback={
-          <button
-            type="button"
+          <TableSort
+            label={props.label}
+            sorted={props.sorted}
             class="header-sort"
-            aria-label={'Sort ' + props.label}
-            ref={nativeEvents({ click: props.onSort })}
-          >
-            {props.label}
-            {props.sorted === 'asc'
-              ? ' ↑'
-              : props.sorted === 'desc'
-                ? ' ↓'
-                : ''}
-          </button>
+            accessibleLabel={'Sort ' + props.label}
+            unsortedMark=""
+            onSort={props.onSort}
+          />
         }
       >
         <HeaderEditor

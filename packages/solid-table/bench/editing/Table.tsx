@@ -11,12 +11,14 @@ import {
   untrack,
 } from 'solid-js'
 import { Dynamic } from '@solidjs/web'
+import { TableSort } from '../table/TableSort'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import { TableFilter } from './TableFilter'
-import { TableHeaderFilter } from './TableHeaderFilter'
-import { TableGrouping } from './TableGrouping'
-import { TableColumnResize } from './TableColumnResize'
-import { TableColumnMove, moveColumn } from './TableColumnMove'
+import { Table as TablePresentation, TableRow } from '../table/Table'
+import { TableFilter } from '../table/TableFilter'
+import { TableHeaderFilter } from '../table/TableHeaderFilter'
+import { TableGrouping } from '../table/TableGrouping'
+import { TableColumnResize } from '../table/TableColumnResize'
+import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
 import { TablePriorityEditor } from './TablePriorityEditor'
 import type { PriorityEditorProps } from './TablePriorityEditor'
 import type { Component } from 'solid-js'
@@ -622,7 +624,6 @@ export function Table(props: {
     )
   }
   function ReadOnlyRow(id: string) {
-    const row = table.createRowView(id)
     counts.views++
     let detail: HTMLTableRowElement | undefined
     onCleanup(() => {
@@ -630,29 +631,27 @@ export function Table(props: {
       if (detail?.contains(document.activeElement)) restoreAfterRemoval()
     })
     return (
-      <tbody>
-        <tr data-row={id}>
+      <TableRow
+        table={table}
+        id={id}
+        formatValue={(value, column) =>
+          column.columnDef?.meta?.formatValue?.(value) ?? String(value ?? '')
+        }
+        onCell={() => {
+          counts.cells++
+        }}
+        leading={() => (
           <Show when={props.details}>
             <td class="sub-table-control">{SubTableToggle(id)}</td>
           </Show>
-          <For each={row.getVisibleCells()}>
-            {(cell) => {
-              counts.cells++
-              return (
-                <td data-column={cell.column.id} class="read-only-value">
-                  {cell.column.columnDef?.meta?.formatValue?.(
-                    cell.getValue(),
-                  ) ?? String(cell.getValue() ?? '')}
-                </td>
-              )
-            }}
-          </For>
-          <td class="row-actions">{RowActions(id)}</td>
-        </tr>
-        {SubTableDetail(id, (node) => {
-          detail = node
-        })}
-      </tbody>
+        )}
+        trailing={() => <td class="row-actions">{RowActions(id)}</td>}
+        detail={() =>
+          SubTableDetail(id, (node) => {
+            detail = node
+          })
+        }
+      />
     )
   }
   function Row(id: string) {
@@ -846,93 +845,6 @@ export function Table(props: {
       </tbody>
     )
   }
-  function Group(key: string) {
-    const group = table.createGroupView(key)
-    counts.groupViews++
-    onCleanup(() => {
-      counts.groupsUnmounted++
-    })
-    const label = () =>
-      group.path
-        ?.map((entry) => {
-          const column = table.getColumn(entry.columnId)
-          return `${column?.columnDef?.meta?.groupingLabel ?? entry.columnId}: ${entry.value === null || entry.value === '' ? '(none)' : String(entry.value)}`
-        })
-        .join(' / ') ?? ''
-    const valueLabel = () => {
-      const value = group.path?.at(-1)?.value
-      return value == null || value === '' ? '(none)' : String(value)
-    }
-    return (
-      <tbody>
-        <tr data-group={key} class="group-row">
-          <Show when={props.details}>
-            <td class="sub-table-control" />
-          </Show>
-          <For each={group.getVisibleCells()}>
-            {(cell) => {
-              counts.groupCells++
-              const first = () => {
-                const columnId = group.path?.at(-1)?.columnId
-                const visible = table.getVisibleColumns()
-                return (
-                  cell.column.id ===
-                  (visible.some((column) => column.id === columnId)
-                    ? columnId
-                    : visible[0]?.id)
-                )
-              }
-              return (
-                <td
-                  data-column={cell.column.id}
-                  role={first() ? 'rowheader' : undefined}
-                >
-                  <Show when={first()}>
-                    <div
-                      class="group-heading"
-                      style={{
-                        'padding-left': `${Math.max(group.depth, 0) * 20}px`,
-                      }}
-                    >
-                      <button
-                        data-group-toggle={key}
-                        aria-expanded={group.getIsExpanded() ? 'true' : 'false'}
-                        aria-label={`${group.getIsExpanded() ? 'Collapse' : 'Expand'} ${label()}`}
-                        ref={nativeEvents({
-                          click: () => {
-                            if (!model.locked()) group.toggleExpanded()
-                          },
-                        })}
-                      >
-                        <span aria-hidden="true">
-                          {group.getIsExpanded() ? '▾' : '▸'}
-                        </span>{' '}
-                        {valueLabel()}
-                      </button>
-                      <span class="group-count">
-                        {group.count} {group.count === 1 ? 'record' : 'records'}
-                      </span>
-                    </div>
-                  </Show>
-                  <Show when={cell.column.columnDef?.aggregationFn}>
-                    <span
-                      class="group-summary"
-                      data-group-summary={cell.column.id}
-                    >
-                      {cell.column.columnDef?.meta?.formatSummary?.(
-                        cell.getValue(),
-                      ) ?? String(cell.getValue() ?? '—')}
-                    </span>
-                  </Show>
-                </td>
-              )
-            }}
-          </For>
-          <td />
-        </tr>
-      </tbody>
-    )
-  }
   return (
     <section
       class="table-component"
@@ -988,7 +900,27 @@ export function Table(props: {
         </div>
       </Show>
       <Show when={props.controls?.grouping !== false}>
-        <TableGrouping model={model} />
+        <TableGrouping
+          table={table}
+          disabled={!model.localProcessing() || model.locked()}
+          label={(id) =>
+            table.getColumn(id)?.columnDef?.meta?.groupingLabel ?? id
+          }
+          groupable={(id) =>
+            Boolean(table.getColumn(id)?.columnDef?.meta?.groupingLabel)
+          }
+          configureGrouping={model.configureGrouping}
+          summaryChoices={(id) =>
+            table.getColumn(id)?.columnDef?.meta?.summaryChoices
+          }
+          summary={(id) => model.summaries[id]}
+          setSummary={(id, value) =>
+            model.setSummary(
+              id,
+              value as Parameters<EditingModel['setSummary']>[1],
+            )
+          }
+        />
       </Show>
       <div class="toolbar">
         <Show when={props.controls?.globalSearch !== false}>
@@ -1139,142 +1071,110 @@ export function Table(props: {
         </p>
       </Show>
       <div class="table-scroll">
-        <table
-          ref={element}
-          tabindex="-1"
-          style={{ width: `${tableWidth()}px` }}
-        >
-          <caption>
-            {isGrouped() ? 'Grouped records' : 'Editable records'}
-          </caption>
-          <colgroup>
-            <Show when={props.details}>
-              <col style={{ width: '32px' }} />
-            </Show>
-            <For each={table.getVisibleColumns()}>
-              {(column) => (
-                <col
-                  data-column-width={column.id}
-                  style={{ width: `${column.getSize()}px` }}
-                />
-              )}
-            </For>
-            <col style={{ width: '144px' }} />
-          </colgroup>
-          <thead>
-            <tr>
-              <Show when={props.details}>
-                <th scope="col" class="sub-table-control">
-                  <span class="sr-only">Sub-table</span>
-                </th>
-              </Show>
-              <For each={table.getVisibleColumns()}>
-                {(column) => (
-                  <th
-                    scope="col"
-                    data-column-header={column.id}
-                    class="column-header"
-                    aria-sort={
-                      !model.localProcessing() ||
-                      table.state.sorting[0]?.id !== column.id
-                        ? undefined
-                        : column.getIsSorted() === 'asc'
-                          ? 'ascending'
-                          : 'descending'
-                    }
-                  >
-                    <div class="column-heading">
-                      <Show when={props.controls?.columnReordering !== false}>
-                        <ColumnMove column={column} />
-                      </Show>
-                      <Show
-                        when={props.controls?.headerSorting !== false}
-                        fallback={
-                          <span class="column-title">
-                            {String(column.columnDef?.header)}
-                          </span>
-                        }
-                      >
-                        <button
-                          class="column-sort"
-                          aria-label={`Sort by ${String(column.columnDef?.header)}`}
-                          disabled={!model.localProcessing() || model.locked()}
-                          ref={nativeEvents<HTMLElement>({
-                            click: (event) =>
-                              column.toggleSorting(undefined, event.shiftKey),
-                          })}
-                        >
-                          {String(column.columnDef?.header)}{' '}
-                          <span aria-hidden="true">
-                            {column.getIsSorted() === 'asc'
-                              ? '↑'
-                              : column.getIsSorted() === 'desc'
-                                ? '↓'
-                                : '↕'}
-                          </span>
-                        </button>
-                      </Show>
-                      <Show
-                        when={
-                          filterPlacement() === 'headers' ||
-                          filterPlacement() === 'both'
-                        }
-                      >
-                        {columnFilter(column, 'headers')}
-                      </Show>
-                    </div>
-                    <Show
-                      when={
-                        props.controls?.columnResizing !== false &&
-                        column.columnDef?.enableResizing !== false
-                      }
-                    >
-                      <ColumnResize
-                        column={column}
-                        fixed={props.controls?.resizeBehavior === 'fixed'}
-                      />
-                    </Show>
-                  </th>
-                )}
-              </For>
-              <th scope="col">Row actions</th>
-            </tr>
-            <Show when={isGrouped()}>
-              <tr class="group-summary-headers">
-                <Show when={props.details}>
-                  <th class="sub-table-control" />
-                </Show>
-                <For each={table.getVisibleColumns()}>
-                  {(column) => (
-                    <th scope="col" data-summary-header={column.id}>
-                      {table.state.grouping.includes(column.id)
-                        ? `group${column.columnDef?.meta?.summaryLabel ? ` · ${column.columnDef.meta.summaryLabel}` : ''}`
-                        : (column.columnDef?.meta?.summaryLabel ?? '-')}
+        <TablePresentation
+          table={table}
+          elementRef={(node) => {
+            element = node
+          }}
+          width={tableWidth()}
+          caption={isGrouped() ? 'Grouped records' : 'Editable records'}
+          grouped={isGrouped()}
+          ariaSort={(column) =>
+            !model.localProcessing() || table.state.sorting[0]?.id !== column.id
+              ? undefined
+              : column.getIsSorted() === 'asc'
+                ? 'ascending'
+                : 'descending'
+          }
+          leading={
+            props.details
+              ? {
+                  width: 32,
+                  header: () => (
+                    <th scope="col" class="sub-table-control">
+                      <span class="sr-only">Sub-table</span>
                     </th>
-                  )}
-                </For>
-                <th scope="col">-</th>
-              </tr>
-            </Show>
-          </thead>
-          <Show
-            when={isGrouped()}
-            fallback={
-              <For each={table.getRowIds()}>
-                {(id) => (props.readOnly ? ReadOnlyRow(id) : Row(id))}
-              </For>
-            }
-          >
-            <For each={table.getDisplayKeys()}>
-              {(key) => {
-                const item = table.getDisplayItem(key)
-                return item.kind === 'row'
-                  ? ReadOnlyRow(item.id)
-                  : Group(item.key)
-              }}
-            </For>
-          </Show>
-        </table>
+                  ),
+                  group: () => <td class="sub-table-control" />,
+                }
+              : undefined
+          }
+          trailing={{
+            width: 144,
+            header: () => <th scope="col">Row actions</th>,
+            group: () => <td />,
+          }}
+          header={(column) => (
+            <>
+              <Show when={props.controls?.columnReordering !== false}>
+                <ColumnMove column={column} />
+              </Show>
+              <Show
+                when={props.controls?.headerSorting !== false}
+                fallback={
+                  <span class="column-title">
+                    {String(column.columnDef?.header)}
+                  </span>
+                }
+              >
+                <TableSort
+                  label={String(column.columnDef?.header)}
+                  sorted={column.getIsSorted()}
+                  disabled={!model.localProcessing() || model.locked()}
+                  onSort={(multi) => column.toggleSorting(undefined, multi)}
+                />
+              </Show>
+              <Show
+                when={
+                  filterPlacement() === 'headers' ||
+                  filterPlacement() === 'both'
+                }
+              >
+                {columnFilter(column, 'headers')}
+              </Show>
+            </>
+          )}
+          headerEnd={(column) => (
+            <>
+              <Show
+                when={
+                  props.controls?.columnResizing !== false &&
+                  column.columnDef?.enableResizing !== false
+                }
+              >
+                <ColumnResize
+                  column={column}
+                  fixed={props.controls?.resizeBehavior === 'fixed'}
+                />
+              </Show>
+            </>
+          )}
+          summaryHeader={(column) =>
+            table.state.grouping.includes(column.id)
+              ? `group${column.columnDef?.meta?.summaryLabel ? ` · ${column.columnDef.meta.summaryLabel}` : ''}`
+              : (column.columnDef?.meta?.summaryLabel ?? '-')
+          }
+          renderRow={(id, grouped) =>
+            grouped || props.readOnly ? ReadOnlyRow(id) : Row(id)
+          }
+          groupLabel={(id) =>
+            table.getColumn(id)?.columnDef?.meta?.groupingLabel ?? id
+          }
+          formatSummary={(value, column) =>
+            column.columnDef?.meta?.formatSummary?.(value) ??
+            String(value ?? '—')
+          }
+          canToggleGroup={() => !model.locked()}
+          onGroupMount={() => {
+            counts.groupViews++
+          }}
+          onGroupCleanup={() => {
+            counts.groupsUnmounted++
+          }}
+          onGroupCell={() => {
+            counts.groupCells++
+          }}
+        />
         <Show when={table.getRowIds().length === 0}>
           <div class="empty-state">
             <p>

@@ -6,6 +6,9 @@ Drag the handle in a header to reorder columns. Arrow keys, Home, and End also m
 Click the pencil in a header to rename it. Enter or focus loss saves the name. Escape cancels the rename.
 The table has no search or column filters. The application query defines the complete set of rows.
 
+The demo uses the [shared Table presentation](../table/README.md) for headers and rows.
+The [read-only demo](../read-only/README.md) uses that presentation with sorting, grouping, and filtering.
+
 ## Query results
 
 `Table` accepts a reactive `query` prop with `loading`, `error`, or `ready` status. The optional `retry` callback belongs to the application.

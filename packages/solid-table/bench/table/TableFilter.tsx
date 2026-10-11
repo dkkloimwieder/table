@@ -1,6 +1,5 @@
 import { For, Show, createUniqueId } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import type { FieldChoice } from './fields'
 
 export type TableFilterProps = {
   label: string
@@ -10,7 +9,7 @@ export type TableFilterProps = {
   disabled?: boolean
   search?: boolean
   hideLabel?: boolean
-  choices?: ReadonlyArray<FieldChoice>
+  choices?: ReadonlyArray<{ value: string; label: string; disabled?: boolean }>
   inputRef?: (node: HTMLInputElement) => void
   controlRef?: (node: HTMLInputElement | HTMLSelectElement) => void
   onEscape?: () => void

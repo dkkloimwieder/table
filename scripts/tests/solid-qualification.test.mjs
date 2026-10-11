@@ -31,7 +31,7 @@ test('qualification selects shared toolchain and package changes', () => {
 
 test('qualification covers both browser inputs and keeps heap work separate', () => {
   const stages = qualificationStages('/tmp/solid-gates')
-  for (const fixture of ['editing', 'popup', 'analytics']) {
+  for (const fixture of ['editing', 'popup', 'analytics', 'read-only']) {
     for (const mode of ['source', 'distribution']) {
       const browser = stages.find(
         ({ name }) => name === `${fixture}-${mode}-browser`,

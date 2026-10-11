@@ -8,6 +8,8 @@ for (const fixture of [
   'hydration',
   'editing-overhead',
   'analytics',
+  'table',
+  'read-only',
 ]) {
   const directory = `bench/${fixture}`
   files.push(

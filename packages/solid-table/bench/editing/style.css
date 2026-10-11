@@ -1,3 +1,4 @@
+@import '../table/column-move.css';
 :root {
   font-family: 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
   font-size: 12px;
@@ -482,60 +483,6 @@ aside {
 .column-resize:focus-visible {
   outline: 2px solid #1657a8;
   outline-offset: -2px;
-}
-.column-move {
-  float: left;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 18px;
-  height: 18px;
-  padding: 0;
-  margin: 2px 6px 2px 0;
-  border-color: #d8d8d8;
-  background: transparent;
-  touch-action: none;
-  user-select: none;
-  cursor: grab;
-  color: #666;
-}
-.column-move-dots {
-  display: grid;
-  grid-template-columns: repeat(2, 2px);
-  grid-template-rows: repeat(2, 2px);
-  gap: 2px;
-}
-.column-move-dots span {
-  background: #888;
-  border-radius: 50%;
-}
-.column-move:active {
-  cursor: grabbing;
-}
-.column-move-menu {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  padding: 6px;
-  width: 180px;
-  border: 1px solid #999;
-  border-radius: 0;
-  box-shadow: 3px 3px 0 #ddd;
-}
-.column-move-menu button {
-  display: block;
-  width: 100%;
-  text-align: left;
-  border: 0;
-}
-[data-column-moving] {
-  background: #edf3fb;
-}
-[data-column-drop='before'] {
-  box-shadow: inset 3px 0 #1657a8;
-}
-[data-column-drop='after'] {
-  box-shadow: inset -3px 0 #1657a8;
 }
 
 fieldset.display-fields {

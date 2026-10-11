@@ -1,13 +1,34 @@
 import { For, Show, onSettled } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import type { Summary } from './aggregates'
-import type { EditingModel } from './model'
+import type { NativeTable } from '@tanstack/solid-table/native'
 
-export function TableGrouping(props: { model: EditingModel }) {
-  const { table, configureGrouping } = props.model
+export function TableGrouping<T, M>(props: {
+  table: NativeTable<T, M>
+  disabled?: boolean
+  label: (id: string) => string
+  groupable: (id: string) => boolean
+  configureGrouping?: (ids: Array<string>) => void
+  summaryChoices?: (
+    id: string,
+  ) => ReadonlyArray<{ value: string; label: string }> | undefined
+  summary?: (id: string) => string | undefined
+  setSummary?: (id: string, value: string) => void
+}) {
+  const table = props.table
+  function configureGrouping(next: Array<string>) {
+    if (props.configureGrouping) return props.configureGrouping(next)
+    const previous = table.state.grouping
+    const sorting = next.flatMap((id, depth) => {
+      const order = table.state.groupSorting.find(
+        (item) => item.depth === previous.indexOf(id),
+      )
+      return order ? [{ ...order, depth }] : []
+    })
+    table.setGrouping(next)
+    table.setGroupSorting(sorting)
+  }
   let addControl!: HTMLSelectElement
-  const label = (id: string) =>
-    table.getColumn(id)?.columnDef?.meta?.groupingLabel ?? id
+  const label = (id: string) => props.label(id)
   function move(id: string, offset: number) {
     const next = [...table.state.grouping]
     const from = next.indexOf(id)
@@ -39,10 +60,7 @@ export function TableGrouping(props: { model: EditingModel }) {
     })
   }
   return (
-    <fieldset
-      class="grouping-controls"
-      disabled={!props.model.localProcessing() || props.model.locked()}
-    >
+    <fieldset class="grouping-controls" disabled={props.disabled}>
       <legend>Group records</legend>
       <div class="grouping-toolbar">
         <label>
@@ -66,7 +84,7 @@ export function TableGrouping(props: { model: EditingModel }) {
             <option value="">Choose a column</option>
             <For each={table.getColumns()}>
               {(column) => (
-                <Show when={column.columnDef?.meta?.groupingLabel}>
+                <Show when={props.groupable(column.id)}>
                   <option
                     value={column.id}
                     disabled={table.state.grouping.includes(column.id)}
@@ -165,23 +183,19 @@ export function TableGrouping(props: { model: EditingModel }) {
                           <Show
                             when={
                               column.id !== id &&
-                              column.columnDef?.meta?.summaryChoices
+                              props.summaryChoices?.(column.id)
                             }
                           >
                             <option
                               value={`${column.id}:asc`}
-                              disabled={
-                                props.model.summaries[column.id] === 'none'
-                              }
+                              disabled={props.summary?.(column.id) === 'none'}
                             >
                               {String(column.columnDef?.header)} summary:
                               ascending
                             </option>
                             <option
                               value={`${column.id}:desc`}
-                              disabled={
-                                props.model.summaries[column.id] === 'none'
-                              }
+                              disabled={props.summary?.(column.id) === 'none'}
                             >
                               {String(column.columnDef?.header)} summary:
                               descending
@@ -228,40 +242,42 @@ export function TableGrouping(props: { model: EditingModel }) {
             }}
           </For>
         </ol>
-        <div
-          class="summary-controls"
-          role="group"
-          aria-label="Column summaries"
-        >
-          <For each={table.getColumns()}>
-            {(column) => (
-              <label>
-                {String(column.columnDef?.header)} summary
-                <select
-                  value={props.model.summaries[column.id]}
-                  ref={nativeEvents<HTMLSelectElement>({
-                    change: (event) =>
-                      props.model.setSummary(
-                        column.id,
-                        event.currentTarget.value as Summary,
-                      ),
-                  })}
-                >
-                  <For each={column.columnDef?.meta?.summaryChoices}>
-                    {(choice) => (
-                      <option value={choice.value}>{choice.label}</option>
-                    )}
-                  </For>
-                </select>
-              </label>
-            )}
-          </For>
-        </div>
-        <p class="summary-help">
-          Summaries use saved, filtered records, including collapsed rows. First
-          and last follow the table sort order. Range shows both endpoints. Span
-          shows their difference.
-        </p>
+        <Show when={props.setSummary}>
+          <div
+            class="summary-controls"
+            role="group"
+            aria-label="Column summaries"
+          >
+            <For each={table.getColumns()}>
+              {(column) => (
+                <label>
+                  {String(column.columnDef?.header)} summary
+                  <select
+                    value={props.summary?.(column.id)}
+                    ref={nativeEvents<HTMLSelectElement>({
+                      change: (event) =>
+                        props.setSummary?.(
+                          column.id,
+                          event.currentTarget.value,
+                        ),
+                    })}
+                  >
+                    <For each={props.summaryChoices?.(column.id)}>
+                      {(choice) => (
+                        <option value={choice.value}>{choice.label}</option>
+                      )}
+                    </For>
+                  </select>
+                </label>
+              )}
+            </For>
+          </div>
+          <p class="summary-help">
+            Summaries use saved, filtered records, including collapsed rows.
+            First and last follow the table sort order. Range shows both
+            endpoints. Span shows their difference.
+          </p>
+        </Show>
       </Show>
     </fieldset>
   )
