@@ -17,6 +17,12 @@ const results = new Map(
   [sales, inventory, large].map((result) => [result.key, result]),
 )
 const downloads = new Map()
+const sortedResults = new Map()
+let sortRuns = 0
+export const analyticsServerStats = () => ({
+  sortRuns,
+  sortedResults: sortedResults.size,
+})
 const MAX_PREVIEW = 1000
 async function body(request) {
   let value = ''
@@ -36,7 +42,20 @@ function description(value) {
     sorting.some((sort) => !ids.has(sort.id) || typeof sort.desc !== 'boolean')
   )
     throw new Error('Invalid sorting')
-  return sortResult(result, sorting)
+  if (!sorting.length) return result
+  const key = JSON.stringify([value.queryKey, sorting])
+  const cached = sortedResults.get(key)
+  if (cached) {
+    sortedResults.delete(key)
+    sortedResults.set(key, cached)
+    return cached
+  }
+  const sorted = sortResult(result, sorting)
+  sortRuns++
+  if (sortedResults.size >= 4)
+    sortedResults.delete(sortedResults.keys().next().value)
+  sortedResults.set(key, sorted)
+  return sorted
 }
 export async function handleAnalyticsRequest(request, response) {
   const url = new URL(request.url, 'http://localhost')
@@ -48,6 +67,7 @@ export async function handleAnalyticsRequest(request, response) {
     ) {
       const result = await body(request)
       results.set(result.key, result)
+      sortedResults.clear()
       response.writeHead(204).end()
     } else if (
       url.pathname === '/api/analytics/query' &&

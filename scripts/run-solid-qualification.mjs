@@ -29,6 +29,7 @@ export function qualificationStages(output, { wamn = false } = {}) {
       'node',
       '--test',
       'bench/analytics/demo-server.test.mjs',
+      'bench/analytics/paging.test.mjs',
     ]),
     stage('server-rendering', [...pkg, 'run', 'test:ssr']),
     stage('hydration', [...pkg, 'exec', 'node', 'bench/hydration/run.mjs'], {

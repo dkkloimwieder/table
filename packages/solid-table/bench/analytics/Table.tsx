@@ -1,4 +1,11 @@
-import { For, Show, createMemo, createProjection, createSignal } from 'solid-js'
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createProjection,
+  createSignal,
+} from 'solid-js'
 import { createTable } from '@tanstack/solid-table/native'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
@@ -152,10 +159,16 @@ function ResultTable(
   const columnIds = createMemo(() =>
     table.getColumns().map((column) => column.id),
   )
+  createEffect(
+    () => Boolean(props.window),
+    (browsing) => {
+      if (!browsing && viewport) viewport.scrollTop = 0
+    },
+  )
   const virtualBody = () => (
     <VirtualRows
       table={table}
-      window={props.window!}
+      window={props.window}
       viewport={() => viewport ?? null}
     />
   )
@@ -278,7 +291,7 @@ function ResultTable(
               table={table}
               caption="Query results"
               grouped={false}
-              renderBody={props.window ? virtualBody : undefined}
+              renderBody={virtualBody}
               header={(column) => (
                 <>
                   <TableColumnMove

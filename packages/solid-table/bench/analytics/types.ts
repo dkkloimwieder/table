@@ -29,7 +29,7 @@ export type QueryWindow = {
   readonly offset: number
   readonly totalRows: number
   readonly loading?: boolean
-  readonly onRangeChange: (offset: number) => void
+  readonly onRangeChange: (offset: number, end?: number) => void
 }
 
 export type QueryExportRequest = QueryBrowseRequest & {

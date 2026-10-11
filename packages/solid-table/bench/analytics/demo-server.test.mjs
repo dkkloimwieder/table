@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { test } from 'node:test'
-import { handleAnalyticsRequest } from './demo-server.mjs'
+import { handleAnalyticsRequest, analyticsServerStats } from './demo-server.mjs'
 
 test('Demo query ranges and export requests use server records', async (t) => {
   const server = createServer((request, response) => {
@@ -37,6 +37,40 @@ test('Demo query ranges and export requests use server records', async (t) => {
   assert.equal(page.totalRows, 100005)
   assert.equal(page.rows.length, 1000)
   assert.equal(page.rows[0].id, 'row-99000')
+  const beforeSort = analyticsServerStats().sortRuns
+  for (const offset of [0, 1000]) {
+    const response = await post('/api/analytics/query', {
+      queryKey: 'large',
+      offset,
+      sorting: [{ id: 'index', desc: true }],
+    })
+    assert.equal(response.status, 200)
+    const value = await response.json()
+    assert.equal(value.rows[0].id, `row-${100004 - offset}`)
+  }
+  assert.equal(analyticsServerStats().sortRuns, beforeSort + 1)
+  await post('/api/analytics/register', {
+    key: 'changing',
+    columns: [{ id: 'index', label: 'Index' }],
+    rows: [{ id: 'old', values: { index: 1 } }],
+  })
+  const order = {
+    queryKey: 'changing',
+    sorting: [{ id: 'index', desc: false }],
+  }
+  assert.equal(
+    (await (await post('/api/analytics/query', order)).json()).rows[0].id,
+    'old',
+  )
+  await post('/api/analytics/register', {
+    key: 'changing',
+    columns: [{ id: 'index', label: 'Index' }],
+    rows: [{ id: 'new', values: { index: 2 } }],
+  })
+  assert.equal(
+    (await (await post('/api/analytics/query', order)).json()).rows[0].id,
+    'new',
+  )
   const invalid = await post('/api/analytics/export', {
     queryKey: 'sales',
     columns: [{ id: 'unknown', label: 'Unknown' }],

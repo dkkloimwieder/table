@@ -1,39 +1,85 @@
-import { For, Show, createEffect, createMemo, onCleanup } from 'solid-js'
-import { createKeyedVirtualizer } from '../../../../examples/solid/_shared/createKeyedVirtualizer'
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onSettled,
+} from 'solid-js'
 import { TableRow } from '../table/Table'
+import { fixedRowRange } from './fixed-window'
 import type { NativeTable } from '@tanstack/solid-table/native'
 import type { QueryRecord, QueryWindow } from './types'
 
 export function VirtualRows(props: {
   table: NativeTable<QueryRecord>
-  window: QueryWindow
+  window?: QueryWindow
   viewport: () => HTMLElement | null
 }) {
   let disposed = false
   onCleanup(() => {
     disposed = true
   })
-  const keys = createMemo(() =>
-    Array.from({ length: props.window.totalRows }, (_, index) => String(index)),
+  const count = createMemo(
+    () => props.window?.totalRows ?? props.table.getRowIds().length,
   )
-  const virtual = createKeyedVirtualizer({
-    get keys() {
-      return keys()
+  const [geometry, setGeometry] = createSignal(
+    { offset: 0, height: 600, headerHeight: 0 },
+    { ownedWrite: true },
+  )
+  const range = createMemo(
+    () => {
+      const current = geometry()
+      return fixedRowRange(
+        count(),
+        current.offset,
+        current.height,
+        current.headerHeight,
+      )
     },
-    getScrollElement: props.viewport,
-    estimateSize: () => 48,
-    overscan: 5,
-    initialRect: { width: 1000, height: 600 },
+    {
+      equals: (a, b) =>
+        a.start === b.start && a.end === b.end && a.bottom === b.bottom,
+    },
+  )
+  const items = createMemo(() =>
+    Array.from(
+      { length: range().end - range().start },
+      (_, index) => range().start + index,
+    ),
+  )
+  onSettled(() => {
+    const node = props.viewport()
+    if (!node) return
+    const update = () =>
+      setGeometry({
+        offset: node.scrollTop,
+        height: node.clientHeight,
+        headerHeight:
+          (node.querySelector('caption')?.offsetHeight ?? 0) +
+          (node.querySelector('thead')?.offsetHeight ?? 0),
+      })
+    const observer = new ResizeObserver(update)
+    observer.observe(node)
+    for (const heading of node.querySelectorAll('caption, thead'))
+      observer.observe(heading)
+    node.addEventListener('scroll', update, { passive: true })
+    update()
+    return () => {
+      observer.disconnect()
+      node.removeEventListener('scroll', update)
+    }
   })
   createEffect(
     () => {
-      const items = virtual.getItems()
+      const visible = items()
       return {
-        first: items[0]?.index,
-        last: items.at(-1)?.index,
-        offset: props.window.offset,
+        first: visible[0],
+        last: visible.at(-1),
+        offset: props.window?.offset ?? 0,
         length: props.table.getRowIds().length,
-        loading: props.window.loading,
+        loading: props.window?.loading,
       }
     },
     (range) => {
@@ -49,7 +95,7 @@ export function VirtualRows(props: {
       ) {
         const offset = range.first
         queueMicrotask(() => {
-          if (!disposed) props.window.onRangeChange(offset)
+          if (!disposed) props.window?.onRangeChange(offset, range.last! + 1)
         })
       }
     },
@@ -61,14 +107,14 @@ export function VirtualRows(props: {
         <tr>
           <td
             colspan={columns()}
-            style={{ height: `${virtual.getStart()}px`, padding: 0, border: 0 }}
+            style={{ height: `${range().top}px`, padding: 0, border: 0 }}
           />
         </tr>
       </tbody>
-      <For each={virtual.getItems()}>
+      <For each={items()}>
         {(item) => {
           const id = () =>
-            props.table.getRowIds()[item.index - props.window.offset]
+            props.table.getRowIds()[item - (props.window?.offset ?? 0)]
           return (
             <Show
               when={id()}
@@ -91,7 +137,7 @@ export function VirtualRows(props: {
           <td
             colspan={columns()}
             style={{
-              height: `${Math.max(0, virtual.getTotalSize() - (virtual.getItems().at(-1)?.end ?? 0))}px`,
+              height: `${range().bottom}px`,
               padding: 0,
               border: 0,
             }}

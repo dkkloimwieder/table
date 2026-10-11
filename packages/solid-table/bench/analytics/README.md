@@ -48,14 +48,30 @@ Header names, column order, and visibility survive a same-schema sorting respons
 The optional `onLoadAll` callback receives the query key and current sorting.
 The application decides how to browse the complete query.
 In the demo, Load all enables paging as the user scrolls. It does not download every record into browser memory.
-The application retains at most two pages, or 2,000 records. It replaces that window when the user scrolls to another range.
+The application retains visited pages in a cache, which stores records for later reuse.
+The default cache budget is 16 MiB of estimated record storage, with a 100,000-row cap.
+The cache removes the least recently used pages when either limit is reached. Cheap rows stay cached longer than large rows.
+Returning to a cached range avoids another server request. The application fetches missing pages with at most two concurrent requests.
+Sorting, a new query, Run query, and disposal clear the cache. Show preview reuses the first cached rows when available.
 
-The table renders visible rows with the existing virtualizer, which calculates the visible positions.
+`createQueryPageCache` accepts `maxBytes`, `maxRows`, `pageSize`, and `estimateRowBytes`.
+The default page size is 1,000. The application can reduce it for larger records.
+The default estimator counts strings, scalar values, field names, and estimated object overhead.
+A custom `estimateRowBytes(row)` supplies the application's estimate. This budget does not measure the browser's exact heap usage.
+The active view, response parsing, framework objects, and temporary arrays need additional memory.
+Pages larger than the budget bypass the cache. The active view still receives the rows needed for scrolling.
+Set `maxBytes` or `maxRows` to zero to disable retention of inactive pages.
+
+The active Table source normally holds two pages. It can hold more pages when the viewport needs more rows.
+Cached records outside this window do not receive table bindings. The application owns cache configuration and transport.
+The demo fixture accepts this configuration through `startServer(cacheConfiguration)`.
+
+Both preview and full browsing render visible rows plus a small buffer. The fixed-height renderer calculates their positions directly.
 The shared Table renderer still supplies the headers and record cells.
 Rows use a fixed height in this view. Text stays on one line.
-The virtualizer keeps position metadata for the complete row count.
+Geometry work uses only the visible range. It does not allocate position keys or measurements for the complete query count.
 
-The optional `window` prop supplies the loaded offset, complete count, loading state, and `onRangeChange` callback.
+The optional `window` prop supplies the loaded offset, complete count, loading state, and `onRangeChange(offset, end)` callback. The optional end index follows the last requested row. These indices describe the range needed by the viewport.
 Show preview calls `onShowPreview` and returns to the first 1,000 rows with the current sorting and header choices.
 
 The application cancels replaced query requests and ignores late responses after a query change or disposal.
@@ -87,7 +103,7 @@ The file uses UTF-8, a byte order mark, and CRLF row endings. Quotes, commas, an
 Formula-like strings receive an apostrophe prefix so that spreadsheets treat them as text. Numeric negatives remain numbers.
 
 `demo-server.mjs` provides query, export, and download routes for Vite and the browser test server.
-It stores fixed mock records in server memory. The test-only registration route supplies records for the existing browser cases.
+It stores fixed mock records in server memory. A cache holds up to four sorted results and clears them when test records change. The test-only registration route supplies records for the existing browser cases.
 This server demonstrates the component contract. Applications supply their own query and export services.
 
 ## Run

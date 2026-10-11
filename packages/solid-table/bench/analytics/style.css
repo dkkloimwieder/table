@@ -85,13 +85,13 @@ summary {
   background: white;
   z-index: 1;
 }
-.virtual-scroll tbody tr {
+.table-scroll tbody tr {
   height: 48px;
 }
-.virtual-scroll tbody[aria-hidden] tr {
+.table-scroll tbody[aria-hidden] tr {
   height: 0;
 }
-.virtual-scroll td {
+.table-scroll td {
   white-space: nowrap;
 }
 table {

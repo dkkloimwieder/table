@@ -1,8 +1,17 @@
 import { render } from '@solidjs/web'
-import { OBSERVE, action, createMemo, createSignal, flush } from 'solid-js'
+import {
+  OBSERVE,
+  action,
+  createMemo,
+  createSignal,
+  flush,
+  onCleanup,
+} from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { Table } from './Table'
 import { inventory, sales, sortResult } from './demo-data'
+import { createQueryPageCache } from './page-cache'
+import type { QueryCacheConfiguration } from './page-cache'
 import type {
   QueryExportRequest,
   QueryResult,
@@ -14,11 +23,15 @@ import './style.css'
 let publish: ((value: QueryState) => void) | undefined
 let dispose: (() => void) | undefined
 let refreshServer: (() => Promise<void>) | undefined
+let cacheStats:
+  | (() => ReturnType<ReturnType<typeof createQueryPageCache>['stats']>)
+  | undefined
 let configureExport: ((configuration: ExportConfiguration) => void) | undefined
 type ExportConfiguration = {
   mode?: 'csv' | 'capture' | 'none'
   disabled?: boolean
   server?: boolean
+  cache?: QueryCacheConfiguration
 }
 const exportRequests: Array<QueryExportRequest> = []
 let capture:
@@ -56,6 +69,7 @@ function stop() {
   publish = undefined
   configureExport = undefined
   refreshServer = undefined
+  cacheStats = undefined
   flush()
 }
 function start(
@@ -67,6 +81,9 @@ function start(
   events.push(...(capture?.stop() ?? []))
   capture = OBSERVE?.diagnostics.capture()
   dispose = render(() => {
+    const cache = createQueryPageCache(configuration.cache)
+    cacheStats = cache.stats
+    onCleanup(cache.clear)
     const [query, setQuery] = createSignal<QueryState>(state)
     const [choice, setChoice] = createSignal('sales')
     const [exportConfiguration, setExportConfiguration] =
@@ -94,12 +111,36 @@ function start(
       order: QuerySorting = sorting(),
       nextOffset = 0,
       page = false,
+      reuse = false,
+      endOffset = nextOffset,
     ) {
       const current = ++request
       queryAbort?.abort()
       const controller = new AbortController()
       queryAbort = controller
+      cache.scope(key, order)
+      if (!page && !reuse) cache.clear()
       setPageError('')
+      const total = page ? latest()?.totalRows : undefined
+      const length = page
+        ? Math.min(
+            Math.max(
+              cache.pageSize * 2,
+              Math.ceil((endOffset - nextOffset) / cache.pageSize) *
+                cache.pageSize,
+            ),
+            Math.max(0, (total ?? Infinity) - nextOffset),
+          )
+        : 1000
+      const retained = cache.read(nextOffset, length)
+      if (retained) {
+        setPageBusy(false)
+        setOffset(nextOffset)
+        supplied = retained
+        setQuery({ status: 'ready', result: retained })
+        flush()
+        return
+      }
       if (page) setPageBusy(true)
       else {
         setPageBusy(false)
@@ -108,36 +149,53 @@ function start(
       }
       flush()
       try {
-        const fetchPage = async (start: number) => {
+        const fetchPage = async (start: number, limit: number) => {
+          const remembered = cache.read(start, limit)
+          if (remembered) return remembered
           const response = await fetch('/api/analytics/query', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               queryKey: key,
               sorting: order,
-              limit: 1000,
+              limit,
               offset: start,
             }),
             signal: controller.signal,
           })
           if (!response.ok) throw new Error('The query request failed')
-          return (await response.json()) as QueryResult
+          const result = (await response.json()) as QueryResult
+          if (current === request && !controller.signal.aborted)
+            cache.put(start, result)
+          return result
         }
-        const first = await fetchPage(nextOffset)
+        const pages: Array<QueryResult> = []
+        if (page) {
+          let index = 0
+          const count = Math.ceil(length / cache.pageSize)
+          const worker = async () => {
+            while (index < count) {
+              const currentIndex = index++
+              pages[currentIndex] = await fetchPage(
+                nextOffset + currentIndex * cache.pageSize,
+                cache.pageSize,
+              )
+            }
+          }
+          await Promise.all(Array.from({ length: Math.min(2, count) }, worker))
+        } else pages.push(await fetchPage(0, 1000))
         if (current !== request) return
-        const second =
-          page && nextOffset + 1000 < (first.totalRows ?? 0)
-            ? await fetchPage(nextOffset + 1000)
-            : undefined
-        const result = second
-          ? { ...first, rows: [...first.rows, ...second.rows] }
-          : first
-        if (current !== request) return
+        const first = pages[0]!
+        const result =
+          pages.length > 1
+            ? { ...first, rows: pages.flatMap((value) => value.rows) }
+            : first
         setOffset(nextOffset)
         supplied = result
         setQuery({ status: 'ready', result })
       } catch (error) {
         if (current !== request || controller.signal.aborted) return
+        controller.abort()
         if (page) {
           failedOffset = nextOffset
           setPageError(String(error))
@@ -193,6 +251,7 @@ function start(
       })()
     }
     publish = (value) => {
+      cache.clear()
       if (value.status === 'ready') {
         if (
           !supplied ||
@@ -265,7 +324,13 @@ function start(
           }
           onShowPreview={(description) => {
             setBrowsing(false)
-            void queryServer(description.queryKey, description.sorting)
+            void queryServer(
+              description.queryKey,
+              description.sorting,
+              0,
+              false,
+              true,
+            )
           }}
           window={
             browsing() && latest()?.totalRows !== undefined
@@ -273,14 +338,22 @@ function start(
                   offset: offset(),
                   totalRows: latest()!.totalRows!,
                   loading: pageBusy(),
-                  onRangeChange: (nextOffset) => {
+                  onRangeChange: (nextOffset, end) => {
                     const result = latest()
-                    if (result && !pageBusy() && !pageError())
+                    if (
+                      result &&
+                      nextOffset < (result.totalRows ?? 0) &&
+                      !pageBusy() &&
+                      !pageError()
+                    )
                       void queryServer(
                         result.key,
                         sorting(),
-                        Math.floor(nextOffset / 1000) * 1000,
+                        Math.floor(nextOffset / cache.pageSize) *
+                          cache.pageSize,
                         true,
+                        false,
+                        end,
                       )
                   },
                 }
@@ -333,8 +406,8 @@ async function register(result: QueryResult) {
   })
   if (!response.ok) throw new Error('The demo result registration failed')
 }
-async function startServer() {
-  start({ status: 'loading' }, { server: true })
+async function startServer(cache: QueryCacheConfiguration = {}) {
+  start({ status: 'loading' }, { server: true, cache })
   await refreshServer?.()
 }
 
@@ -342,6 +415,7 @@ const api = {
   start,
   stop,
   startServer,
+  cacheStats: () => cacheStats?.(),
   publish: async (state: QueryState) => {
     if (state.status === 'ready') await register(state.result)
     publish?.(state)

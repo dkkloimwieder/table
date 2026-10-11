@@ -97,7 +97,7 @@ try {
     page.evaluate((state) => window.analyticsFixture.publish(state), state)
   const rows = () =>
     page
-      .locator('tbody tr')
+      .locator('tbody tr[data-row]')
       .evaluateAll((nodes) => nodes.map((node) => node.dataset.row))
   const headers = () =>
     page
@@ -334,7 +334,7 @@ try {
       .getByRole('combobox', { name: 'Example query' })
       .selectOption('large')
     await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
-    assert.equal(await page.locator('tbody tr[data-row]').count(), 1000)
+    assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
     const sort = page.getByRole('button', { name: 'Sort Index', exact: true })
     await sort.click()
     await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
@@ -361,7 +361,7 @@ try {
     assert.equal(content.split('\r\n').length, 100007)
     assert.ok(content.startsWith('Name,Row number\r\nRow 100004,100004\r\n'))
     assert.ok(content.endsWith('Row 0,0\r\n'))
-    assert.equal(await page.locator('tbody tr[data-row]').count(), 1000)
+    assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
   })
   await test('Load all browses distant pages with bounded records and rendered rows', async () => {
     await page.evaluate(() => window.analyticsFixture.startServer())
@@ -404,7 +404,7 @@ try {
       await page.locator('.table-scroll').boundingBox(),
       previewBounds,
     )
-    assert.equal(await page.locator('tbody tr[data-row]').count(), 1000)
+    assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
     assert.equal(
       await page.locator('tbody tr[data-row]').first().getAttribute('data-row'),
       'row-100004',
@@ -455,6 +455,162 @@ try {
       assert.ok(Math.abs(expanded.y + expanded.height - (size.height - 16)) < 1)
     }
     await page.setViewportSize({ width: 1280, height: 900 })
+  })
+  await test('Application cache reuses cheap pages and enforces byte budgets', async () => {
+    const requests = []
+    const listener = (request) => {
+      if (request.url().endsWith('/api/analytics/query'))
+        requests.push(request.postDataJSON())
+    }
+    page.on('request', listener)
+    try {
+      await page.evaluate(() => window.analyticsFixture.startServer())
+      await page
+        .getByRole('combobox', { name: 'Example query' })
+        .selectOption('large')
+      await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+      await page.getByRole('button', { name: 'Load all', exact: true }).click()
+      const viewport = page.locator('.virtual-scroll')
+      await viewport.evaluate((node) => {
+        node.scrollTop = 1000 * 48
+      })
+      await page.locator('[data-row="row-1000"]').waitFor()
+      assert.equal(
+        requests.filter((value) => value.queryKey === 'large').length,
+        2,
+      )
+      assert.equal(requests.at(-1).offset, 1000)
+      for (const index of [50000, 70000, 50000]) {
+        const before = requests.length
+        await viewport.evaluate((node, index) => {
+          node.scrollTop = index * 48
+        }, index)
+        await page.locator(`[data-row="row-${index}"]`).waitFor()
+        if (index === 50000 && before > 4) assert.equal(requests.length, before)
+      }
+      const retained = await page.evaluate(() =>
+        window.analyticsFixture.cacheStats(),
+      )
+      assert.ok(retained.rows > 2000)
+      assert.ok(retained.estimatedBytes <= retained.maxBytes)
+      await page
+        .getByRole('button', { name: 'Show preview', exact: true })
+        .click()
+      await page.locator('[data-row="row-0"]').waitFor()
+      const before = requests.length
+      await page.getByRole('button', { name: 'Run query', exact: true }).click()
+      await page.locator('[data-row="row-0"]').waitFor()
+      assert.equal(requests.length, before + 1)
+      assert.equal(
+        (await page.evaluate(() => window.analyticsFixture.cacheStats())).rows,
+        1000,
+      )
+      await page.evaluate(() =>
+        window.analyticsFixture.startServer({ maxBytes: 1024, pageSize: 100 }),
+      )
+      await page
+        .getByRole('combobox', { name: 'Example query' })
+        .selectOption('large')
+      await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+      await page.getByRole('button', { name: 'Load all', exact: true }).click()
+      await page.locator('.virtual-scroll').evaluate((node) => {
+        node.scrollTop = 50000 * 48
+      })
+      await page.locator('[data-row="row-50000"]').waitFor()
+      assert.equal(
+        (await page.evaluate(() => window.analyticsFixture.cacheStats())).rows,
+        0,
+      )
+      assert.ok(requests.slice(-2).every((value) => value.limit === 100))
+      assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
+      await page.evaluate(() => window.analyticsFixture.stop())
+      assert.equal(
+        await page.evaluate(() => window.analyticsFixture.cacheStats()),
+        undefined,
+      )
+    } finally {
+      page.off('request', listener)
+    }
+  })
+  await test('Paged failures retry and replaced requests cannot repopulate the cache', async () => {
+    await page.evaluate(() => window.analyticsFixture.startServer())
+    await page
+      .getByRole('combobox', { name: 'Example query' })
+      .selectOption('large')
+    await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Load all', exact: true }).click()
+    let failed = false
+    let release
+    let signalHeld
+    let signalFinished
+    const held = new Promise((resolve) => {
+      signalHeld = resolve
+    })
+    const finished = new Promise((resolve) => {
+      signalFinished = resolve
+    })
+    const gate = new Promise((resolve) => {
+      release = resolve
+    })
+    await page.route('**/api/analytics/query', async (route) => {
+      const value = route.request().postDataJSON()
+      if (value.queryKey === 'large' && value.offset === 49000 && !failed) {
+        failed = true
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: 'invalid page JSON',
+        })
+      } else if (value.queryKey === 'large' && value.offset === 69000) {
+        signalHeld()
+        await gate
+        try {
+          await route.continue()
+        } catch {
+          /* The replaced query aborts this request. */
+        } finally {
+          signalFinished()
+        }
+      } else await route.continue()
+    })
+    try {
+      const viewport = page.locator('.virtual-scroll')
+      await viewport.evaluate((node) => {
+        node.scrollTop = 50000 * 48
+      })
+      await page
+        .getByRole('button', { name: 'Retry rows', exact: true })
+        .waitFor()
+      await page
+        .getByRole('button', { name: 'Retry rows', exact: true })
+        .click()
+      await page.locator('[data-row="row-50000"]').waitFor()
+      assert.equal(await page.getByRole('alert').count(), 0)
+      await viewport.evaluate((node) => {
+        node.scrollTop = 70000 * 48
+      })
+      await held
+      await page
+        .getByRole('combobox', { name: 'Example query' })
+        .selectOption('inventory')
+      await page.getByText('2 of 2 rows', { exact: true }).waitFor()
+      release()
+      await finished
+      await page.evaluate(
+        () =>
+          new Promise((done) =>
+            requestAnimationFrame(() => requestAnimationFrame(done)),
+          ),
+      )
+      assert.deepEqual(await rows(), ['item-1', 'item-2'])
+      assert.equal(
+        (await page.evaluate(() => window.analyticsFixture.cacheStats())).rows,
+        2,
+      )
+    } finally {
+      release()
+      await page.unroute('**/api/analytics/query')
+    }
   })
   await test('Sorting exports every query row, including blanks and false values', async () => {
     await page
@@ -562,7 +718,7 @@ try {
       await page.getByText('Loading results…', { exact: true }).isVisible(),
       true,
     )
-    assert.equal(await page.locator('tbody tr').count(), 0)
+    assert.equal(await page.locator('tbody tr[data-row]').count(), 0)
     assert.equal(
       await page
         .getByRole('button', { name: 'Export CSV', exact: true })
