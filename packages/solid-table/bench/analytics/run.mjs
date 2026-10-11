@@ -376,7 +376,7 @@ try {
     assert.deepEqual(await viewport.boundingBox(), previewBounds)
     assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
     await viewport.evaluate((node) => {
-      node.scrollTop = 50000 * 48
+      node.scrollTop = 50000 * 32
     })
     await page.locator('[data-row="row-50000"]').waitFor()
     await page.getByText('2000 of 100005 rows', { exact: true }).waitFor()
@@ -421,6 +421,16 @@ try {
       await page.setViewportSize(size)
       await page.evaluate(() => window.analyticsFixture.startServer())
       await page.locator('tbody tr[data-row]').first().waitFor()
+      assert.equal(await page.locator('.table-scroll caption').count(), 0)
+      assert.equal(
+        await page.getByRole('table', { name: 'Query results' }).count(),
+        1,
+      )
+      const rowBounds = await page
+        .locator('tbody tr[data-row]')
+        .first()
+        .boundingBox()
+      assert.ok(Math.abs(rowBounds.height - 32) < 1)
       const bounds = await page.locator('.table-scroll').boundingBox()
       assert.ok(bounds.height > 200)
       assert.ok(Math.abs(bounds.y + bounds.height - (size.height - 16)) < 1)
@@ -472,7 +482,7 @@ try {
       await page.getByRole('button', { name: 'Load all', exact: true }).click()
       const viewport = page.locator('.virtual-scroll')
       await viewport.evaluate((node) => {
-        node.scrollTop = 1000 * 48
+        node.scrollTop = 1000 * 32
       })
       await page.locator('[data-row="row-1000"]').waitFor()
       assert.equal(
@@ -483,7 +493,7 @@ try {
       for (const index of [50000, 70000, 50000]) {
         const before = requests.length
         await viewport.evaluate((node, index) => {
-          node.scrollTop = index * 48
+          node.scrollTop = index * 32
         }, index)
         await page.locator(`[data-row="row-${index}"]`).waitFor()
         if (index === 50000 && before > 4) assert.equal(requests.length, before)
@@ -514,7 +524,7 @@ try {
       await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
       await page.getByRole('button', { name: 'Load all', exact: true }).click()
       await page.locator('.virtual-scroll').evaluate((node) => {
-        node.scrollTop = 50000 * 48
+        node.scrollTop = 50000 * 32
       })
       await page.locator('[data-row="row-50000"]').waitFor()
       assert.equal(
@@ -576,7 +586,7 @@ try {
     try {
       const viewport = page.locator('.virtual-scroll')
       await viewport.evaluate((node) => {
-        node.scrollTop = 50000 * 48
+        node.scrollTop = 50000 * 32
       })
       await page
         .getByRole('button', { name: 'Retry rows', exact: true })
@@ -587,7 +597,7 @@ try {
       await page.locator('[data-row="row-50000"]').waitFor()
       assert.equal(await page.getByRole('alert').count(), 0)
       await viewport.evaluate((node) => {
-        node.scrollTop = 70000 * 48
+        node.scrollTop = 70000 * 32
       })
       await held
       await page

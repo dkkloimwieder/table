@@ -104,14 +104,14 @@ test('Fixed geometry calculates distant ranges without full-query metadata', () 
     top: 0,
     bottom: 0,
   })
-  const middle = fixedRowRange(1_000_000, 500_000 * 48, 600)
+  const middle = fixedRowRange(1_000_000, 500_000 * 32, 600)
   assert.equal(middle.start, 499995)
   assert.ok(middle.end - middle.start < 30)
   assert.equal(
-    middle.top + (middle.end - middle.start) * 48 + middle.bottom,
-    48_000_000,
+    middle.top + (middle.end - middle.start) * 32 + middle.bottom,
+    32_000_000,
   )
-  const last = fixedRowRange(100005, 100005 * 48 - 600, 600)
+  const last = fixedRowRange(100005, 100005 * 32 - 600, 600)
   assert.equal(last.end, 100005)
   assert.equal(last.bottom, 0)
 })

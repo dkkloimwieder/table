@@ -13,6 +13,7 @@ import { Table as TablePresentation } from '../table/Table'
 import { TableHeaderName } from '../table/TableHeaderName'
 import { DEFAULT_PREVIEW_LIMIT } from './types'
 import { VirtualRows } from './VirtualRows'
+import { QUERY_ROW_HEIGHT } from './fixed-window'
 import type {
   QueryBrowseRequest,
   QueryExportProps,
@@ -280,6 +281,7 @@ function ResultTable(
           fallback={<p>Show a column to view or export results.</p>}
         >
           <div
+            style={{ '--query-row-height': `${QUERY_ROW_HEIGHT}px` }}
             class={
               props.window ? 'table-scroll virtual-scroll' : 'table-scroll'
             }
@@ -289,7 +291,7 @@ function ResultTable(
           >
             <TablePresentation
               table={table}
-              caption="Query results"
+              accessibleLabel="Query results"
               grouped={false}
               renderBody={virtualBody}
               header={(column) => (

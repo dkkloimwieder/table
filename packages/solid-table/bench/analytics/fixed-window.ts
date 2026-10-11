@@ -1,4 +1,4 @@
-export const QUERY_ROW_HEIGHT = 48
+export const QUERY_ROW_HEIGHT = 32
 
 /** Fixed-height geometry requires no array proportional to the result count. */
 export function fixedRowRange(

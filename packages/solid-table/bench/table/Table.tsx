@@ -13,7 +13,8 @@ export type TableEdge = {
 /** Shared presentation. Applications own data, processing and editing policy. */
 export function Table<T, M>(props: {
   table: NativeTable<T, M>
-  caption: string
+  caption?: string
+  accessibleLabel?: string
   label?: (column: NativeColumn<T, M>) => string
   header?: (column: NativeColumn<T, M>) => JSX.Element
   headerEnd?: (column: NativeColumn<T, M>) => JSX.Element
@@ -42,11 +43,14 @@ export function Table<T, M>(props: {
     <table
       ref={props.elementRef}
       tabindex="-1"
+      aria-label={props.accessibleLabel}
       style={
         props.width === undefined ? undefined : { width: `${props.width}px` }
       }
     >
-      <caption>{props.caption}</caption>
+      <Show when={props.caption}>
+        <caption>{props.caption}</caption>
+      </Show>
       <Show when={props.width !== undefined}>
         <colgroup>
           <Show when={props.leading}>
