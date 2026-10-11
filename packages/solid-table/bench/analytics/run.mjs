@@ -369,9 +369,11 @@ try {
       .getByRole('combobox', { name: 'Example query' })
       .selectOption('large')
     await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+    const previewBounds = await page.locator('.table-scroll').boundingBox()
     await page.getByRole('button', { name: 'Load all', exact: true }).click()
     const viewport = page.locator('.virtual-scroll')
     await page.locator('[data-row="row-0"]').waitFor()
+    assert.deepEqual(await viewport.boundingBox(), previewBounds)
     assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
     await viewport.evaluate((node) => {
       node.scrollTop = 50000 * 48
@@ -398,6 +400,10 @@ try {
       .click()
     await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
     assert.equal(await page.locator('.virtual-scroll').count(), 0)
+    assert.deepEqual(
+      await page.locator('.table-scroll').boundingBox(),
+      previewBounds,
+    )
     assert.equal(await page.locator('tbody tr[data-row]').count(), 1000)
     assert.equal(
       await page.locator('tbody tr[data-row]').first().getAttribute('data-row'),
@@ -405,6 +411,50 @@ try {
     )
     await page.evaluate(() => window.analyticsFixture.stop())
     assert.equal(await page.locator('#root').textContent(), '')
+  })
+  await test('Table fills available screen height for small and empty results', async () => {
+    for (const size of [
+      { width: 1280, height: 900 },
+      { width: 390, height: 800 },
+      { width: 1280, height: 700 },
+    ]) {
+      await page.setViewportSize(size)
+      await page.evaluate(() => window.analyticsFixture.startServer())
+      await page.locator('tbody tr[data-row]').first().waitFor()
+      const bounds = await page.locator('.table-scroll').boundingBox()
+      assert.ok(bounds.height > 200)
+      assert.ok(Math.abs(bounds.y + bounds.height - (size.height - 16)) < 1)
+      await page
+        .getByRole('combobox', { name: 'Example query' })
+        .selectOption('inventory')
+      await page.getByText('2 of 2 rows', { exact: true }).waitFor()
+      assert.deepEqual(
+        await page.locator('.table-scroll').boundingBox(),
+        bounds,
+      )
+      await page.evaluate(async () => {
+        await window.analyticsFixture.publish({
+          status: 'ready',
+          result: {
+            key: 'empty-height',
+            columns: [{ id: 'name', label: 'Name' }],
+            rows: [],
+          },
+        })
+      })
+      await page
+        .getByText('The query returned no rows.', { exact: true })
+        .waitFor()
+      assert.deepEqual(
+        await page.locator('.table-scroll').boundingBox(),
+        bounds,
+      )
+      await page.getByText('Display columns', { exact: true }).click()
+      const expanded = await page.locator('.table-scroll').boundingBox()
+      assert.ok(expanded.y > bounds.y)
+      assert.ok(Math.abs(expanded.y + expanded.height - (size.height - 16)) < 1)
+    }
+    await page.setViewportSize({ width: 1280, height: 900 })
   })
   await test('Sorting exports every query row, including blanks and false values', async () => {
     await page

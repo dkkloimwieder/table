@@ -36,6 +36,9 @@ It retains the last result reference for a same-schema retry. Before the first r
 The table shows at most 1,000 supplied rows by default. The `previewLimit` prop changes this limit.
 The application must also limit the server query response. A display limit does not reduce the data that the browser receives.
 The demo requests 1,000 rows and shows the complete query count next to the loaded count.
+The table area fills the screen below the query and display controls.
+Its height stays the same for small or empty results and when Load all enables paging.
+Opening Display columns uses space above the table. Resizing the browser changes the available table height.
 
 Sorting belongs to the application through `sorting` and `onSortingChange`.
 The table uses manual sorting, which preserves the order supplied by the server.

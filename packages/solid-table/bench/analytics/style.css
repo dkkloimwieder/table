@@ -8,9 +8,31 @@ body {
   margin: 0;
 }
 main {
+  box-sizing: border-box;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
   max-width: 1100px;
   margin: auto;
   padding: 1rem;
+}
+main > *,
+.analytics-table > * {
+  flex-shrink: 0;
+}
+main > section,
+.analytics-table {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+main > p[role='status'] {
+  position: absolute;
+  bottom: 1rem;
+  right: 1rem;
+  background: white;
+  padding: 0.4rem;
 }
 button,
 input,
@@ -51,13 +73,13 @@ summary {
   cursor: pointer;
 }
 .table-scroll {
+  flex: 1;
+  min-height: 0;
   max-width: 100%;
   overflow: auto;
+  background: white;
 }
-.virtual-scroll {
-  height: 600px;
-}
-.virtual-scroll thead {
+.table-scroll thead {
   position: sticky;
   top: 0;
   background: white;

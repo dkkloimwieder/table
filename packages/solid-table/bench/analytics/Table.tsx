@@ -306,10 +306,10 @@ function ResultTable(
                 </>
               )}
             />
+            <Show when={!table.getRowIds().length}>
+              <p>The query returned no rows.</p>
+            </Show>
           </div>
-          <Show when={!table.getRowIds().length}>
-            <p>The query returned no rows.</p>
-          </Show>
         </Show>
       </Show>
     </div>
