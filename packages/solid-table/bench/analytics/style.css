@@ -31,8 +31,7 @@ label {
 input {
   min-width: 0;
 }
-input[type='text'],
-input[type='search'] {
+input[type='text'] {
   width: 10rem;
   max-width: 100%;
 }
@@ -43,13 +42,6 @@ input[type='search'] {
   flex-wrap: wrap;
   gap: 0.6rem;
   margin: 0.8rem 0;
-}
-.table-filter {
-  display: grid;
-  gap: 0.3rem;
-}
-.filter-input {
-  display: flex;
 }
 details {
   margin: 1rem 0;
@@ -167,9 +159,4 @@ summary:focus-visible {
 .header-name {
   width: 10rem;
   max-width: 100%;
-}
-.column-filters fieldset {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
 }

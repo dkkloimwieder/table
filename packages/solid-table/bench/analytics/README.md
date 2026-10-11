@@ -1,11 +1,10 @@
 # Query analytics
 
 This development demo shows query results in a read-only Table. The application supplies the query state, column definitions, and records.
-The table supports search, column filters, sorting, column visibility, column order, header renaming, and CSV export.
+The table supports sorting, column visibility, column order, header renaming, and CSV export.
 Drag the handle in a header to reorder columns. Arrow keys, Home, and End also move the focused column.
 Click the pencil in a header to rename it. Enter or focus loss saves the name. Escape cancels the rename.
-Column filters appear under Filter results. Headers contain no filter controls.
-Search results searches the supplied records. It does not search or change the query.
+The table has no search or column filters. The application query defines the complete set of rows.
 
 ## Query results
 
@@ -22,8 +21,8 @@ Convert dates and structured values to these scalar types in the application.
 The table reads the original records through an ID index. It does not copy records into an editing store.
 Publish a new ready result to replace records. Display choices survive replacement when the query key and ordered column IDs stay the same.
 If the query key or schema changes, the table resets its display choices. A schema is the ordered list of column IDs.
-Header changes affect display labels only. They do not change field IDs, source values, filtering, or sorting.
-Reset display restores the supplied labels, column order, visibility, and row order. It also clears filters and search.
+Header changes affect display labels only. They do not change field IDs, source values, or sorting.
+Reset display restores the supplied labels, column order, visibility, and row order.
 Display choices remain in memory until the component closes or the query scope changes.
 
 During loading or an error, the table hides its previous rows and disables display changes and export.
@@ -32,9 +31,9 @@ It retains the last result reference for a same-schema retry. Before the first r
 ## Export
 
 Export CSV downloads `analytics.csv`. CSV is a text format with comma-separated fields.
-The file includes all locally filtered rows in the current sort order. It includes visible columns in the current column order and renamed headers.
+The file includes every supplied query row in the current sort order. It includes visible columns in the current column order and renamed headers.
 The export covers the supplied result only. It does not fetch additional server pages.
-With no matching rows, the file contains headers. With no visible columns, export is disabled.
+With no query rows, the file contains headers. With no visible columns, export is disabled.
 Null and absent fields produce empty cells. Zero and false remain explicit values.
 The file uses UTF-8, a byte order mark, and CRLF row endings. Quotes, commas, and line breaks receive CSV escaping.
 Formula-like strings receive an apostrophe prefix so that spreadsheets treat them as text. Numeric negatives remain numbers.

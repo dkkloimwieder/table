@@ -1,7 +1,6 @@
 import { For, Show, createMemo, createSignal } from 'solid-js'
 import { createTable } from '@tanstack/solid-table/native'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import { TableFilter } from '../editing/TableFilter'
 import { TableColumnMove, moveColumn } from '../editing/TableColumnMove'
 import { TableHeaderName } from './TableHeaderName'
 import { downloadCsv, toCsv } from './csv'
@@ -71,14 +70,11 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
         return a < b ? -1 : a > b ? 1 : 0
       },
       sortMissing: 'last' as const,
-      filterFn: (value: unknown, filter: unknown) =>
-        String(value ?? '')
-          .toLowerCase()
-          .includes(String(filter).toLowerCase()),
     })),
   )
   const table = createTable<QueryRecord>({
     source: { ids, get: (id) => source().get(id) },
+    manualFiltering: true,
     get columns() {
       return columns()
     },
@@ -109,15 +105,6 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
   return (
     <div class="analytics-table">
       <div class="toolbar">
-        <TableFilter
-          label="Search results"
-          clearLabel="Clear search"
-          search
-          placeholder="Search results…"
-          value={table.state.globalFilter}
-          disabled={!props.available}
-          onValueChange={(value) => table.setGlobalFilter(value)}
-        />
         <button
           type="button"
           disabled={!props.available || !table.getVisibleColumns().length}
@@ -130,8 +117,6 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
           disabled={!props.available}
           ref={nativeEvents({
             click: () => {
-              table.setColumnFilters([])
-              table.setGlobalFilter('')
               table.setSorting([])
               table.setColumnVisibility({})
               table.setColumnOrder([])
@@ -165,29 +150,8 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
           </For>
         </fieldset>
       </details>
-      <details class="column-filters">
-        <summary>Filter results</summary>
-        <fieldset disabled={!props.available}>
-          <legend>Column filters</legend>
-          <For each={table.getColumns()}>
-            {(column) => (
-              <TableFilter
-                label={'Filter ' + label(column.id)}
-                clearLabel={'Clear filter ' + label(column.id)}
-                value={String(column.getFilterValue() ?? '')}
-                disabled={!props.available}
-                onValueChange={(value) =>
-                  column.setFilterValue(value || undefined)
-                }
-              />
-            )}
-          </For>
-        </fieldset>
-      </details>
       <Show when={props.available}>
-        <p role="status">
-          {table.getRowIds().length} of {ids().length} rows
-        </p>
+        <p role="status">{table.getRowIds().length} rows</p>
         <Show
           when={table.getVisibleColumns().length}
           fallback={<p>Show a column to view or export results.</p>}
@@ -261,7 +225,7 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
             </table>
           </div>
           <Show when={!table.getRowIds().length}>
-            <p>No results match.</p>
+            <p>The query returned no rows.</p>
           </Show>
         </Show>
       </Show>

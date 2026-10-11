@@ -9,7 +9,6 @@ export type TableFilterProps = {
   onValueChange: (value: string) => void
   disabled?: boolean
   search?: boolean
-  placeholder?: string
   hideLabel?: boolean
   choices?: ReadonlyArray<FieldChoice>
   inputRef?: (node: HTMLInputElement) => void
@@ -37,10 +36,7 @@ export function TableFilter(props: TableFilterProps) {
             <input
               id={id}
               type={props.search ? 'search' : 'text'}
-              placeholder={
-                props.placeholder ??
-                (props.search ? 'Search saved values…' : 'Contains…')
-              }
+              placeholder={props.search ? 'Search saved values…' : 'Contains…'}
               value={props.value}
               disabled={props.disabled}
               ref={[

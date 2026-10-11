@@ -100,14 +100,6 @@ try {
     page
       .locator('thead th')
       .evaluateAll((nodes) => nodes.map((node) => node.dataset.column))
-  async function filter(name, value) {
-    const details = page.locator('details.column-filters')
-    if (!(await details.evaluate((node) => node.open)))
-      await details.locator('summary').click()
-    await page
-      .getByRole('textbox', { name: `Filter ${name}`, exact: true })
-      .fill(value)
-  }
   async function rename(name, value) {
     await page
       .getByRole('button', { name: `Rename ${name} header`, exact: true })
@@ -164,7 +156,12 @@ try {
       await page.locator('thead input, [data-header-filter]').count(),
       0,
     )
-    assert.equal(await page.getByPlaceholder('Search results…').count(), 1)
+    assert.equal(await page.getByRole('searchbox').count(), 0)
+    assert.equal(await page.getByRole('textbox').count(), 0)
+    assert.equal(
+      await page.getByText('Filter results', { exact: true }).count(),
+      0,
+    )
     assert.deepEqual(await rows(), ['west', 'east', 'north'])
     assert.equal(
       await page
@@ -189,20 +186,23 @@ try {
       'Region,Revenue,Active\r\nWest,42,true\r\nEast,7,false\r\nNorth,,true\r\n',
     )
   })
-  await test('Numeric sorting and filters control export membership and order', async () => {
+  await test('Sorting exports every query row, including blanks and false values', async () => {
     await page
       .getByRole('button', { name: 'Sort Revenue', exact: true })
       .click()
     assert.deepEqual(await rows(), ['east', 'west', 'north'])
-    await filter('Active', 'true')
-    assert.deepEqual(await rows(), ['west', 'north'])
     assert.equal(
       await csv(),
-      'Region,Revenue,Active\r\nWest,42,true\r\nNorth,,true\r\n',
+      'Region,Revenue,Active\r\nEast,7,false\r\nWest,42,true\r\nNorth,,true\r\n',
     )
-    await page.getByLabel('Search results', { exact: true }).fill('north')
-    assert.deepEqual(await rows(), ['north'])
-    assert.equal(await csv(), 'Region,Revenue,Active\r\nNorth,,true\r\n')
+    await page
+      .getByRole('button', { name: 'Sort Revenue', exact: true })
+      .click()
+    assert.deepEqual(await rows(), ['west', 'east', 'north'])
+    assert.equal(
+      await csv(),
+      'Region,Revenue,Active\r\nWest,42,true\r\nEast,7,false\r\nNorth,,true\r\n',
+    )
   })
   await test('Display labels, visibility and order control headers without changing query data', async () => {
     await page.getByText('Display columns', { exact: true }).click()
@@ -228,10 +228,19 @@ try {
     assert.deepEqual(await headers(), ['region', 'revenue', 'active'])
     assert.deepEqual(await rows(), ['west', 'east', 'north'])
   })
-  await test('Empty filtered results export headers and hidden columns disable export', async () => {
-    await page
-      .getByLabel('Search results', { exact: true })
-      .fill('no matching record')
+  await test('Empty query results export headers and hidden columns disable export', async () => {
+    await page.evaluate(() =>
+      window.analyticsFixture.publish({
+        status: 'ready',
+        result: { ...window.analyticsFixture.sales, rows: [] },
+      }),
+    )
+    assert.equal(
+      await page
+        .getByText('The query returned no rows.', { exact: true })
+        .isVisible(),
+      true,
+    )
     assert.deepEqual(await rows(), [])
     assert.equal(await csv(), 'Region,Revenue,Active\r\n')
     await page.getByText('Display columns', { exact: true }).click()
@@ -253,7 +262,6 @@ try {
   await test('Same-schema query refresh preserves display state and replaces values', async () => {
     await page.getByText('Display columns', { exact: true }).click()
     await rename('Revenue', 'Amount')
-    await filter('Region', 'east')
     await publish({ status: 'loading' })
     assert.equal(
       await page
@@ -306,11 +314,10 @@ try {
       'Region,Revenue,Active\r\nWest,42,true\r\nEast,7,false\r\nNorth,,true\r\n',
     )
   })
-  await test('Different query or schema resets display choices and stale filters', async () => {
+  await test('Different query or schema resets display choices', async () => {
     await page.getByText('Display columns', { exact: true }).click()
     await rename('Revenue', 'Amount')
     await page.getByLabel('Show Active', { exact: true }).uncheck()
-    await filter('Region', 'west')
     await page
       .getByRole('combobox', { name: 'Example query', exact: true })
       .selectOption('inventory')

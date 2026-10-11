@@ -24,6 +24,6 @@ test('CSV treats formula-like text as spreadsheet text without changing negative
   )
 })
 
-test('CSV includes headers when the current filter returns no rows', () => {
+test('CSV includes headers for an empty query result', () => {
   expect(toCsv(['Name', 'Value'], [])).toBe('Name,Value\r\n')
 })
