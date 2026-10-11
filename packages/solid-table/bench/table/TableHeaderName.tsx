@@ -40,6 +40,7 @@ export function TableHeaderName(props: {
       <button
         type="button"
         class="header-rename"
+        hidden={editing()}
         aria-label={'Rename ' + props.label + ' header'}
         title="Rename header"
         ref={[

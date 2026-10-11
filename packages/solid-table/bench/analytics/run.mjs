@@ -803,9 +803,15 @@ try {
     await page
       .getByRole('button', { name: 'Sort Revenue', exact: true })
       .click()
-    await page
-      .getByRole('button', { name: 'Rename Revenue header', exact: true })
-      .click()
+    const pencil = page.getByRole('button', {
+      name: 'Rename Revenue header',
+      exact: true,
+    })
+    const header = page.locator('th[data-column="revenue"]')
+    const headerBounds = await header.boundingBox()
+    const pencilBounds = await pencil.boundingBox()
+    const handleBounds = await header.locator('.column-move').boundingBox()
+    await pencil.click()
     const editor = page.getByRole('textbox', {
       name: 'Header name for Revenue',
       exact: true,
@@ -814,8 +820,19 @@ try {
       await editor.evaluate((node) => node === document.activeElement),
       true,
     )
+    assert.equal(await pencil.count(), 0)
+    assert.deepEqual(await header.boundingBox(), headerBounds)
+    assert.deepEqual(
+      await header.locator('.column-move').boundingBox(),
+      handleBounds,
+    )
     await editor.fill('Discarded')
     await editor.press('Escape')
+    assert.deepEqual(await pencil.boundingBox(), pencilBounds)
+    assert.equal(
+      await pencil.evaluate((node) => node === document.activeElement),
+      true,
+    )
     assert.equal(
       await page
         .getByRole('button', { name: 'Sort Revenue', exact: true })
@@ -824,6 +841,15 @@ try {
     )
     assert.deepEqual(await rows(), ['east', 'west', 'north'])
     await rename('Revenue', 'Amount')
+    const renamedPencil = page.getByRole('button', {
+      name: 'Rename Amount header',
+      exact: true,
+    })
+    assert.deepEqual(await renamedPencil.boundingBox(), pencilBounds)
+    assert.equal(
+      await renamedPencil.evaluate((node) => node === document.activeElement),
+      true,
+    )
     await page
       .getByRole('button', { name: 'Rename Region header', exact: true })
       .click()

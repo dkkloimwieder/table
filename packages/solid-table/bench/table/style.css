@@ -197,6 +197,10 @@ tbody tr[data-row]:hover {
   color: #888;
 }
 .header-name {
+  flex: 1;
+  min-width: 0;
+  height: 22px;
+  padding: 0 6px;
   width: 10rem;
   max-width: 100%;
 }
