@@ -150,6 +150,128 @@ try {
     report.cases.push({ name, status: 'passed' })
   }
 
+  await test('Application export receives stable display snapshots without downloads', async () => {
+    await page.evaluate(() =>
+      window.analyticsFixture.configureExport({ mode: 'capture' }),
+    )
+    await page
+      .getByRole('button', { name: 'Sort Revenue', exact: true })
+      .click()
+    await rename('Revenue', 'Total')
+    await page.getByText('Display columns', { exact: true }).click()
+    await page
+      .getByRole('checkbox', { name: 'Show Active', exact: true })
+      .uncheck()
+    await drag('revenue', 'region')
+    await page.getByRole('button', { name: 'Export', exact: true }).click()
+    const expected = {
+      queryKey: 'sales',
+      columns: [
+        { id: 'revenue', label: 'Total' },
+        { id: 'region', label: 'Region' },
+      ],
+      sorting: [{ id: 'revenue', desc: false }],
+      rowIds: ['east', 'west', 'north'],
+    }
+    assert.deepEqual(
+      await page.evaluate(() => window.analyticsFixture.exportRequests()),
+      [expected],
+    )
+    await page
+      .getByRole('button', { name: 'Reset display', exact: true })
+      .click()
+    await publish({
+      status: 'ready',
+      result: {
+        key: 'replacement',
+        columns: [{ id: 'value', label: 'Value' }],
+        rows: [],
+      },
+    })
+    assert.deepEqual(
+      await page.evaluate(() => window.analyticsFixture.exportRequests()),
+      [expected],
+    )
+    await page.getByRole('button', { name: 'Export', exact: true }).click()
+    const requests = await page.evaluate(() =>
+      window.analyticsFixture.exportRequests(),
+    )
+    assert.deepEqual(requests[1], {
+      queryKey: 'replacement',
+      columns: [{ id: 'value', label: 'Value' }],
+      sorting: [],
+      rowIds: [],
+    })
+    await page.evaluate(() => window.analyticsFixture.stop())
+    assert.deepEqual(
+      await page.evaluate(() => window.analyticsFixture.exportRequests()),
+      requests,
+    )
+    assert.equal(await page.evaluate(() => window.liveCsvUrls.size), 0)
+  })
+  await test('Application controls export availability and optional callback', async () => {
+    const configure = (configuration) =>
+      page.evaluate(
+        (configuration) =>
+          window.analyticsFixture.configureExport(configuration),
+        configuration,
+      )
+    await configure({ mode: 'none' })
+    assert.equal(await page.getByRole('button', { name: /^Export/ }).count(), 0)
+    await configure({ mode: 'capture', disabled: true })
+    const button = page.getByRole('button', { name: 'Export', exact: true })
+    assert.equal(await button.isDisabled(), true)
+    const stale = await button.elementHandle()
+    await stale.evaluate((node) => node.dispatchEvent(new MouseEvent('click')))
+    assert.deepEqual(
+      await page.evaluate(() => window.analyticsFixture.exportRequests()),
+      [],
+    )
+    await configure({ mode: 'capture' })
+    await button.click()
+    assert.equal(
+      await page.evaluate(
+        () => window.analyticsFixture.exportRequests().length,
+      ),
+      1,
+    )
+    for (const state of [
+      { status: 'loading' },
+      { status: 'error', message: 'Query failed' },
+    ]) {
+      await publish(state)
+      assert.equal(await button.isDisabled(), true)
+      await stale.evaluate((node) =>
+        node.dispatchEvent(new MouseEvent('click')),
+      )
+    }
+    await page.evaluate(() =>
+      window.analyticsFixture.publish({
+        status: 'ready',
+        result: window.analyticsFixture.sales,
+      }),
+    )
+    await page.getByText('Display columns', { exact: true }).click()
+    for (const label of ['Region', 'Revenue', 'Active'])
+      await page
+        .getByRole('checkbox', { name: `Show ${label}`, exact: true })
+        .uncheck()
+    assert.equal(await button.isDisabled(), true)
+    await stale.evaluate((node) => node.dispatchEvent(new MouseEvent('click')))
+    await configure({ mode: 'none' })
+    await stale.evaluate((node) => node.dispatchEvent(new MouseEvent('click')))
+    await configure({ mode: 'capture' })
+    await page.evaluate(() => window.analyticsFixture.stop())
+    await stale.evaluate((node) => node.dispatchEvent(new MouseEvent('click')))
+    assert.equal(
+      await page.evaluate(
+        () => window.analyticsFixture.exportRequests().length,
+      ),
+      1,
+    )
+    assert.equal(await page.evaluate(() => window.liveCsvUrls.size), 0)
+  })
+
   await test('Runtime columns and scalar cells are read-only', async () => {
     assert.deepEqual(await headers(), ['region', 'revenue', 'active'])
     assert.equal(

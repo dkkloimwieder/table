@@ -4,10 +4,16 @@ import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/na
 import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
 import { Table as TablePresentation } from '../table/Table'
 import { TableHeaderName } from '../table/TableHeaderName'
-import { downloadCsv, toCsv } from './csv'
-import type { QueryRecord, QueryResult, QueryState, QueryValue } from './types'
+import type {
+  QueryExportProps,
+  QueryRecord,
+  QueryResult,
+  QueryState,
+} from './types'
 
-export function Table(props: { query: QueryState; retry?: () => void }) {
+export function Table(
+  props: QueryExportProps & { query: QueryState; retry?: () => void },
+) {
   // Keep only the application's last result reference through loading/error states.
   const result = createMemo<QueryResult | undefined>((previous) =>
     props.query.status === 'ready' ? props.query.result : previous,
@@ -45,6 +51,9 @@ export function Table(props: { query: QueryState; retry?: () => void }) {
           <ResultTable
             result={result()!}
             available={props.query.status === 'ready'}
+            onExport={props.onExport}
+            exportLabel={props.exportLabel}
+            exportDisabled={props.exportDisabled}
           />
         )}
       </Show>
@@ -52,7 +61,9 @@ export function Table(props: { query: QueryState; retry?: () => void }) {
   )
 }
 
-function ResultTable(props: { result: QueryResult; available: boolean }) {
+function ResultTable(
+  props: QueryExportProps & { result: QueryResult; available: boolean },
+) {
   const [labels, setLabels] = createSignal<Record<string, string>>({})
   const source = createMemo(
     () => new Map(props.result.rows.map((row) => [row.id, row.values])),
@@ -84,21 +95,19 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
     Object.hasOwn(labels(), id)
       ? labels()[id]!
       : props.result.columns.find((column) => column.id === id)!.label
-  const exportCsv = () => {
-    if (!props.available) return
+  const exportResult = () => {
+    if (!props.available || props.exportDisabled || !props.onExport) return
     const visible = table.getVisibleColumns()
     if (!visible.length) return
-    const rows = table
-      .getRowIds()
-      .map((id) =>
-        visible.map((column) => table.getValue<QueryValue>(id, column.id)),
-      )
-    downloadCsv(
-      toCsv(
-        visible.map((column) => label(column.id)),
-        rows,
-      ),
-    )
+    props.onExport({
+      queryKey: props.result.key,
+      columns: visible.map((column) => ({
+        id: column.id,
+        label: label(column.id),
+      })),
+      sorting: table.state.sorting.map((sort) => ({ ...sort })),
+      rowIds: [...table.getRowIds()],
+    })
   }
   const columnIds = createMemo(() =>
     table.getColumns().map((column) => column.id),
@@ -106,13 +115,19 @@ function ResultTable(props: { result: QueryResult; available: boolean }) {
   return (
     <div class="analytics-table">
       <div class="toolbar">
-        <button
-          type="button"
-          disabled={!props.available || !table.getVisibleColumns().length}
-          ref={nativeEvents({ click: exportCsv })}
-        >
-          Export CSV
-        </button>
+        <Show when={props.onExport}>
+          <button
+            type="button"
+            disabled={
+              !props.available ||
+              props.exportDisabled ||
+              !table.getVisibleColumns().length
+            }
+            ref={nativeEvents({ click: exportResult })}
+          >
+            {props.exportLabel ?? 'Export'}
+          </button>
+        </Show>
         <button
           type="button"
           disabled={!props.available}

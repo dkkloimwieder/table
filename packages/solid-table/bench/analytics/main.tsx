@@ -2,7 +2,8 @@ import { render } from '@solidjs/web'
 import { OBSERVE, action, createSignal, flush } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { Table } from './Table'
-import type { QueryResult, QueryState } from './types'
+import { downloadCsv, toCsv } from './csv'
+import type { QueryExportRequest, QueryResult, QueryState } from './types'
 import './style.css'
 
 const sales: QueryResult = {
@@ -31,6 +32,12 @@ const inventory: QueryResult = {
 }
 let publish: ((value: QueryState) => void) | undefined
 let dispose: (() => void) | undefined
+let configureExport: ((configuration: ExportConfiguration) => void) | undefined
+type ExportConfiguration = {
+  mode?: 'csv' | 'capture' | 'none'
+  disabled?: boolean
+}
+const exportRequests: Array<QueryExportRequest> = []
 let capture:
   ReturnType<NonNullable<typeof OBSERVE>['diagnostics']['capture']> | undefined
 const events: Array<unknown> = []
@@ -58,15 +65,58 @@ function stop() {
   disposeRoot()
   dispose = undefined
   publish = undefined
+  configureExport = undefined
   flush()
 }
-function start(state: QueryState = { status: 'ready', result: sales }) {
+function start(
+  state: QueryState = { status: 'ready', result: sales },
+  configuration: ExportConfiguration = {},
+) {
   stop()
+  exportRequests.length = 0
   events.push(...(capture?.stop() ?? []))
   capture = OBSERVE?.diagnostics.capture()
   dispose = render(() => {
     const [query, setQuery] = createSignal<QueryState>(state)
     const [choice, setChoice] = createSignal('sales')
+    const [exportConfiguration, setExportConfiguration] =
+      createSignal(configuration)
+    configureExport = (value) => {
+      setExportConfiguration(value)
+      flush()
+    }
+    const exportResult = (description: QueryExportRequest) => {
+      if (exportConfiguration().mode === 'capture') {
+        exportRequests.push(description)
+        return
+      }
+      const current = query()
+      if (
+        current.status !== 'ready' ||
+        current.result.key !== description.queryKey
+      )
+        return
+      const records = new Map(
+        current.result.rows.map((row) => [row.id, row.values]),
+      )
+      // Read records in the click-time display order without a second cell matrix.
+      function* rows() {
+        for (const id of description.rowIds) {
+          const record = records.get(id)
+          yield description.columns.map((column) =>
+            record && Object.hasOwn(record, column.id)
+              ? record[column.id]
+              : undefined,
+          )
+        }
+      }
+      downloadCsv(
+        toCsv(
+          description.columns.map((column) => column.label),
+          rows(),
+        ),
+      )
+    }
     publish = (value) => {
       setQuery(value)
       flush()
@@ -99,7 +149,17 @@ function start(state: QueryState = { status: 'ready', result: sales }) {
         >
           Run query
         </button>
-        <Table query={query()} retry={() => load(choice())} />
+        <Table
+          query={query()}
+          retry={() => load(choice())}
+          onExport={
+            exportConfiguration().mode === 'none' ? undefined : exportResult
+          }
+          exportLabel={
+            exportConfiguration().mode === 'capture' ? 'Export' : 'Export CSV'
+          }
+          exportDisabled={exportConfiguration().disabled}
+        />
       </main>
     )
   }, document.getElementById('root')!)
@@ -110,6 +170,9 @@ const api = {
   stop,
   publish: (state: QueryState) => publish?.(state),
   sales,
+  configureExport: (configuration: ExportConfiguration) =>
+    configureExport?.(configuration),
+  exportRequests: () => exportRequests,
   diagnostics: () => {
     events.push(...(capture?.stop() ?? []))
     capture = OBSERVE?.diagnostics.capture()
