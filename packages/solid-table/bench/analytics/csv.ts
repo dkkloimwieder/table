@@ -1,4 +1,4 @@
-import type { QueryValue } from './types'
+import type { QueryValue } from './types.ts'
 
 function field(value: QueryValue | undefined): string {
   const text = value == null ? '' : String(value)
@@ -10,28 +10,13 @@ function field(value: QueryValue | undefined): string {
   return /[",\r\n]/.test(safe) ? '"' + safe.replaceAll('"', '""') + '"' : safe
 }
 
+export function csvLine(values: ReadonlyArray<QueryValue | undefined>): string {
+  return values.map(field).join(',') + '\r\n'
+}
+
 export function toCsv(
   headers: ReadonlyArray<string>,
   rows: Iterable<ReadonlyArray<QueryValue | undefined>>,
 ): string {
-  return (
-    [
-      headers.map(field).join(','),
-      ...Array.from(rows, (row) => row.map(field).join(',')),
-    ].join('\r\n') + '\r\n'
-  )
-}
-
-export function downloadCsv(csv: string) {
-  const url = URL.createObjectURL(
-    new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }),
-  )
-  try {
-    const link = document.createElement('a')
-    link.href = url
-    link.download = 'analytics.csv'
-    link.click()
-  } finally {
-    setTimeout(() => URL.revokeObjectURL(url), 0)
-  }
+  return csvLine(headers) + Array.from(rows, csvLine).join('')
 }

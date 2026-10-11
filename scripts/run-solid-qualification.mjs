@@ -23,6 +23,13 @@ export function qualificationStages(output, { wamn = false } = {}) {
     stage('popup-prepare', [...pkg, 'exec', 'node', 'bench/popup/prepare.mjs']),
     stage('fixture-types', [...pkg, 'run', 'test:fixtures:types']),
     stage('fixture-lint', [...pkg, 'run', 'test:fixtures:eslint']),
+    stage('analytics-server', [
+      ...pkg,
+      'exec',
+      'node',
+      '--test',
+      'bench/analytics/demo-server.test.mjs',
+    ]),
     stage('server-rendering', [...pkg, 'run', 'test:ssr']),
     stage('hydration', [...pkg, 'exec', 'node', 'bench/hydration/run.mjs'], {
       BENCH_OUTPUT: resolve(output, 'hydration.json'),

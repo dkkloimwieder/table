@@ -1,18 +1,32 @@
-import { For, Show, createMemo, createSignal } from 'solid-js'
+import { For, Show, createMemo, createProjection, createSignal } from 'solid-js'
 import { createTable } from '@tanstack/solid-table/native'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
 import { Table as TablePresentation } from '../table/Table'
 import { TableHeaderName } from '../table/TableHeaderName'
+import { DEFAULT_PREVIEW_LIMIT } from './types'
+import { VirtualRows } from './VirtualRows'
 import type {
+  QueryBrowseRequest,
   QueryExportProps,
   QueryRecord,
   QueryResult,
+  QuerySorting,
   QueryState,
+  QueryWindow,
 } from './types'
 
+type QueryDisplayProps = QueryExportProps & {
+  sorting?: QuerySorting
+  onSortingChange?: (request: QueryBrowseRequest) => void
+  previewLimit?: number
+  onLoadAll?: (request: QueryBrowseRequest) => void
+  onShowPreview?: (request: QueryBrowseRequest) => void
+  window?: QueryWindow
+}
+
 export function Table(
-  props: QueryExportProps & { query: QueryState; retry?: () => void },
+  props: QueryDisplayProps & { query: QueryState; retry?: () => void },
 ) {
   // Keep only the application's last result reference through loading/error states.
   const result = createMemo<QueryResult | undefined>((previous) =>
@@ -54,6 +68,12 @@ export function Table(
             onExport={props.onExport}
             exportLabel={props.exportLabel}
             exportDisabled={props.exportDisabled}
+            sorting={props.sorting}
+            onSortingChange={props.onSortingChange}
+            previewLimit={props.previewLimit}
+            onLoadAll={props.onLoadAll}
+            onShowPreview={props.onShowPreview}
+            window={props.window}
           />
         )}
       </Show>
@@ -62,31 +82,52 @@ export function Table(
 }
 
 function ResultTable(
-  props: QueryExportProps & { result: QueryResult; available: boolean },
+  props: QueryDisplayProps & { result: QueryResult; available: boolean },
 ) {
+  let viewport: HTMLDivElement | undefined
   const [labels, setLabels] = createSignal<Record<string, string>>({})
-  const source = createMemo(
-    () => new Map(props.result.rows.map((row) => [row.id, row.values])),
+  const displayRows = createMemo(() =>
+    props.window
+      ? props.result.rows
+      : props.result.rows.slice(0, props.previewLimit ?? DEFAULT_PREVIEW_LIMIT),
   )
-  const ids = createMemo(() => props.result.rows.map((row) => row.id))
+  // Per-key readers retain original records without one shared cell dependency.
+  const source = createProjection<
+    Record<string, (() => QueryRecord) | undefined>
+  >(
+    () =>
+      Object.fromEntries(
+        displayRows().map((row) => [row.id, () => row.values]),
+      ),
+    {},
+  )
+  const ids = createMemo(() => displayRows().map((row) => row.id))
   const columns = createMemo(() =>
     props.result.columns.map((column) => ({
       id: column.id,
       accessorFn: (record: QueryRecord) =>
         Object.hasOwn(record, column.id) ? record[column.id] : undefined,
-      sortFn: (left: unknown, right: unknown) => {
-        if (typeof left === 'number' && typeof right === 'number')
-          return left - right
-        const a = String(left ?? '')
-        const b = String(right ?? '')
-        return a < b ? -1 : a > b ? 1 : 0
-      },
-      sortMissing: 'last' as const,
     })),
   )
   const table = createTable<QueryRecord>({
-    source: { ids, get: (id) => source().get(id) },
+    source: {
+      ids,
+      get: (id) => (Object.hasOwn(source, id) ? source[id]?.() : undefined),
+    },
     manualFiltering: true,
+    manualSorting: true,
+    state: {
+      get sorting() {
+        return props.sorting
+          ? props.sorting.map((sort) => ({ ...sort }))
+          : undefined
+      },
+    },
+    onSortingChange: (update) => {
+      const previous = props.sorting?.map((sort) => ({ ...sort })) ?? []
+      const sorting = typeof update === 'function' ? update(previous) : update
+      props.onSortingChange?.({ queryKey: props.result.key, sorting })
+    },
     get columns() {
       return columns()
     },
@@ -106,11 +147,17 @@ function ResultTable(
         label: label(column.id),
       })),
       sorting: table.state.sorting.map((sort) => ({ ...sort })),
-      rowIds: [...table.getRowIds()],
     })
   }
   const columnIds = createMemo(() =>
     table.getColumns().map((column) => column.id),
+  )
+  const virtualBody = () => (
+    <VirtualRows
+      table={table}
+      window={props.window!}
+      viewport={() => viewport ?? null}
+    />
   )
   return (
     <div class="analytics-table">
@@ -126,6 +173,47 @@ function ResultTable(
             ref={nativeEvents({ click: exportResult })}
           >
             {props.exportLabel ?? 'Export'}
+          </button>
+        </Show>
+        <Show
+          when={
+            !props.window &&
+            props.onLoadAll &&
+            (props.result.totalRows === undefined ||
+              props.result.totalRows > displayRows().length)
+          }
+        >
+          <button
+            type="button"
+            disabled={!props.available}
+            ref={nativeEvents({
+              click: () => {
+                if (props.available)
+                  props.onLoadAll?.({
+                    queryKey: props.result.key,
+                    sorting: table.state.sorting.map((sort) => ({ ...sort })),
+                  })
+              },
+            })}
+          >
+            Load all
+          </button>
+        </Show>
+        <Show when={props.window && props.onShowPreview}>
+          <button
+            type="button"
+            disabled={!props.available}
+            ref={nativeEvents({
+              click: () => {
+                if (props.available)
+                  props.onShowPreview?.({
+                    queryKey: props.result.key,
+                    sorting: table.state.sorting.map((sort) => ({ ...sort })),
+                  })
+              },
+            })}
+          >
+            Show preview
           </button>
         </Show>
         <button
@@ -167,16 +255,30 @@ function ResultTable(
         </fieldset>
       </details>
       <Show when={props.available}>
-        <p role="status">{table.getRowIds().length} rows</p>
+        <p role="status">
+          {table.getRowIds().length}
+          {props.result.totalRows === undefined
+            ? ''
+            : ` of ${props.result.totalRows}`}{' '}
+          rows
+        </p>
         <Show
           when={table.getVisibleColumns().length}
           fallback={<p>Show a column to view or export results.</p>}
         >
-          <div class="table-scroll">
+          <div
+            class={
+              props.window ? 'table-scroll virtual-scroll' : 'table-scroll'
+            }
+            ref={(node) => {
+              viewport = node
+            }}
+          >
             <TablePresentation
               table={table}
               caption="Query results"
               grouped={false}
+              renderBody={props.window ? virtualBody : undefined}
               header={(column) => (
                 <>
                   <TableColumnMove
@@ -193,6 +295,7 @@ function ResultTable(
                     label={label(column.id)}
                     sorted={column.getIsSorted()}
                     onSort={() => column.toggleSorting()}
+                    sortingDisabled={!props.onSortingChange}
                     onRename={(value) =>
                       setLabels((previous) => ({
                         ...previous,

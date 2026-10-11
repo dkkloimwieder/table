@@ -1,12 +1,25 @@
 import { fileURLToPath } from 'node:url'
 import { defineConfig } from 'vite'
 import solid from '@solidjs/vite-plugin'
+import { handleAnalyticsRequest } from './demo-server.mjs'
 
 const path = (relative: string) =>
   fileURLToPath(new URL(relative, import.meta.url))
 export default defineConfig({
   root: path('.'),
   plugins: [
+    {
+      name: 'analytics-demo-server',
+      configureServer(server) {
+        server.middlewares.use((request, response, next) => {
+          void handleAnalyticsRequest(request, response)
+            .then((handled) => {
+              if (!handled) next()
+            })
+            .catch(next)
+        })
+      },
+    },
     // Timeline recording creates a span for every reactive binding. Enable
     // it explicitly for profiling; ordinary review keeps dev checks enabled.
     solid({

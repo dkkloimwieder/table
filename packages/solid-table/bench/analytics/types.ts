@@ -9,21 +9,31 @@ export type QueryResult = {
     readonly id: string
     readonly values: QueryRecord
   }>
+  readonly totalRows?: number
 }
 export type QueryState =
   | { readonly status: 'loading' }
   | { readonly status: 'error'; readonly message: string }
   | { readonly status: 'ready'; readonly result: QueryResult }
 
-export type QueryExportRequest = {
+export type QuerySorting = ReadonlyArray<{
+  readonly id: string
+  readonly desc: boolean
+}>
+export type QueryBrowseRequest = {
   readonly queryKey: string
+  readonly sorting: QuerySorting
+}
+export const DEFAULT_PREVIEW_LIMIT = 1000
+export type QueryWindow = {
+  readonly offset: number
+  readonly totalRows: number
+  readonly loading?: boolean
+  readonly onRangeChange: (offset: number) => void
+}
+
+export type QueryExportRequest = QueryBrowseRequest & {
   readonly columns: ReadonlyArray<QueryColumn>
-  readonly sorting: ReadonlyArray<{
-    readonly id: string
-    readonly desc: boolean
-  }>
-  /** Ordered IDs from the supplied result, not a limit on a server export. */
-  readonly rowIds: ReadonlyArray<string>
 }
 
 export type QueryExportProps = {

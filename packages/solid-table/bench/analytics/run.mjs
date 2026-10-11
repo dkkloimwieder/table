@@ -5,6 +5,7 @@ import { dirname } from 'node:path'
 import { loadavg } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
+import { handleAnalyticsRequest } from './demo-server.mjs'
 
 const directory = process.env.BENCH_DEVELOPMENT
   ? '.dist-dev'
@@ -24,14 +25,16 @@ const report = {
 const modules = JSON.parse(await readFile(assets + 'modules.json', 'utf8'))
 assert.ok(
   !modules.some((path) =>
-    /table-core|@tanstack\/store|virtual-core|zod\/|createEditing|solid-form|kobalte/.test(
+    /table-core|@tanstack\/store|zod\/|createEditing|solid-form|kobalte/.test(
       path,
     ),
   ),
 )
 report.moduleAudit = true
+assert.ok(!modules.some((path) => /analytics\/csv\.ts/.test(path)))
 const server = createServer(async (request, response) => {
   try {
+    if (await handleAnalyticsRequest(request, response)) return
     const path = new URL(request.url, 'http://localhost').pathname
     if (path === '/favicon.ico') return void response.writeHead(204).end()
     response.setHeader(
@@ -144,9 +147,28 @@ try {
     return content.slice(1)
   }
   async function test(name, run) {
+    if (process.env.BENCH_CASE && !name.includes(process.env.BENCH_CASE)) return
     console.log(`Analytics: ${name}`)
     await start()
-    await run()
+    try {
+      await run()
+    } catch (error) {
+      report.failureState = await page.evaluate(() => ({
+        rows: Array.from(document.querySelectorAll('tr[data-row]'), (node) =>
+          node.getAttribute('data-row'),
+        ),
+        viewport: Array.from(
+          document.querySelectorAll('.virtual-scroll'),
+          (node) => ({
+            top: node.scrollTop,
+            height: node.clientHeight,
+            scrollHeight: node.scrollHeight,
+          }),
+        ),
+        text: document.body.textContent.slice(-1500),
+      }))
+      throw error
+    }
     report.cases.push({ name, status: 'passed' })
   }
 
@@ -171,7 +193,6 @@ try {
         { id: 'region', label: 'Region' },
       ],
       sorting: [{ id: 'revenue', desc: false }],
-      rowIds: ['east', 'west', 'north'],
     }
     assert.deepEqual(
       await page.evaluate(() => window.analyticsFixture.exportRequests()),
@@ -200,7 +221,6 @@ try {
       queryKey: 'replacement',
       columns: [{ id: 'value', label: 'Value' }],
       sorting: [],
-      rowIds: [],
     })
     await page.evaluate(() => window.analyticsFixture.stop())
     assert.deepEqual(
@@ -307,6 +327,84 @@ try {
       await csv(),
       'Region,Revenue,Active\r\nWest,42,true\r\nEast,7,false\r\nNorth,,true\r\n',
     )
+  })
+  await test('Server preview sorts the complete query and exports beyond its limit', async () => {
+    await page.evaluate(() => window.analyticsFixture.startServer())
+    await page
+      .getByRole('combobox', { name: 'Example query' })
+      .selectOption('large')
+    await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+    assert.equal(await page.locator('tbody tr[data-row]').count(), 1000)
+    const sort = page.getByRole('button', { name: 'Sort Index', exact: true })
+    await sort.click()
+    await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+    await sort.click()
+    await page.locator('[data-row="row-100004"]').waitFor()
+    await rename('Index', 'Row number')
+    await drag('name', 'index')
+    let description
+    const listener = (request) => {
+      if (request.url().endsWith('/api/analytics/export'))
+        description = request.postDataJSON()
+    }
+    page.on('request', listener)
+    const content = await csv()
+    page.off('request', listener)
+    assert.deepEqual(description, {
+      queryKey: 'large',
+      columns: [
+        { id: 'name', label: 'Name' },
+        { id: 'index', label: 'Row number' },
+      ],
+      sorting: [{ id: 'index', desc: true }],
+    })
+    assert.equal(content.split('\r\n').length, 100007)
+    assert.ok(content.startsWith('Name,Row number\r\nRow 100004,100004\r\n'))
+    assert.ok(content.endsWith('Row 0,0\r\n'))
+    assert.equal(await page.locator('tbody tr[data-row]').count(), 1000)
+  })
+  await test('Load all browses distant pages with bounded records and rendered rows', async () => {
+    await page.evaluate(() => window.analyticsFixture.startServer())
+    await page
+      .getByRole('combobox', { name: 'Example query' })
+      .selectOption('large')
+    await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+    await page.getByRole('button', { name: 'Load all', exact: true }).click()
+    const viewport = page.locator('.virtual-scroll')
+    await page.locator('[data-row="row-0"]').waitFor()
+    assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
+    await viewport.evaluate((node) => {
+      node.scrollTop = 50000 * 48
+    })
+    await page.locator('[data-row="row-50000"]').waitFor()
+    await page.getByText('2000 of 100005 rows', { exact: true }).waitFor()
+    assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
+    await viewport.evaluate((node) => {
+      node.scrollTop = node.scrollHeight
+    })
+    await page.locator('[data-row="row-100004"]').waitFor()
+    assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
+    await viewport.evaluate((node) => {
+      node.scrollTop = 0
+    })
+    await page.locator('[data-row="row-0"]').waitFor()
+    assert.ok((await page.locator('tbody tr[data-row]').count()) < 60)
+    await page.getByRole('button', { name: 'Sort Index', exact: true }).click()
+    await page.locator('[data-row="row-0"]').waitFor()
+    await page.getByRole('button', { name: 'Sort Index', exact: true }).click()
+    await page.locator('[data-row="row-100004"]').waitFor()
+    await page
+      .getByRole('button', { name: 'Show preview', exact: true })
+      .click()
+    await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+    assert.equal(await page.locator('.virtual-scroll').count(), 0)
+    assert.equal(await page.locator('tbody tr[data-row]').count(), 1000)
+    assert.equal(
+      await page.locator('tbody tr[data-row]').first().getAttribute('data-row'),
+      'row-100004',
+    )
+    await page.evaluate(() => window.analyticsFixture.stop())
+    assert.equal(await page.locator('#root').textContent(), '')
   })
   await test('Sorting exports every query row, including blanks and false values', async () => {
     await page

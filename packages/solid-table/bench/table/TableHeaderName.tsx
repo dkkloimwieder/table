@@ -7,6 +7,7 @@ export function TableHeaderName(props: {
   sorted: 'asc' | 'desc' | false
   onSort: () => void
   onRename: (label: string) => void
+  sortingDisabled?: boolean
 }) {
   const [editing, setEditing] = createSignal(false)
   let rename!: HTMLButtonElement
@@ -22,6 +23,7 @@ export function TableHeaderName(props: {
             accessibleLabel={'Sort ' + props.label}
             unsortedMark=""
             onSort={props.onSort}
+            disabled={props.sortingDisabled}
           />
         }
       >

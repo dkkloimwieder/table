@@ -20,6 +20,7 @@ export function Table<T, M>(props: {
   summaryHeader?: (column: NativeColumn<T, M>) => JSX.Element
   ariaSort?: (column: NativeColumn<T, M>) => JSX.AriaAttributes['aria-sort']
   renderRow?: (id: string, grouped: boolean) => JSX.Element
+  renderBody?: () => JSX.Element
   formatValue?: (value: unknown, column: NativeColumn<T, M>) => JSX.Element
   formatSummary?: (value: unknown, column: NativeColumn<T, M>) => JSX.Element
   groupLabel?: (id: string) => string
@@ -125,52 +126,60 @@ export function Table<T, M>(props: {
         </Show>
       </thead>
       <Show
-        when={grouped()}
+        when={props.renderBody}
+        keyed
         fallback={
-          <For each={table.getRowIds()}>
-            {(id) =>
-              props.renderRow ? (
-                props.renderRow(id, false)
-              ) : (
-                <TableRow
-                  table={table}
-                  id={id}
-                  formatValue={props.formatValue}
-                />
-              )
+          <Show
+            when={grouped()}
+            fallback={
+              <For each={table.getRowIds()}>
+                {(id) =>
+                  props.renderRow ? (
+                    props.renderRow(id, false)
+                  ) : (
+                    <TableRow
+                      table={table}
+                      id={id}
+                      formatValue={props.formatValue}
+                    />
+                  )
+                }
+              </For>
             }
-          </For>
+          >
+            <For each={table.getDisplayKeys()}>
+              {(key) => {
+                const item = table.getDisplayItem(key)
+                return item.kind === 'row' ? (
+                  props.renderRow ? (
+                    props.renderRow(item.id, true)
+                  ) : (
+                    <TableRow
+                      table={table}
+                      id={item.id}
+                      formatValue={props.formatValue}
+                    />
+                  )
+                ) : (
+                  <TableGroup
+                    table={table}
+                    groupKey={item.key}
+                    label={props.groupLabel}
+                    formatSummary={props.formatSummary}
+                    canToggle={props.canToggleGroup}
+                    leading={props.leading?.group}
+                    trailing={props.trailing?.group}
+                    onMount={props.onGroupMount}
+                    onCleanup={props.onGroupCleanup}
+                    onCell={props.onGroupCell}
+                  />
+                )
+              }}
+            </For>
+          </Show>
         }
       >
-        <For each={table.getDisplayKeys()}>
-          {(key) => {
-            const item = table.getDisplayItem(key)
-            return item.kind === 'row' ? (
-              props.renderRow ? (
-                props.renderRow(item.id, true)
-              ) : (
-                <TableRow
-                  table={table}
-                  id={item.id}
-                  formatValue={props.formatValue}
-                />
-              )
-            ) : (
-              <TableGroup
-                table={table}
-                groupKey={item.key}
-                label={props.groupLabel}
-                formatSummary={props.formatSummary}
-                canToggle={props.canToggleGroup}
-                leading={props.leading?.group}
-                trailing={props.trailing?.group}
-                onMount={props.onGroupMount}
-                onCleanup={props.onGroupCleanup}
-                onCell={props.onGroupCell}
-              />
-            )
-          }}
-        </For>
+        {(renderBody) => renderBody()}
       </Show>
     </table>
   )

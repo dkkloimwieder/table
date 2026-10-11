@@ -51,6 +51,7 @@ test('qualification covers both browser inputs and keeps heap work separate', ()
     }
   }
   assert.ok(stages.some(({ name }) => name === 'hydration'))
+  assert.ok(stages.some(({ name }) => name === 'analytics-server'))
   assert.ok(stages.every(({ env }) => !env.BENCH_HEAPS && !env.BENCH_WORKLOAD))
 })
 

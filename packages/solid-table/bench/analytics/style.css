@@ -54,6 +54,24 @@ summary {
   max-width: 100%;
   overflow: auto;
 }
+.virtual-scroll {
+  height: 600px;
+}
+.virtual-scroll thead {
+  position: sticky;
+  top: 0;
+  background: white;
+  z-index: 1;
+}
+.virtual-scroll tbody tr {
+  height: 48px;
+}
+.virtual-scroll tbody[aria-hidden] tr {
+  height: 0;
+}
+.virtual-scroll td {
+  white-space: nowrap;
+}
 table {
   border-collapse: collapse;
   background: white;
