@@ -25,7 +25,7 @@ const report = {
 const modules = JSON.parse(await readFile(assets + 'modules.json', 'utf8'))
 assert.ok(
   !modules.some((path) =>
-    /table-core|@tanstack\/store|zod\/|createEditing|solid-form|kobalte/.test(
+    /table-core|@tanstack\/store|virtual-core|zod\/|createEditing|solid-form|kobalte/.test(
       path,
     ),
   ),

@@ -9,6 +9,7 @@ import {
   onSettled,
 } from 'solid-js'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
+import { VirtualRows } from '../../../../packages/solid-table/bench/table/VirtualRows'
 import { createKeyedVirtualizer } from '../../_shared/createKeyedVirtualizer'
 import { createNativeGridInteraction } from './createNativeGridInteraction'
 import { nativeEvents } from './nativeEvents'
@@ -572,22 +573,14 @@ export default function NativeApp(props: {
             {(key) => <Row itemKey={key} section="top" />}
           </For>
         </div>
-        <div
-          class="native-body"
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            width: `${width()}px`,
-          }}
-        >
-          <div
-            class="native-window"
-            style={{ transform: `translateY(${virtualizer.getStart()}px)` }}
-          >
-            <For each={virtualizer.getKeys()}>
-              {(key) => <Row itemKey={key} section="center" />}
-            </For>
-          </div>
-        </div>
+        <VirtualRows
+          window={virtualizer}
+          layout="block"
+          bodyClass="native-body"
+          windowClass="native-window"
+          width={width()}
+          renderRow={(key) => <Row itemKey={key} section="center" />}
+        />
         <div
           ref={bottom}
           class="native-pinned native-bottom"

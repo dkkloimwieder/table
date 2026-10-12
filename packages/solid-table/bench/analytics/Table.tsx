@@ -12,7 +12,7 @@ import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
 import { Table as TablePresentation } from '../table/Table'
 import { TableHeaderName } from '../table/TableHeaderName'
 import { DEFAULT_PREVIEW_LIMIT } from './types'
-import { VirtualRows } from './VirtualRows'
+import { QueryRows } from './QueryRows'
 import { QUERY_ROW_HEIGHT } from './fixed-window'
 import type {
   QueryBrowseRequest,
@@ -167,7 +167,7 @@ function ResultTable(
     },
   )
   const virtualBody = () => (
-    <VirtualRows
+    <QueryRows
       table={table}
       window={props.window}
       viewport={() => viewport ?? null}

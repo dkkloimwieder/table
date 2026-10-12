@@ -66,7 +66,9 @@ The active Table source normally holds two pages. It can hold more pages when th
 Cached records outside this window do not receive table bindings. The application owns cache configuration and transport.
 The demo fixture accepts this configuration through `startServer(cacheConfiguration)`.
 
-Both preview and full browsing render visible rows plus a small buffer. The fixed-height renderer calculates their positions directly.
+Both preview and full browsing use the shared `VirtualRows` renderer with fixed-height geometry.
+It renders visible rows plus a small buffer and calculates their positions directly.
+`QueryRows` maps query offsets to loaded record IDs and requests missing pages through the application callback.
 The shared Table renderer still supplies the headers and record cells.
 Rows use a fixed height in this view. Text stays on one line.
 Geometry work uses only the visible range. It does not allocate position keys or measurements for the complete query count.

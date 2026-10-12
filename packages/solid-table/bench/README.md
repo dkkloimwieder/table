@@ -333,7 +333,11 @@ Group expansion determines the displayed hierarchy through `getDisplayKeys()`.
 
 The native example resides at `examples/solid/virtualized-rows/native.html`.
 It imports the native Table entry and uses virtual-core only for geometry.
-The shared binding reads display keys, preserves applicable measurements, and publishes the visible range.
+The shared `VirtualRows` renderer accepts fixed-height or measured geometry through `VirtualWindow`.
+The native example uses measured geometry for wrapped text, groups, and expanded rows.
+Analytics uses fixed-height geometry without allocating metadata for the complete query.
+Both modes supply visible keys, range edges, total height, and index scrolling.
+The measured binding reads display keys, preserves applicable measurements, and publishes the visible range.
 Records and feature state remain outside the virtualizer.
 
 After building this benchmark, run its browser workload from `packages/solid-table`.

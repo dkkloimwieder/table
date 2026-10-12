@@ -12,6 +12,7 @@ import {
   onSettled,
   untrack,
 } from 'solid-js'
+import type { VirtualWindow } from '../../../packages/solid-table/bench/table/virtualWindow'
 import type { VirtualItem } from '@tanstack/virtual-core'
 
 export interface KeyedVirtualizerOptions {
@@ -176,6 +177,10 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
     })
   }
   return {
+    mode: 'measured',
+    getEnd: () =>
+      (items().at(-1)?.end ?? options.scrollMargin ?? 0) -
+      (options.scrollMargin ?? 0),
     getKeys: visibleKeys,
     getItems: items,
     getItem: (key: string) => lookup().get(key),
@@ -206,5 +211,11 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
       instance.scrollToIndex(index, { align: 'start' }),
     /** Exposed for geometry diagnostics, never used to store Table records. */
     instance,
+  } satisfies VirtualWindow<string> & {
+    getItems: () => Array<VirtualItem>
+    getItem: (key: string) => VirtualItem | undefined
+    observeRow: (element: () => HTMLElement | undefined, key: string) => void
+    scrollToKey: (key: string) => boolean
+    instance: Virtualizer<HTMLElement, HTMLElement>
   }
 }
