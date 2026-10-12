@@ -502,12 +502,17 @@ With no pins, the center array reuses `getDisplayKeys()`.
 
 ## Render a virtual window
 
-The [native virtualized example](https://github.com/dkkloimwieder/table/blob/main/examples/solid/virtualized-rows/src/NativeApp.tsx) uses TanStack virtual-core for geometry.
-Its [Solid binding](https://github.com/dkkloimwieder/table/blob/main/examples/solid/_shared/createKeyedVirtualizer.ts) publishes only visible measurements and total height.
-Neither the binding nor virtual-core owns records or computes table features.
+The [native virtualized example](https://github.com/dkkloimwieder/table/blob/main/examples/solid/virtualized-rows/src/NativeApp.tsx) uses a checked-in TanStack Virtual engine for geometry.
+Its [Solid binding](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/table/createVirtualizer.ts) publishes only visible measurements and total height.
+Neither the binding nor the engine owns records or computes table features.
 The native package itself continues to import only Solid.
 
-The example keys its `For` by logical display key and creates row views inside that visible scope.
+Fixed-size mode calculates row positions on demand without storing a geometry array for the full result.
+Measured mode records actual sizes for wrapped text and expanded details.
+Both modes use the same engine and Solid binding.
+The [vendor notes](https://github.com/dkkloimwieder/table/blob/main/packages/solid-table/bench/table/vendor/virtual-core/README.md) record the original source and local changes.
+
+The native example supplies logical display keys to the shared renderer, which creates row views inside each visible scope.
 The range includes the viewport and five extra rows at each end.
 Pinned sections create their own visible views. Their records never appear twice in the center sequence.
 Pinned sections are not windowed, so applications must keep their size appropriate for the viewport.

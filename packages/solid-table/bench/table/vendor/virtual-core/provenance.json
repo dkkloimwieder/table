@@ -1,0 +1,13 @@
+{
+  "package": "@tanstack/virtual-core",
+  "version": "3.17.11",
+  "repository": "https://github.com/TanStack/virtual",
+  "license": "MIT",
+  "upstreamSha256": {
+    "index.ts": "863ad19d15de32c892ee98813ecd3b38531fd027c550e2ef27d8a8cafd32ed72",
+    "utils.ts": "e779d61893863314e1864a4cc3863eb3981a7c288cecd8c6d9f4f77d7c057f91",
+    "lazy-measurements.ts": "24308cea11906958506bc1dcdb3859f61d2e562024db7ee8690adce2f030d453",
+    "LICENSE": "a405ee70c632bb938acb7ac5f210e814409b3760ea9d2329d8ed8ffcfd11a0e7"
+  },
+  "npmIntegrity": "sha512-+ILjvtHup6Y2hzQ6YzwMgX1Q+oQpxEGOXCEsCNaPoIP0VxMbizIBTmYTDtkerkIQS8/CbP1BRuyt8V/8BCsy1g=="
+}

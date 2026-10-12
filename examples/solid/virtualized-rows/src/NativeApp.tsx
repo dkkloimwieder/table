@@ -10,7 +10,7 @@ import {
 } from 'solid-js'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
 import { VirtualRows } from '../../../../packages/solid-table/bench/table/VirtualRows'
-import { createKeyedVirtualizer } from '../../_shared/createKeyedVirtualizer'
+import { createTableVirtualizer } from '../../../../packages/solid-table/bench/table/createVirtualizer'
 import { createNativeGridInteraction } from './createNativeGridInteraction'
 import { nativeEvents } from './nativeEvents'
 import type { NativeTable } from '@tanstack/solid-table/native'
@@ -37,7 +37,7 @@ export function makeNativePerson(index: number): NativePerson {
 export interface NativeDemoController {
   table: NativeTable<NativePerson>
   viewport: HTMLElement
-  virtualizer: ReturnType<typeof createKeyedVirtualizer>
+  virtualizer: ReturnType<typeof createTableVirtualizer<string>>
   edit: (id: string, update: Partial<NativePerson>) => void
   append: () => void
   remove: (id: string) => void
@@ -148,7 +148,8 @@ export default function NativeApp(props: {
       .map((column) => `${column.id}:${column.getSize()}`)
       .join('|'),
   )
-  const virtualizer = createKeyedVirtualizer({
+  const virtualizer = createTableVirtualizer({
+    mode: 'measured',
     get keys() {
       return table.getRowSections().center
     },

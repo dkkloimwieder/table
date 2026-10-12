@@ -25,9 +25,20 @@ const report = {
 const modules = JSON.parse(await readFile(assets + 'modules.json', 'utf8'))
 assert.ok(
   !modules.some((path) =>
-    /table-core|@tanstack\/store|virtual-core|zod\/|createEditing|solid-form|kobalte/.test(
+    /table-core|@tanstack\/store|zod\/|createEditing|solid-form|kobalte/.test(
       path,
     ),
+  ),
+)
+assert.ok(
+  modules.some((path) => path.includes('/table/vendor/virtual-core/index.ts')),
+)
+assert.ok(
+  !modules.some((path) => /node_modules\/@tanstack\/virtual-core\//.test(path)),
+)
+assert.ok(
+  !modules.some((path) =>
+    /createFixedVirtualizer|fixedVirtualRange/.test(path),
   ),
 )
 report.moduleAudit = true

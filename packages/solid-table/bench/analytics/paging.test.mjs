@@ -1,8 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createQueryPageCache, estimateQueryRowBytes } from './page-cache.ts'
-import { QUERY_ROW_HEIGHT } from './fixed-window.ts'
-import { fixedVirtualRange } from '../table/fixedVirtualRange.ts'
 
 const result = (start, count, text = 'small') => ({
   key: 'query',
@@ -96,54 +94,4 @@ test('Partial preview pages remain misses until complete and the last page can b
   assert.equal(cache.read(3, 3), undefined)
   cache.put(3, { ...result(3, 2), totalRows: 5 })
   assert.equal(cache.read(3, 3).rows.length, 2)
-})
-
-test('Fixed geometry calculates distant ranges without full-query metadata', () => {
-  assert.deepEqual(fixedVirtualRange(0, 0, 600, QUERY_ROW_HEIGHT), {
-    start: 0,
-    end: 0,
-    top: 0,
-    bottom: 0,
-  })
-  const middle = fixedVirtualRange(
-    1_000_000,
-    500_000 * 32,
-    600,
-    QUERY_ROW_HEIGHT,
-  )
-  assert.equal(middle.start, 499995)
-  assert.ok(middle.end - middle.start < 30)
-  assert.equal(
-    middle.top + (middle.end - middle.start) * 32 + middle.bottom,
-    32_000_000,
-  )
-  const last = fixedVirtualRange(
-    100005,
-    100005 * 32 - 600,
-    600,
-    QUERY_ROW_HEIGHT,
-  )
-  assert.equal(last.end, 100005)
-  assert.equal(last.bottom, 0)
-})
-
-test('Shared fixed geometry accounts for row height, headers, overscan, and count changes', () => {
-  assert.deepEqual(fixedVirtualRange(10, 340, 120, 40, 100, 0), {
-    start: 6,
-    end: 9,
-    top: 240,
-    bottom: 40,
-  })
-  assert.deepEqual(fixedVirtualRange(10, 340, 120, 40, 100, 2), {
-    start: 4,
-    end: 10,
-    top: 160,
-    bottom: 0,
-  })
-  assert.deepEqual(fixedVirtualRange(2, 999, 120, 40, 100, 0), {
-    start: 2,
-    end: 2,
-    top: 80,
-    bottom: 0,
-  })
 })

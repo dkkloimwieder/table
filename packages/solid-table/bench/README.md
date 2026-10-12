@@ -332,10 +332,12 @@ Group expansion determines the displayed hierarchy through `getDisplayKeys()`.
 ## Native virtualized renderer
 
 The native example resides at `examples/solid/virtualized-rows/native.html`.
-It imports the native Table entry and uses virtual-core only for geometry.
-The shared `VirtualRows` renderer accepts fixed-height or measured geometry through `VirtualWindow`.
+It imports the native Table entry and uses the checked-in TanStack Virtual engine for geometry.
+The shared `VirtualRows` renderer uses one `createTableVirtualizer` binding through `VirtualWindow`.
 The native example uses measured geometry for wrapped text, groups, and expanded rows.
 Analytics uses fixed-height geometry without allocating metadata for the complete query.
+Both modes use the same vendored `Virtualizer` class for range calculation, scrolling, and viewport observation.
+The [engine provenance and local changes](./table/vendor/virtual-core/README.md) describe its fixed-size measurement path.
 Both modes supply visible keys, range edges, total height, and index scrolling.
 The measured binding reads display keys, preserves applicable measurements, and publishes the visible range.
 Records and feature state remain outside the virtualizer.

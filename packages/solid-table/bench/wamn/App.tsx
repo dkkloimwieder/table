@@ -6,7 +6,7 @@ import {
   onCleanup,
   onSettled,
 } from 'solid-js'
-import { createKeyedVirtualizer } from '../../../../examples/solid/_shared/createKeyedVirtualizer'
+import { createTableVirtualizer } from '../table/createVirtualizer'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { cellText } from './.input/runtime'
 import { get as getWidget } from './.input/widget'
@@ -47,7 +47,8 @@ export function App(props: {
   onCleanup(() => {
     disposed = true
   })
-  const virtualizer = createKeyedVirtualizer({
+  const virtualizer = createTableVirtualizer({
+    mode: 'measured',
     get keys() {
       return table.getRowIds()
     },
@@ -330,7 +331,7 @@ export function App(props: {
 }
 export interface FixtureController {
   model: ReturnType<typeof createWamnTable>
-  virtualizer: ReturnType<typeof createKeyedVirtualizer>
+  virtualizer: ReturnType<typeof createTableVirtualizer<string>>
   viewport: HTMLDivElement
   counts: { mounted: number; unmounted: number; cells: number; maxLive: number }
 }

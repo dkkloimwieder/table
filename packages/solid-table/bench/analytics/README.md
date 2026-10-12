@@ -67,7 +67,8 @@ Cached records outside this window do not receive table bindings. The applicatio
 The demo fixture accepts this configuration through `startServer(cacheConfiguration)`.
 
 Both preview and full browsing use the shared `VirtualRows` renderer with fixed-height geometry.
-It renders visible rows plus a small buffer and calculates their positions directly.
+It renders visible rows plus a small buffer through the same vendored TanStack Virtual engine as measured tables.
+Its fixed-size measurement view calculates positions on demand without storing geometry for every query row.
 `QueryRows` maps query offsets to loaded record IDs and requests missing pages through the application callback.
 The shared Table renderer still supplies the headers and record cells.
 Rows use a fixed height in this view. Text stays on one line.

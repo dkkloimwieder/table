@@ -1,5 +1,5 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": { "jsx": "preserve", "jsxImportSource": "@solidjs/web" },
-  "include": ["createKeyedVirtualizer.ts"]
+  "include": ["../../../packages/solid-table/bench/table/createVirtualizer.ts"]
 }

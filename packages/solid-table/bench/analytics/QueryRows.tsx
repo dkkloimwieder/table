@@ -1,7 +1,7 @@
 import { Show, createEffect, onCleanup } from 'solid-js'
 import { TableRow } from '../table/Table'
 import { VirtualRows } from '../table/VirtualRows'
-import { createFixedVirtualizer } from '../table/createFixedVirtualizer'
+import { createTableVirtualizer } from '../table/createVirtualizer'
 import { QUERY_ROW_HEIGHT } from './fixed-window'
 import type { NativeTable } from '@tanstack/solid-table/native'
 import type { QueryRecord, QueryWindow } from './types'
@@ -15,7 +15,10 @@ export function QueryRows(props: {
   onCleanup(() => {
     disposed = true
   })
-  const window = createFixedVirtualizer({
+  const window = createTableVirtualizer({
+    mode: 'fixed',
+    getItemKey: (index) => index,
+    getIndexForKey: (index) => index,
     get count() {
       return props.window?.totalRows ?? props.table.getRowIds().length
     },

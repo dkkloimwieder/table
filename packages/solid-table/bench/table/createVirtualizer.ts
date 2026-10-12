@@ -1,10 +1,4 @@
 import {
-  Virtualizer,
-  elementScroll,
-  observeElementOffset,
-  observeElementRect,
-} from '@tanstack/virtual-core'
-import {
   createEffect,
   createMemo,
   createSignal,
@@ -12,23 +6,46 @@ import {
   onSettled,
   untrack,
 } from 'solid-js'
-import type { VirtualWindow } from '../../../packages/solid-table/bench/table/virtualWindow'
-import type { VirtualItem } from '@tanstack/virtual-core'
+import {
+  Virtualizer,
+  elementScroll,
+  observeElementOffset,
+  observeElementRect,
+} from './vendor/virtual-core/index'
+import type { VirtualWindow } from './virtualWindow'
+import type { VirtualItem } from './vendor/virtual-core/index'
 
-export interface KeyedVirtualizerOptions {
-  readonly keys: ReadonlyArray<string>
+type CommonOptions = {
   getScrollElement: () => HTMLElement | null
-  estimateSize: (key: string, index: number) => number
   overscan?: number
   scrollMargin?: number
   scrollPaddingEnd?: number
-  /** Change when column layout makes prior heights obsolete. */
-  measurementVersion?: unknown
   initialRect?: { width: number; height: number }
+  observeElements?: () => ReadonlyArray<Element>
 }
 
-/** Geometry only. Record ownership and displayed membership stay with Table. */
-export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
+export type TableVirtualizerOptions<Key extends string | number> =
+  CommonOptions &
+    (
+      | {
+          mode: 'measured'
+          readonly keys: ReadonlyArray<Key>
+          estimateSize: (key: Key, index: number) => number
+          measurementVersion?: unknown
+        }
+      | {
+          mode: 'fixed'
+          readonly count: number
+          rowHeight: number
+          getItemKey: (index: number) => Key
+          getIndexForKey?: (key: Key) => number | undefined
+        }
+    )
+
+/** One Solid binding to the vendored engine. Data stays with the caller. */
+export function createTableVirtualizer<Key extends string | number>(
+  options: TableVirtualizerOptions<Key>,
+) {
   if (!getOwner())
     throw new Error('Create the virtualizer inside a Solid owner')
   // Audited ownedWrite: virtual-core can synchronously publish geometry from
@@ -48,17 +65,33 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
         total: instance.getTotalSize(),
       })
   }
+  const count = createMemo(() =>
+    options.mode === 'fixed' ? options.count : options.keys.length,
+  )
+  const keys = createMemo(() =>
+    options.mode === 'measured' ? options.keys : undefined,
+  )
+  const [layoutRevision, setLayoutRevision] = createSignal(0, {
+    ownedWrite: true,
+  })
   const configuration = createMemo(() => {
-    const keys = options.keys
-    const estimateSize = options.estimateSize
+    layoutRevision()
+    const sequence = keys()
+    const fixedSize = options.mode === 'fixed' ? options.rowHeight : undefined
+    const estimateSize =
+      options.mode === 'measured' ? options.estimateSize : undefined
     return {
-      keys,
-      version: options.measurementVersion,
-      count: keys.length,
-      // A new function when the sequence changes invalidates core geometry
-      // for same-count reorder, while stable keys retain applicable sizes.
-      getItemKey: (index: number) => keys[index]!,
-      estimateSize: (index: number) => estimateSize(keys[index]!, index),
+      keys: sequence,
+      version:
+        options.mode === 'measured' ? options.measurementVersion : undefined,
+      count: count(),
+      getItemKey:
+        options.mode === 'fixed'
+          ? options.getItemKey
+          : (index: number) => sequence![index]!,
+      estimateSize: (index: number) =>
+        fixedSize ?? estimateSize!(sequence![index]!, index),
+      fixedItemSize: fixedSize,
       getScrollElement: options.getScrollElement,
       overscan: options.overscan ?? 5,
       scrollMargin: options.scrollMargin ?? 0,
@@ -86,7 +119,7 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
       current.scrollAdjustments +
       current.options.scrollMargin
   let previous = untrack(configuration)
-  let pendingAnchor: { key: string; within: number; offset: number } | undefined
+  let pendingAnchor: { key: Key; within: number; offset: number } | undefined
   let anchorFrame: number | undefined
   function restoreAnchor() {
     anchorFrame = undefined
@@ -94,7 +127,7 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
     pendingAnchor = undefined
     if (!anchor || disposed) return
     const next = untrack(configuration)
-    const index = next.keys.indexOf(anchor.key)
+    const index = next.keys?.indexOf(anchor.key) ?? -1
     if (index >= 0) {
       const offset = instance.getOffsetForIndex(index, 'start')?.[0]
       if (offset !== undefined)
@@ -120,16 +153,16 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
     const offsetWithin = anchor ? visibleStart - anchor.start : 0
     instance.setOptions(next)
     if (next.version !== previous.version) instance.measure()
-    if (changed) {
+    if (changed && next.keys) {
       const current = new Set(next.keys)
       for (const key of instance.itemSizeCache.keys())
-        if (!current.has(String(key))) instance.itemSizeCache.delete(key)
+        if (!current.has(key as Key)) instance.itemSizeCache.delete(key)
     }
     if (mounted) {
       instance._willUpdate()
       if (anchor && !pendingAnchor) {
         pendingAnchor = {
-          key: String(anchor.key),
+          key: anchor.key as Key,
           within: offsetWithin,
           offset: instance.scrollOffset ?? 0,
         }
@@ -147,7 +180,13 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
     const cleanup = instance._didMount()
     instance._willUpdate()
     publish()
+    const elements = options.observeElements?.() ?? []
+    const observer = elements.length
+      ? new ResizeObserver(() => setLayoutRevision((value) => value + 1))
+      : undefined
+    for (const element of elements) observer!.observe(element)
     return () => {
+      observer?.disconnect()
       disposed = true
       mounted = false
       cleanup()
@@ -158,15 +197,12 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
     }
   })
   const items = createMemo(() => window().items)
-  const visibleKeys = createMemo(
-    () => items().map((item) => String(item.key)),
-    {
-      equals: (a, b) =>
-        a.length === b.length && a.every((key, index) => key === b[index]),
-    },
-  )
+  const visibleKeys = createMemo(() => items().map((item) => item.key as Key), {
+    equals: (a, b) =>
+      a.length === b.length && a.every((key, index) => key === b[index]),
+  })
   const lookup = createMemo(
-    () => new Map(items().map((item) => [String(item.key), item])),
+    () => new Map(items().map((item) => [item.key as Key, item])),
   )
   function releaseElement() {
     if (cleanupQueued || disposed) return
@@ -177,19 +213,19 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
     })
   }
   return {
-    mode: 'measured',
+    mode: options.mode,
     getEnd: () =>
       (items().at(-1)?.end ?? options.scrollMargin ?? 0) -
       (options.scrollMargin ?? 0),
     getKeys: visibleKeys,
     getItems: items,
-    getItem: (key: string) => lookup().get(key),
+    getItem: (key: Key) => lookup().get(key),
     getTotalSize: () => window().total,
     getStart: () =>
       (items()[0]?.start ?? options.scrollMargin ?? 0) -
       (options.scrollMargin ?? 0),
     /** Call in the visible row owner. Set data-index before measuring. */
-    observeRow: (element: () => HTMLElement | undefined, key: string) => {
+    observeRow: (element: () => HTMLElement | undefined, key: Key) => {
       createEffect(
         () => lookup().get(key)?.index,
         (index) => {
@@ -202,8 +238,11 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
       )
       onSettled(() => releaseElement)
     },
-    scrollToKey: (key: string) => {
-      const index = options.keys.indexOf(key)
+    scrollToKey: (key: Key) => {
+      const index =
+        options.mode === 'measured'
+          ? options.keys.indexOf(key)
+          : (options.getIndexForKey?.(key) ?? lookup().get(key)?.index ?? -1)
       if (index >= 0) instance.scrollToIndex(index, { align: 'auto' })
       return index >= 0
     },
@@ -211,11 +250,11 @@ export function createKeyedVirtualizer(options: KeyedVirtualizerOptions) {
       instance.scrollToIndex(index, { align: 'start' }),
     /** Exposed for geometry diagnostics, never used to store Table records. */
     instance,
-  } satisfies VirtualWindow<string> & {
+  } satisfies VirtualWindow<Key> & {
     getItems: () => Array<VirtualItem>
-    getItem: (key: string) => VirtualItem | undefined
-    observeRow: (element: () => HTMLElement | undefined, key: string) => void
-    scrollToKey: (key: string) => boolean
+    getItem: (key: Key) => VirtualItem | undefined
+    observeRow: (element: () => HTMLElement | undefined, key: Key) => void
+    scrollToKey: (key: Key) => boolean
     instance: Virtualizer<HTMLElement, HTMLElement>
   }
 }
