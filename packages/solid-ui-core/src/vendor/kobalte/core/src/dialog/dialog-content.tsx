@@ -1,0 +1,255 @@
+/*
+ * Portions of this file are based on code from radix-ui-primitives.
+ * MIT Licensed, Copyright (c) 2022 WorkOS.
+ *
+ * Credits to the Radix UI team:
+ * https://github.com/radix-ui/primitives/blob/81b25f4b40c54f72aeb106ca0e64e1e09655153e/packages/react/dialog/src/Dialog.tsx
+ */
+
+import { createFocusTrap } from '@solid-primitives/focus'
+import { createHideOutside } from '@solid-primitives/interaction'
+
+import { createPreventScroll } from '@solid-primitives/scroll'
+import {
+  Show,
+  createEffect,
+  createSignal,
+  merge,
+  omit,
+  untrack,
+} from 'solid-js'
+import { DismissableLayer } from '../dismissable-layer/index.ts'
+import { useDialogContext } from './dialog-context.tsx'
+import type { Component } from 'solid-js'
+import type {
+  DismissableLayerCommonProps,
+  DismissableLayerRenderProps,
+} from '../dismissable-layer/index.ts'
+import type {
+  FocusOutsideEvent,
+  InteractOutsideEvent,
+  PointerDownOutsideEvent,
+} from '@solid-primitives/interaction'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { ValidComponent } from '@solidjs/web'
+
+export interface DialogContentOptions {
+  /**
+   * Event handler called when focus moves into the component after opening.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onOpenAutoFocus?: (event: Event) => void
+
+  /**
+   * Event handler called when focus moves to the trigger after closing.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onCloseAutoFocus?: (event: Event) => void
+
+  /**
+   * Event handler called when the escape key is down.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onEscapeKeyDown?: (event: KeyboardEvent) => void
+
+  /**
+   * Event handler called when a pointer event occurs outside the bounds of the component.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onPointerDownOutside?: (event: PointerDownOutsideEvent) => void
+
+  /**
+   * Event handler called when the focus moves outside the bounds of the component.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onFocusOutside?: (event: FocusOutsideEvent) => void
+
+  /**
+   * Event handler called when an interaction (pointer or focus event) happens outside the bounds of the component.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onInteractOutside?: (event: InteractOutsideEvent) => void
+}
+
+export interface DialogContentCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends DismissableLayerCommonProps<T> {
+  id: string
+}
+
+export interface DialogContentRenderProps
+  extends DialogContentCommonProps, DismissableLayerRenderProps {
+  role: 'dialog' | 'alertdialog'
+  tabindex: -1
+}
+
+export type DialogContentProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = DialogContentOptions & Partial<DialogContentCommonProps<ElementOf<T>>>
+
+/**
+ * Contains the content to be rendered when the dialog is open.
+ */
+export function DialogContent<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, DialogContentProps<T>>,
+) {
+  const [ref, setRef] = createSignal<HTMLElement | undefined>(undefined, {
+    ownedWrite: true,
+  })
+
+  const context = useDialogContext()
+
+  const mergedProps = merge(
+    {
+      id: context.generateId('content'),
+    },
+    props as DialogContentProps,
+  )
+
+  const others = omit(
+    mergedProps,
+    'ref',
+    'onOpenAutoFocus',
+    'onCloseAutoFocus',
+    'onPointerDownOutside',
+    'onFocusOutside',
+    'onInteractOutside',
+  )
+
+  let hasInteractedOutside = false
+  let hasPointerDownOutside = false
+
+  const onPointerDownOutside = (e: PointerDownOutsideEvent) => {
+    mergedProps.onPointerDownOutside?.(e)
+
+    // If the event is a right-click, we shouldn't close because
+    // it is effectively as if we right-clicked the `Overlay`.
+    if (context.modal() && e.detail.isContextMenu) {
+      e.preventDefault()
+    }
+  }
+
+  const onFocusOutside = (e: FocusOutsideEvent) => {
+    mergedProps.onFocusOutside?.(e)
+
+    // When focus is trapped, a `focusout` event may still happen.
+    // We make sure we don't trigger our `onDismiss` in such case.
+    if (context.modal()) {
+      e.preventDefault()
+    }
+  }
+
+  const onInteractOutside = (e: InteractOutsideEvent) => {
+    mergedProps.onInteractOutside?.(e)
+
+    if (context.modal()) {
+      return
+    }
+
+    // Non-modal behavior below
+
+    if (!e.defaultPrevented) {
+      hasInteractedOutside = true
+
+      if (e.detail.originalEvent.type === 'pointerdown') {
+        hasPointerDownOutside = true
+      }
+    }
+
+    // Prevent dismissing when clicking the trigger.
+    // As the trigger is already setup to close, without doing so would
+    // cause it to close and immediately open.
+    if (context.triggerRef()?.contains(e.target as HTMLElement)) {
+      e.preventDefault()
+    }
+
+    // On Safari if the trigger is inside a container with tabIndex={0}, when clicked
+    // we will get the pointer down outside event on the trigger, but then a subsequent
+    // focus outside event on the container, we ignore any focus outside event when we've
+    // already had a pointer down outside event.
+    if (e.detail.originalEvent.type === 'focusin' && hasPointerDownOutside) {
+      e.preventDefault()
+    }
+  }
+
+  const onCloseAutoFocus = (e: Event) => {
+    mergedProps.onCloseAutoFocus?.(e)
+    if (e.defaultPrevented) return
+
+    if (context.modal()) {
+      const trigger = context.triggerRef()
+      if (trigger?.isConnected) {
+        e.preventDefault()
+        trigger.focus({ preventScroll: true })
+      }
+    } else {
+      if (!e.defaultPrevented) {
+        if (!hasInteractedOutside) {
+          context.triggerRef()?.focus({ preventScroll: true })
+        }
+
+        // Always prevent autofocus because we either focus manually or want user agent focus
+        e.preventDefault()
+      }
+
+      hasInteractedOutside = false
+      hasPointerDownOutside = false
+    }
+  }
+
+  // aria-hide everything except the content (better supported equivalent to setting aria-modal)
+  // Use context.contentRef (a signal) so the effect re-runs when the element mounts.
+  createHideOutside({
+    disabled: () => !(context.isOpen() && context.modal()),
+    targets: () => {
+      const el = context.contentRef()
+      return el ? [el] : []
+    },
+    alwaysVisibleSelector: '[data-kb-top-layer], [data-live-announcer]',
+  })
+
+  createPreventScroll({
+    element: ref,
+    enabled: () => context.isOpen() && context.preventScroll(),
+  })
+
+  createFocusTrap({
+    element: ref,
+    enabled: () => context.isOpen() && context.modal(),
+    onInitialFocus: (event) =>
+      untrack(() => mergedProps.onOpenAutoFocus?.(event)),
+    onFinalFocus: (event) => untrack(() => onCloseAutoFocus(event)),
+  })
+
+  createEffect(
+    () => others.id,
+    (id) => context.registerContentId(id),
+  )
+
+  return (
+    <Show when={context.contentPresent()}>
+      <DismissableLayer<
+        Component<
+          Omit<DialogContentRenderProps, keyof DismissableLayerRenderProps>
+        >
+      >
+        ref={[context.setContentRef, setRef, untrack(() => mergedProps.ref)]}
+        role="dialog"
+        tabindex={-1}
+        aria-modal={context.modal() ? 'true' : undefined}
+        enabled={context.isOpen()}
+        disableOutsidePointerEvents={context.modal() && context.isOpen()}
+        excludedElements={[context.triggerRef]}
+        aria-labelledby={context.titleId()}
+        aria-describedby={context.descriptionId()}
+        data-expanded={context.isOpen() ? '' : undefined}
+        data-closed={!context.isOpen() ? '' : undefined}
+        onPointerDownOutside={onPointerDownOutside}
+        onFocusOutside={onFocusOutside}
+        onInteractOutside={onInteractOutside}
+        onDismiss={context.close}
+        {...others}
+      />
+    </Show>
+  )
+}

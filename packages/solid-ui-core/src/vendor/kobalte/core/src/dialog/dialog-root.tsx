@@ -1,0 +1,138 @@
+import { createPresence } from '@solid-primitives/presence'
+import { createSignal, createUniqueId, merge } from 'solid-js'
+import { createDisclosureState, createRegisterId } from '../primitives/index.ts'
+import { DIALOG_INTL_TRANSLATIONS } from './dialog.intl.ts'
+import { DialogContext } from './dialog-context.tsx'
+import type { ParentProps } from 'solid-js'
+import type { DialogIntlTranslations } from './dialog.intl.ts'
+import type { DialogContextValue } from './dialog-context.tsx'
+
+export interface DialogRootOptions {
+  /** The localized strings of the component. */
+  translations?: DialogIntlTranslations
+
+  /** The controlled open state of the dialog. */
+  open?: boolean
+
+  /**
+   * The default open state when initially rendered.
+   * Useful when you do not need to control the open state.
+   */
+  defaultOpen?: boolean
+
+  /** Event handler called when the open state of the dialog changes. */
+  onOpenChange?: (isOpen: boolean) => void
+
+  /**
+   * A unique identifier for the component.
+   * The id is used to generate id attributes for nested components.
+   * If no id prop is provided, a generated id will be used.
+   */
+  id?: string
+
+  /**
+   * Whether the dialog should be the only visible content for screen readers.
+   * When set to `true`:
+   * - interaction with outside elements will be disabled.
+   * - scroll will be locked.
+   * - focus will be locked inside the dialog content.
+   * - elements outside the dialog content will not be visible for screen readers.
+   */
+  modal?: boolean
+
+  /** Whether the scroll should be locked even if the dialog is not modal. */
+  preventScroll?: boolean
+
+  /**
+   * Used to force mounting the dialog (portal, overlay and content) when more control is needed.
+   * Useful when controlling animation with SolidJS animation libraries.
+   */
+  forceMount?: boolean
+}
+
+export interface DialogRootProps extends ParentProps<DialogRootOptions> {}
+
+/**
+ * A dialog is a window overlaid on either the primary window or another dialog window.
+ */
+export function DialogRoot(props: DialogRootProps) {
+  const defaultId = `dialog-${createUniqueId()}`
+
+  const mergedProps = merge(
+    {
+      id: defaultId,
+      modal: true,
+      translations: DIALOG_INTL_TRANSLATIONS,
+    },
+    props,
+  )
+
+  const [contentId, setContentId] = createSignal<string | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+  const [titleId, setTitleId] = createSignal<string | undefined>(undefined, {
+    ownedWrite: true,
+  })
+  const [descriptionId, setDescriptionId] = createSignal<string | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+
+  const [overlayRef, setOverlayRef] = createSignal<HTMLElement | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+  const [contentRef, setContentRef] = createSignal<HTMLElement | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+  const [triggerRef, setTriggerRef] = createSignal<HTMLElement | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+
+  const disclosureState = createDisclosureState({
+    open: () => mergedProps.open,
+    defaultOpen: () => mergedProps.defaultOpen,
+    onOpenChange: (isOpen) => mergedProps.onOpenChange?.(isOpen),
+  })
+
+  const shouldMount = () => mergedProps.forceMount || disclosureState.isOpen()
+
+  const { isMounted: overlayPresent } = createPresence(
+    () => shouldMount() || undefined,
+    { transitionDuration: 0 },
+  )
+
+  const { isMounted: contentPresent } = createPresence(
+    () => shouldMount() || undefined,
+    { transitionDuration: 0 },
+  )
+
+  const context: DialogContextValue = {
+    translations: () => mergedProps.translations ?? DIALOG_INTL_TRANSLATIONS,
+    isOpen: disclosureState.isOpen,
+    modal: () => mergedProps.modal ?? true,
+    preventScroll: () => mergedProps.preventScroll ?? context.modal(),
+    contentId,
+    titleId,
+    descriptionId,
+    triggerRef,
+    overlayRef,
+    setOverlayRef,
+    contentRef,
+    setContentRef,
+    overlayPresent,
+    contentPresent,
+    close: disclosureState.close,
+    toggle: disclosureState.toggle,
+    setTriggerRef,
+    generateId: (suffix: string) => `${mergedProps.id}-${suffix}`,
+    registerContentId: createRegisterId(setContentId),
+    registerTitleId: createRegisterId(setTitleId),
+    registerDescriptionId: createRegisterId(setDescriptionId),
+  }
+
+  return <DialogContext value={context}>{mergedProps.children}</DialogContext>
+}

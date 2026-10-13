@@ -17,7 +17,10 @@
     "./fields": "./src/components/NativeFields.tsx",
     "./checkbox": "./src/components/Checkbox.tsx",
     "./switch": "./src/components/Switch.tsx",
-    "./radio-group": "./src/components/RadioGroup.tsx"
+    "./radio-group": "./src/components/RadioGroup.tsx",
+    "./dialog": "./src/components/Dialog.tsx",
+    "./alert-dialog": "./src/components/AlertDialog.tsx",
+    "./sheet": "./src/components/Sheet.tsx"
   },
   "sideEffects": [
     "**/*.css"

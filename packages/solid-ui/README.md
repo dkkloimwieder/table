@@ -151,3 +151,38 @@ Native form reset restores defaults after the browser applies its reset action.
 Controlled values remain authoritative when the application rejects the reset.
 Components cancel pending reset work on disposal.
 Applications own validation, submission, and all permission or role rules.
+
+## Dialogs and Sheet
+
+The root exports Dialog, AlertDialog, and Sheet.
+Their `dialog`, `alert-dialog`, and `sheet` subpaths expose styled parts and types.
+Dialog composes Trigger, Portal, Overlay, Content, Title, Description, and CloseButton inside Root.
+Root accepts `open` and `onOpenChange` for controlled state or `defaultOpen` for uncontrolled state.
+The application can reject a proposed open or close change.
+
+Modal dialogs trap focus, hide outside content from assistive technology, and lock page scrolling.
+Their content can scroll within the viewport.
+Escape and outside pointer interaction close Dialog unless the application prevents the event.
+Nonmodal dialogs preserve the focus target from outside interaction.
+Dialogs without a trigger return focus to the previously focused control.
+Use `onCloseAutoFocus` to choose another focus target and prevent default focus restoration.
+Nested dialogs dismiss the top layer first.
+
+Portal mounts in the trigger's nearest `data-ui-portal-root` or enclosing style scope.
+Pass `mount` to choose another host, especially for programmatic dialogs without a trigger.
+The portal provides a style scope and reserves no page layout space.
+Force-mounted closed content stays hidden and releases document locks and dismissal behavior.
+Reopening preserves the mounted input state.
+Styled parts retain custom `as` elements and refs.
+
+AlertDialog uses modal Dialog behavior and prevents outside dismissal.
+Cancel receives initial focus. If Cancel is absent, Content receives initial focus.
+A caller can override that choice through `onOpenAutoFocus` and `event.preventDefault()`.
+Action is a native Button. It runs the caller's handler and does not close the dialog automatically.
+The application owns confirmation text, pending state, errors, and the confirmed operation.
+Cancel and Escape close without invoking Action.
+
+Sheet shares the same Root, focus, dismissal, portal, and scroll behavior as Dialog.
+Its Content accepts `side`: `left`, `right`, `top`, or `bottom`.
+The default side is `right`.
+All four presentations use the shared compact tokens and stay within the viewport.

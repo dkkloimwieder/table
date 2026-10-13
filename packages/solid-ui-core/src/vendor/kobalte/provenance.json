@@ -7,7 +7,9 @@
     "core/src/combobox/index.tsx",
     "core/src/checkbox/index.tsx",
     "core/src/switch/index.tsx",
-    "core/src/radio-group/index.tsx"
+    "core/src/radio-group/index.tsx",
+    "core/src/dialog/index.tsx",
+    "core/src/alert-dialog/index.tsx"
   ],
   "sources": {
     "core/src/button/button-root.tsx": {
@@ -84,7 +86,7 @@
     },
     "core/src/dismissable-layer/dismissable-layer.tsx": {
       "upstreamSha256": "c82be17d0935193f10d6bc3e368a04fa78c395fb0978c2759fadf9bd2221ddfe",
-      "localSha256": "0a1d97cd8629c03a0923fd800d5aac59032c4cd413c0a709b5155b8cf8c7d0fd"
+      "localSha256": "7f7c07f03450247da350cb8471aae18e45ae9b7ba25c14dab700235bc5097d46"
     },
     "core/src/dismissable-layer/index.ts": {
       "upstreamSha256": "50c0ae43bbc053ee7620849f0081c846653befb3f2ea8931a9469d9974a3b04b",
@@ -577,6 +579,58 @@
     "core/src/radio-group/index.tsx": {
       "upstreamSha256": "3c900aa577db8028e587bad78120f4848e09a309f78dee4447fbebc6a5ba4144",
       "localSha256": "109e6ab7a3acb5b8da4a1fc0895cb752d98e7972aa133f8605bf5618a1235189"
+    },
+    "core/src/dialog/dialog.intl.ts": {
+      "upstreamSha256": "1e898779399476f7495571ee70a3ea4b345c47d9fd5131d610b09288fd79e029",
+      "localSha256": "046bcfb0f58d8eec61d03bd2797cbf467fa13969198300778ba64d7e3d1d7370"
+    },
+    "core/src/dialog/dialog-context.tsx": {
+      "upstreamSha256": "ea7499da7442062bc610af681af3258921811b45abc22a7dbaa73ccff0f218c2",
+      "localSha256": "af119c23b6771a5a6593cd8aa654c69fa938e5430f0a396a7deb9b5a3a1739da"
+    },
+    "core/src/dialog/dialog-close-button.tsx": {
+      "upstreamSha256": "75ef551ec4786f4f801bfe15a958ee189b19fcadb049cd4bc40cdfdec0b23444",
+      "localSha256": "df384f888f928c46efed3bbd84badd6cb5c7ebb25936259979ec9e8b8693e61b"
+    },
+    "core/src/dialog/dialog-content.tsx": {
+      "upstreamSha256": "6a546448d168e425dc2ca85f2af709b3f5fac62eaefcee71930c9c1eb6b1d1ec",
+      "localSha256": "38c808196c8b58400a4fd22579cf7f7d964642ec3e3b7471a9c15519ee6d30a4"
+    },
+    "core/src/dialog/dialog-description.tsx": {
+      "upstreamSha256": "30ad41d2e856aca6a18cc27b03d22c350f89615af39928c7bc2b4a4074f373e2",
+      "localSha256": "132e7f6bcfcf63a70d0af53b697904bc5f343daa637951d0ed474ab054934c83"
+    },
+    "core/src/dialog/dialog-overlay.tsx": {
+      "upstreamSha256": "5be437dc884a83280a0d7e7b079cdb4c462ae7af635471400fe5f0925521c55c",
+      "localSha256": "4baa106c332c76de865856d96a16c489c610994cc8642bb25d04f9433c8ca8e7"
+    },
+    "core/src/dialog/dialog-portal.tsx": {
+      "upstreamSha256": "20b2889d7614237cd6b0e1d064537cc710b89bad62a7ffb65684b0d41f4bdad8",
+      "localSha256": "44b36eea4204d83901cf25ca436872eaf9c391a8393471bc1cc51dbe3b36c83f"
+    },
+    "core/src/dialog/dialog-root.tsx": {
+      "upstreamSha256": "918a59efdb57a806df146e2018f17514313607417aa43f10371082de409c7dd1",
+      "localSha256": "db9af1c36d0486e9c8f74c3de6d70b2339de180f55476463a191e489d9f07ac0"
+    },
+    "core/src/dialog/dialog-title.tsx": {
+      "upstreamSha256": "0a6fbf0d8c55bebfa0588169d4c29f33194f6a83665b7b7dc839159d42153efa",
+      "localSha256": "3dc169ec31e43b63284106d43df0ce27c1fd956679e736d82de21a22c32a15c3"
+    },
+    "core/src/dialog/dialog-trigger.tsx": {
+      "upstreamSha256": "ae6e5659182e1be064f9ee0ecb16eeaa7de247731c4b5211eb6d748d95838e8e",
+      "localSha256": "f4d01df537560b82406e161c07f15dabdf48e8506462836c22e6509b6189599f"
+    },
+    "core/src/dialog/index.tsx": {
+      "upstreamSha256": "827fa903f0191282470c6c4fea53f66249cf222029b3dee61d77ca7c399e9ceb",
+      "localSha256": "b0c676de6515ca0a01109e389496ee009bc9e4cdbb3dee78af14b9e9df0535aa"
+    },
+    "core/src/alert-dialog/alert-dialog-content.tsx": {
+      "upstreamSha256": "2c40f521105ffe8205ad51d4dc65c6b68a5406d547f9e36410e01bc437438ecc",
+      "localSha256": "898634f61c03ddc114737a1e627e16e1da4eb39ce805faf9664fa4ea35888ed6"
+    },
+    "core/src/alert-dialog/index.tsx": {
+      "upstreamSha256": "97dd986b09367c88b4cf88b186ae75508e70e9cdec5a1fe6ea28dd9dd13a1208",
+      "localSha256": "33569cbfd40730dec44c4622576357e33335e06fda6a1526e8c3966af1273490"
     }
   }
 }

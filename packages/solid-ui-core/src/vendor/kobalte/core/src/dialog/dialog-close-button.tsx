@@ -1,0 +1,54 @@
+import { omit } from 'solid-js'
+import { callHandler } from '../../../utils/src/index.ts'
+import * as Button from '../button/index.tsx'
+import { useDialogContext } from './dialog-context.tsx'
+import type { Component } from 'solid-js'
+import type { JSX, ValidComponent } from '@solidjs/web'
+
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+
+export interface DialogCloseButtonOptions extends Button.ButtonRootOptions {}
+
+export interface DialogCloseButtonCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends Button.ButtonRootCommonProps<T> {
+  onClick: JSX.EventHandlerUnion<T, MouseEvent>
+  'aria-label': string
+}
+
+export interface DialogCloseButtonRenderProps
+  extends DialogCloseButtonCommonProps, Button.ButtonRootRenderProps {}
+
+export type DialogCloseButtonProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = DialogCloseButtonOptions &
+  Partial<DialogCloseButtonCommonProps<ElementOf<T>>>
+
+/**
+ * The button that closes the dialog.
+ */
+export function DialogCloseButton<T extends ValidComponent = 'button'>(
+  props: PolymorphicProps<T, DialogCloseButtonProps<T>>,
+) {
+  const context = useDialogContext()
+
+  const p = props as DialogCloseButtonProps
+  const others = omit(p, 'aria-label', 'onClick')
+
+  const onClick: JSX.EventHandlerUnion<HTMLElement, MouseEvent> = (e) => {
+    if (callHandler(e, p.onClick)) return
+    context.close()
+  }
+
+  return (
+    <Button.Root<
+      Component<
+        Omit<DialogCloseButtonRenderProps, keyof Button.ButtonRootRenderProps>
+      >
+    >
+      aria-label={p['aria-label'] || context.translations().dismiss}
+      onClick={onClick}
+      {...others}
+    />
+  )
+}

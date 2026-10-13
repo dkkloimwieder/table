@@ -1,6 +1,6 @@
 # Owned Kobalte subset
 
-This directory contains 139 source modules for Select, Combobox, Checkbox, Switch, RadioGroup, and their shared Kobalte Core and Utils dependencies.
+This directory contains 152 source modules for the owned controls and their shared Kobalte Core and Utils dependencies.
 The origin is revision `e9d426d438b7c9ea0cc81bd1133831a20cd5fcae` from the Kobalte `solid2` branch.
 `provenance.json` records the original and local SHA-256 for each source and license.
 The copied originals match archive SHA-256 `c07f47331a9aee20f69e2e55d81454f0b48976e2e6e98551da2b27a9169c6f70`.
@@ -47,6 +47,15 @@ Disabled radio items reject pointer selection. Read-only radio groups restore ev
 Reset callbacks run after the native reset action and restore accepted controlled values or uncontrolled defaults.
 A shared Core helper cancels pending reset work on disposal and respects prevented reset events.
 The shared form label reads its one-time forwarded ref through `untrack`.
+
+Dialog and AlertDialog now share the owned dismissable layer and external focus, interaction, and scroll primitives.
+Dismissable layers forward native and custom `as` elements through the repaired Polymorphic component.
+They register while enabled and release their layer and document locks while disabled.
+Force-mounted closed dialogs keep their content without locking scrolling or receiving dismissal events.
+Dialog trigger and close handlers respect prevented caller events.
+Caller focus restoration takes precedence over the default trigger focus.
+Dialogs without a connected trigger retain the focus primitive's previous focus target.
+Modal content exposes `aria-modal`. AlertDialog prevents outside dismissal.
 
 The external scroll registry uses the existing owner repair through a pnpm patch.
 Solid, Solid Primitives, Floating UI, and internationalized number formatting remain external.

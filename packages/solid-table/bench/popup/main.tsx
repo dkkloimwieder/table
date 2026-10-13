@@ -9,8 +9,22 @@ import { ChoiceControls } from './ChoiceControls'
 import { ComboboxSmoke } from './ComboboxSmoke'
 import { NativeFieldsFixture } from './NativeFieldsFixture'
 import { BooleanControls } from './BooleanControls'
+import { DialogControls } from './DialogControls'
 
-if (new URLSearchParams(location.search).has('booleans')) {
+if (new URLSearchParams(location.search).has('dialogs')) {
+  const dispose = render(
+    () => <DialogControls />,
+    document.getElementById('root')!,
+  )
+  // eslint-disable-next-line require-yield -- Use the qualified synchronous runtime disposal path.
+  const cleanup = action(function* () {
+    dispose()
+  })
+  window.dialogFixture.stop = () => {
+    cleanup()
+    flush()
+  }
+} else if (new URLSearchParams(location.search).has('booleans')) {
   const dispose = render(
     () => <BooleanControls />,
     document.getElementById('root')!,

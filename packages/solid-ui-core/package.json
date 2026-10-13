@@ -18,7 +18,9 @@
     "./events": "./src/events.ts",
     "./checkbox": "./src/controls/checkbox.ts",
     "./switch": "./src/controls/switch.ts",
-    "./radio-group": "./src/controls/radio-group.ts"
+    "./radio-group": "./src/controls/radio-group.ts",
+    "./dialog": "./src/controls/dialog.ts",
+    "./alert-dialog": "./src/controls/alert-dialog.ts"
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",

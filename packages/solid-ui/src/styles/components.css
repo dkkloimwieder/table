@@ -842,3 +842,84 @@
 :where([data-ui]) .ui-switch-control[data-invalid] {
   border-color: var(--ui-error, #9d251e);
 }
+
+:where([data-ui]) .ui-dialog-portal {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+:where([data-ui]) .ui-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--ui-overlay, rgb(0 0 0 / 30%));
+  pointer-events: auto;
+}
+:where([data-ui]) .ui-dialog-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 1;
+  width: min(480px, calc(100dvw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  gap: var(--ui-gap, 6px);
+  padding: calc(var(--ui-cell-padding-x, 8px) * 1.5);
+  border: 1px solid var(--ui-border, #ccc);
+  background: var(--ui-surface, white);
+  color: var(--ui-text, #222);
+  box-shadow: 3px 3px 0 var(--ui-divider, #ddd);
+  pointer-events: auto;
+}
+:where([data-ui]) .ui-dialog-title {
+  margin: 0;
+  font-size: calc(var(--ui-font-size, 12px) + 2px);
+  font-weight: 650;
+}
+:where([data-ui]) .ui-dialog-description {
+  margin: 0;
+  color: var(--ui-muted-text, #555);
+}
+:where([data-ui]) .ui-dialog-content[data-closed],
+:where([data-ui]) .ui-dialog-overlay[data-closed] {
+  display: none;
+}
+:where([data-ui]) .ui-dialog-content.ui-sheet {
+  transform: none;
+  max-height: 100dvh;
+  box-shadow: none;
+  align-content: start;
+}
+:where([data-ui]) .ui-sheet[data-side='left'],
+:where([data-ui]) .ui-sheet[data-side='right'] {
+  top: 0;
+  bottom: 0;
+  height: 100dvh;
+  width: min(400px, 100dvw);
+}
+:where([data-ui]) .ui-sheet[data-side='right'] {
+  left: auto;
+  right: 0;
+}
+:where([data-ui]) .ui-sheet[data-side='left'] {
+  left: 0;
+  right: auto;
+}
+:where([data-ui]) .ui-sheet[data-side='top'],
+:where([data-ui]) .ui-sheet[data-side='bottom'] {
+  left: 0;
+  right: 0;
+  width: 100dvw;
+  max-height: min(480px, 100dvh);
+}
+:where([data-ui]) .ui-sheet[data-side='top'] {
+  top: 0;
+  bottom: auto;
+}
+:where([data-ui]) .ui-sheet[data-side='bottom'] {
+  top: auto;
+  bottom: 0;
+}

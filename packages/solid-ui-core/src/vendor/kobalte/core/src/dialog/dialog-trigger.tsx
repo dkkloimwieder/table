@@ -1,0 +1,71 @@
+/*
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/810579b671791f1593108f62cdc1893de3a220e3/packages/@react-aria/overlays/src/useOverlayTrigger.ts
+ */
+
+import { omit, untrack } from 'solid-js'
+import { callHandler } from '../../../utils/src/index.ts'
+import * as Button from '../button/index.tsx'
+import { useDialogContext } from './dialog-context.tsx'
+import type { Component } from 'solid-js'
+import type { JSX, ValidComponent } from '@solidjs/web'
+
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+
+export interface DialogTriggerOptions {}
+
+export interface DialogTriggerCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends Button.ButtonRootCommonProps<T> {
+  onClick: JSX.EventHandlerUnion<T, MouseEvent>
+}
+
+export interface DialogTriggerRenderProps
+  extends DialogTriggerCommonProps, Button.ButtonRootRenderProps {
+  'aria-haspopup': 'dialog'
+  'aria-expanded': 'true' | 'false'
+  'aria-controls': string | undefined
+  'data-expanded': string | undefined
+  'data-closed': string | undefined
+}
+
+export type DialogTriggerProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = DialogTriggerOptions & Partial<DialogTriggerCommonProps<ElementOf<T>>>
+
+/**
+ * The button that opens the dialog.
+ */
+export function DialogTrigger<T extends ValidComponent = 'button'>(
+  props: PolymorphicProps<T, DialogTriggerProps<T>>,
+) {
+  const context = useDialogContext()
+
+  const p = props as DialogTriggerProps
+  const others = omit(p, 'ref', 'onClick')
+
+  const onClick: JSX.EventHandlerUnion<HTMLElement, MouseEvent> = (e) => {
+    if (callHandler(e, p.onClick)) return
+    context.toggle()
+  }
+
+  return (
+    <Button.Root<
+      Component<
+        Omit<DialogTriggerRenderProps, keyof Button.ButtonRootRenderProps>
+      >
+    >
+      ref={[context.setTriggerRef, untrack(() => p.ref)]}
+      aria-haspopup="dialog"
+      aria-expanded={context.isOpen() ? 'true' : 'false'}
+      aria-controls={context.isOpen() ? context.contentId() : undefined}
+      data-expanded={context.isOpen() ? '' : undefined}
+      data-closed={!context.isOpen() ? '' : undefined}
+      onClick={onClick}
+      {...others}
+    />
+  )
+}

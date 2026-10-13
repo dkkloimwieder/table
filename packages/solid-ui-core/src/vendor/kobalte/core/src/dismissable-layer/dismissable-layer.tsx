@@ -1,8 +1,3 @@
-import type { JSX } from '@solidjs/web'
-import {
-  ownedSelectEvents,
-  selectEventProps,
-} from '../../../../../ownedEvents.ts'
 /*
  * Portions of this file are based on code from radix-ui-primitives.
  * MIT Licensed, Copyright (c) 2022 WorkOS.
@@ -17,32 +12,29 @@ import {
  * https://github.com/chakra-ui/zag/blob/d1dbf9e240803c9e3ed81ebef363739be4273de0/packages/utilities/dismissable/src/dismissable-layer.ts
  */
 
-import {
-  type FocusOutsideEvent,
-  type InteractOutsideEvent,
-  interactOutside,
-  type PointerDownOutsideEvent,
-} from '@solid-primitives/interaction'
+import { interactOutside } from '@solid-primitives/interaction'
 import { createShortcut } from '@solid-primitives/keyboard'
-import type { ValidComponent } from '@solidjs/web'
-import {
-  type Accessor,
-  createEffect,
-  createMemo,
-  createSignal,
-  omit,
-  onSettled,
-  type Ref,
-} from 'solid-js'
-import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import { createEffect, createMemo, createSignal, omit, untrack } from 'solid-js'
+import { Polymorphic } from '../polymorphic/index.tsx'
 import {
   DismissableLayerContext,
-  type DismissableLayerContextValue,
   useOptionalDismissableLayerContext,
 } from './dismissable-layer-context.tsx'
 import { layerStack } from './layer-stack.tsx'
+import type { DismissableLayerContextValue } from './dismissable-layer-context.tsx'
+import type { Accessor, Ref } from 'solid-js'
+import type {
+  FocusOutsideEvent,
+  InteractOutsideEvent,
+  PointerDownOutsideEvent,
+} from '@solid-primitives/interaction'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
 
 export interface DismissableLayerOptions {
+  /** Whether this layer participates in dismissal and document locks. */
+  enabled?: boolean
+
   /**
    * When `true`, hover/focus/click interactions will be disabled on elements outside
    * the layer. Users will need to click twice on outside elements to
@@ -108,6 +100,7 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
   const others = omit(
     props as DismissableLayerProps,
     'ref',
+    'enabled',
     'disableOutsidePointerEvents',
     'excludedElements',
     'onEscapeKeyDown',
@@ -117,7 +110,9 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
     'onDismiss',
     'bypassTopMostLayerCheck',
   )
-  const isPointerBlocking = createMemo(() => props.disableOutsidePointerEvents)
+  const isPointerBlocking = createMemo(
+    () => props.enabled !== false && props.disableOutsidePointerEvents,
+  )
   const nestedLayers = new Set<Element>([])
 
   const registerNestedLayer = (element: Element) => {
@@ -143,6 +138,7 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
   }
 
   const onPointerDownOutside = (e: PointerDownOutsideEvent) => {
+    if (untrack(() => props.enabled === false)) return
     if (!ref() || layerStack.isBelowPointerBlockingLayer(ref()!)) {
       return
     }
@@ -160,6 +156,7 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
   }
 
   const onFocusOutside = (e: FocusOutsideEvent) => {
+    if (untrack(() => props.enabled === false)) return
     props.onFocusOutside?.(e)
     props.onInteractOutside?.(e)
 
@@ -176,7 +173,12 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
   createShortcut(
     ['Escape'],
     (e) => {
-      if (!e || !ref() || !layerStack.isTopMostLayer(ref()!)) {
+      if (
+        untrack(() => props.enabled === false) ||
+        !e ||
+        !ref() ||
+        !layerStack.isTopMostLayer(ref()!)
+      ) {
         return
       }
 
@@ -190,38 +192,29 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
     { preventDefault: false },
   )
 
-  onSettled(() => {
-    if (!ref()) {
-      return
-    }
-
-    layerStack.addLayer({
-      node: ref()!,
-      isPointerBlocking: isPointerBlocking(),
-      dismiss: props.onDismiss,
-    })
-
-    const unregisterFromParentLayer = parentContext?.registerNestedLayer(ref()!)
-
-    layerStack.assignPointerEventToLayers()
-
-    layerStack.disableBodyPointerEvents(ref()!)
-
-    return () => {
-      if (!ref()) {
-        return
-      }
-
-      layerStack.removeLayer(ref()!)
-
-      unregisterFromParentLayer?.()
-
-      // Re-assign pointer event to remaining layers.
-      layerStack.assignPointerEventToLayers()
-
-      layerStack.restoreBodyPointerEvents(ref()!)
-    }
-  })
+  createEffect(
+    () => ({ node: ref(), enabled: props.enabled !== false }),
+    ({ node, enabled }) => {
+      if (!node || !enabled) return
+      return untrack(() => {
+        layerStack.addLayer({
+          node,
+          isPointerBlocking: isPointerBlocking(),
+          dismiss: props.onDismiss,
+        })
+        const unregisterFromParentLayer =
+          parentContext?.registerNestedLayer(node)
+        layerStack.assignPointerEventToLayers()
+        layerStack.disableBodyPointerEvents(node)
+        return () => {
+          layerStack.removeLayer(node)
+          unregisterFromParentLayer?.()
+          layerStack.assignPointerEventToLayers()
+          layerStack.restoreBodyPointerEvents(node)
+        }
+      })
+    },
+  )
 
   createEffect(
     () => ({ ref: ref(), disabled: isPointerBlocking() }),
@@ -253,25 +246,19 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
     registerNestedLayer,
   }
 
-  const domEvents = ownedSelectEvents(others)
-  const attributes = omit(
-    others as JSX.HTMLAttributes<HTMLDivElement>,
-    ...selectEventProps,
-  )
-  // TODO: restore <Polymorphic> once @solidjs/web Dynamic/spread passes ref callbacks correctly
+  const attributes = others as JSX.HTMLAttributes<HTMLElement>
+  const forwardedRef = untrack(() => props.ref)
   return (
     <DismissableLayerContext value={context}>
-      <div
+      <Polymorphic<JSX.HTMLAttributes<HTMLElement>>
+        {...attributes}
+        as={props.as ?? 'div'}
         ref={[
           setRef,
-          interactOutsideRef as (el: HTMLElement) => void,
-          props.ref as (element: HTMLDivElement) => void,
-          domEvents,
+          interactOutsideRef,
+          forwardedRef as (element: HTMLElement) => void,
         ]}
-        {...attributes}
-      >
-        {(others as any).children}
-      </div>
+      />
     </DismissableLayerContext>
   )
 }
