@@ -1,0 +1,11 @@
+{
+  "name": "@table/ui",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Generic Solid controls and shared Table presentation.",
+  "license": "MIT",
+  "scripts": {
+    "test:types": "tsc --project tsconfig.json"
+  }
+}

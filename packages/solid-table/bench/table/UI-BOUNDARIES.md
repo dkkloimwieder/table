@@ -1,7 +1,8 @@
 # Generic UI boundaries
 
 This decision defines the generic UI library under Beads epic `table-qp8`.
-The package paths and exports below are planned. They do not exist yet.
+The private package scaffolds now exist at the paths below.
+Component exports and source migrations remain planned.
 Follow-up issues implement them in focused changes.
 WAMN is a prospective consumer. Its interface does not define the library API.
 
@@ -45,7 +46,9 @@ Floating UI also remains external in the initial scope.
 Packages declare the runtime dependencies that they use directly.
 Solid runtime dependencies use peer declarations and matching development pins to preserve one runtime instance.
 The workspace lockfile keeps the currently qualified versions.
-The direct primitive task qualifies required APIs before declaring support.
+Components import external primitives as needed.
+Their component tests cover those imports without a separate qualification task.
+Specific compatibility failures receive focused issues if they appear.
 Required external dependency repairs use one shared patch mechanism.
 Kobalte source repairs belong in the checked-in vendor source.
 
@@ -131,7 +134,7 @@ The application owns drafts, validation, revisions, save rules, conflicts, permi
 The application also owns saved view persistence.
 
 The existing renderer remains the extraction baseline.
-This example uses current imports because the planned packages do not exist yet.
+This example uses current imports because the planned component exports do not exist yet.
 The extraction task will replace these imports with supported package exports.
 
 ```tsx
@@ -203,7 +206,8 @@ WAMN wrappers, generated forms, navigation layouts, and production migration rem
 ## Delivery order
 
 The boundary task establishes this decision and compiles its examples.
-The primitive and style tasks follow independently.
+The workspace structure pass creates the private packages before source migration.
+Style and source tasks then follow their stored dependencies.
 The vendor task checks in Select, Combobox, and their required shared modules.
 Control families and Table extraction follow their stored Beads dependencies.
 Each implementation task includes its own behavior and cleanup tests.
