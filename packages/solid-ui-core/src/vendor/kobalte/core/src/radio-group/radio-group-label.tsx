@@ -1,0 +1,31 @@
+import { FormControlLabel } from '../form-control/index.ts'
+import type { ValidComponent } from '@solidjs/web'
+import type { Component } from 'solid-js'
+
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+
+export interface RadioGroupLabelOptions {}
+
+export interface RadioGroupLabelCommonProps<
+  _T extends HTMLElement = HTMLElement,
+> {}
+
+export interface RadioGroupLabelRenderProps extends RadioGroupLabelCommonProps {}
+
+export type RadioGroupLabelProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = RadioGroupLabelOptions & Partial<RadioGroupLabelCommonProps<ElementOf<T>>>
+
+/**
+ * The label that gives the user information on the radio group.
+ */
+export function RadioGroupLabel<T extends ValidComponent = 'span'>(
+  props: PolymorphicProps<T, RadioGroupLabelProps<T>>,
+) {
+  return (
+    <FormControlLabel<Component<RadioGroupLabelRenderProps>>
+      as="span"
+      {...(props as RadioGroupLabelProps)}
+    />
+  )
+}

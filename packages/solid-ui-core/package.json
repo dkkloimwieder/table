@@ -15,7 +15,10 @@
     "./select": "./src/controls/select.ts",
     "./combobox": "./src/controls/combobox.ts",
     "./polymorphic": "./src/vendor/kobalte/core/src/polymorphic/index.tsx",
-    "./events": "./src/events.ts"
+    "./events": "./src/events.ts",
+    "./checkbox": "./src/controls/checkbox.ts",
+    "./switch": "./src/controls/switch.ts",
+    "./radio-group": "./src/controls/radio-group.ts"
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",

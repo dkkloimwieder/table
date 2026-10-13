@@ -125,3 +125,29 @@ It introduces no extra field state.
 The application owns validation, submission, transport, and persistence.
 The controls use the shared compact styles and owned native event listeners.
 The Table text editor now uses the same Input as the generic form fixture.
+
+## Boolean and radio controls
+
+The root exports Checkbox, Switch, and RadioGroup.
+The `checkbox`, `switch`, and `radio-group` subpaths expose their styled parts.
+Each compound control retains the owned Core props, custom `as` elements, callbacks, and refs.
+The application supplies boolean `checked` values or the RadioGroup string `value`.
+Use `defaultChecked` or `defaultValue` for uncontrolled state.
+
+Checkbox composes Input, Control, Indicator, Label, Description, and ErrorMessage inside its Root.
+Switch uses Thumb inside Control instead of Indicator.
+RadioGroup composes Item, ItemInput, ItemControl, ItemIndicator, ItemLabel, and optional ItemDescription for each value.
+Its Label, Description, and ErrorMessage describe the whole group.
+Keep the native Input or ItemInput mounted for keyboard behavior and native form submission.
+Supply `name` and optional checkbox or switch `value` for form entries.
+Unchecked and disabled inputs do not submit values.
+
+Use `disabled`, `readOnly`, `required`, and `validationState` on Root for the shared field state.
+Radio items also accept `disabled` individually.
+Checkbox supports `indeterminate` for a mixed state and renders a minus indicator by default.
+Applications can replace indicator children.
+Labels, descriptions, errors, focus outlines, and compact styles use the same tokens as other controls.
+Native form reset restores defaults after the browser applies its reset action.
+Controlled values remain authoritative when the application rejects the reset.
+Components cancel pending reset work on disposal.
+Applications own validation, submission, and all permission or role rules.

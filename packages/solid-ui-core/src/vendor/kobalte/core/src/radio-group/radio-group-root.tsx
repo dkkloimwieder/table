@@ -1,0 +1,225 @@
+/*
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/70e7caf1946c423bc9aa9cb0e50dbdbe953d239b/packages/@react-aria/radio/src/useRadioGroup.ts
+ * https://github.com/adobe/react-spectrum/blob/70e7caf1946c423bc9aa9cb0e50dbdbe953d239b/packages/@react-stately/radio/src/useRadioGroupState.ts
+ */
+
+import { access } from '@solid-primitives/utils'
+import { createSignal, createUniqueId, merge, omit } from 'solid-js'
+import { createNativeFormResetListener } from '../../../../../formReset.ts'
+import {
+  FORM_CONTROL_PROP_NAMES,
+  FormControlContext,
+  createFormControl,
+} from '../form-control/index.ts'
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { createControllableSignal } from '../primitives/index.ts'
+import { RadioGroupContext } from './radio-group-context.tsx'
+import type { Ref } from 'solid-js'
+import type { FormControlDataSet } from '../form-control/index.ts'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { ValidComponent } from '@solidjs/web'
+import type { RadioGroupContextValue } from './radio-group-context.tsx'
+import type { Orientation, ValidationState } from '../../../utils/src/index.ts'
+
+export interface RadioGroupRootOptions {
+  /** The controlled value of the radio button to check. */
+  value?: string
+
+  /**
+   * The value of the radio button that should be checked when initially rendered.
+   * Useful when you do not need to control the state of the radio buttons.
+   */
+  defaultValue?: string
+
+  /** Event handler called when the value changes. */
+  onChange?: (value: string) => void
+
+  /** The axis the radio group items should align with. */
+  orientation?: Orientation
+
+  /**
+   * A unique identifier for the component.
+   * The id is used to generate id attributes for nested components.
+   * If no id prop is provided, a generated id will be used.
+   */
+  id?: string
+
+  /**
+   * The name of the radio group.
+   * Submitted with its owning form as part of a name/value pair.
+   */
+  name?: string
+
+  /** Whether the radio group should display its "valid" or "invalid" visual styling. */
+  validationState?: ValidationState
+
+  /** Whether the user must select an item before the owning form can be submitted. */
+  required?: boolean
+
+  /** Whether the radio group is disabled. */
+  disabled?: boolean
+
+  /** Whether the radio group is read only. */
+  readOnly?: boolean
+}
+
+export interface RadioGroupRootCommonProps<
+  T extends HTMLElement = HTMLElement,
+> {
+  id: string
+  ref: Ref<T>
+  'aria-labelledby': string | undefined
+  'aria-describedby': string | undefined
+  'aria-label'?: string
+}
+
+export interface RadioGroupRootRenderProps
+  extends RadioGroupRootCommonProps, FormControlDataSet {
+  role: 'radiogroup'
+  'aria-invalid': 'true' | undefined
+  'aria-required': 'true' | undefined
+  'aria-disabled': 'true' | undefined
+  'aria-readonly': 'true' | undefined
+  'aria-orientation': Orientation | undefined
+}
+
+export type RadioGroupRootProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = RadioGroupRootOptions & Partial<RadioGroupRootCommonProps<ElementOf<T>>>
+
+/**
+ * A set of checkable buttons, known as radio buttons, where no more than one of the buttons can be checked at a time.
+ * This component is based on the [WAI-ARIA Radio Group Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/radiobutton/)
+ */
+export function RadioGroupRoot<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, RadioGroupRootProps<T>>,
+) {
+  const [ref, setRef] = createSignal<HTMLElement | undefined>(undefined, {
+    ownedWrite: true,
+  })
+
+  const defaultId = `radiogroup-${createUniqueId()}`
+
+  const mergedProps = merge(
+    {
+      id: defaultId,
+      orientation: 'vertical',
+    } as const,
+    props as RadioGroupRootProps,
+  )
+
+  const formControlProps = omit(
+    mergedProps,
+    'ref',
+    'value',
+    'defaultValue',
+    'onChange',
+    'orientation',
+    'aria-labelledby',
+    'aria-describedby',
+  ) as unknown as typeof mergedProps
+  const others = omit(
+    mergedProps,
+    'ref',
+    'value',
+    'defaultValue',
+    'onChange',
+    'orientation',
+    'aria-labelledby',
+    'aria-describedby',
+    ...FORM_CONTROL_PROP_NAMES,
+  )
+
+  const [selected, setSelected] = createControllableSignal<string>({
+    value: () => mergedProps.value,
+    defaultValue: () => mergedProps.defaultValue,
+    onChange: (value) => mergedProps.onChange?.(value),
+  })
+
+  const { formControlContext } = createFormControl(formControlProps)
+
+  createNativeFormResetListener(ref, () => {
+    setSelected(mergedProps.defaultValue ?? '')
+    syncInputs()
+  })
+
+  const ariaLabelledBy = () => {
+    return formControlContext.getAriaLabelledBy(
+      access(formControlProps.id),
+      others['aria-label'],
+      mergedProps['aria-labelledby'],
+    )
+  }
+
+  const ariaDescribedBy = () => {
+    return formControlContext.getAriaDescribedBy(
+      mergedProps['aria-describedby'],
+    )
+  }
+
+  const isDefaultValue = (value: string) => {
+    return value === props.defaultValue
+  }
+
+  const isSelectedValue = (value: string) => {
+    return value === selected()
+  }
+
+  const setSelectedValue = (value: string) => {
+    if (!formControlContext.isReadOnly() && !formControlContext.isDisabled()) {
+      setSelected(value)
+    }
+
+    syncInputs()
+  }
+
+  const syncInputs = () => {
+    // Sync all radio input checked state in the group with the selected value.
+    // This is necessary because checked state might be out of sync
+    // (ex: when using controlled radio-group).
+    if (ref()) {
+      const rootEl = ref()!
+      for (const el of rootEl.querySelectorAll("[type='radio']")) {
+        const radio = el as HTMLInputElement
+        radio.checked = isSelectedValue(radio.value)
+      }
+    }
+  }
+
+  const context: RadioGroupContextValue = {
+    ariaDescribedBy,
+    isDefaultValue,
+    isSelectedValue,
+    setSelectedValue,
+  }
+
+  return (
+    <FormControlContext value={formControlContext}>
+      <RadioGroupContext value={context}>
+        <Polymorphic<RadioGroupRootRenderProps>
+          as="div"
+          ref={[setRef, mergedProps.ref]}
+          role="radiogroup"
+          id={access(formControlProps.id)}
+          aria-invalid={
+            formControlContext.validationState() === 'invalid'
+              ? 'true'
+              : undefined
+          }
+          aria-required={formControlContext.isRequired() ? 'true' : undefined}
+          aria-disabled={formControlContext.isDisabled() ? 'true' : undefined}
+          aria-readonly={formControlContext.isReadOnly() ? 'true' : undefined}
+          aria-orientation={mergedProps.orientation}
+          aria-labelledby={ariaLabelledBy()}
+          aria-describedby={ariaDescribedBy()}
+          {...formControlContext.dataset()}
+          {...others}
+        />
+      </RadioGroupContext>
+    </FormControlContext>
+  )
+}

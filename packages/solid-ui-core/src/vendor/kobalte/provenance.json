@@ -2,7 +2,13 @@
   "repository": "https://github.com/kobaltedev/kobalte",
   "revision": "e9d426d438b7c9ea0cc81bd1133831a20cd5fcae",
   "archiveSha256": "c07f47331a9aee20f69e2e55d81454f0b48976e2e6e98551da2b27a9169c6f70",
-  "entryPoints": ["core/src/select/index.tsx", "core/src/combobox/index.tsx"],
+  "entryPoints": [
+    "core/src/select/index.tsx",
+    "core/src/combobox/index.tsx",
+    "core/src/checkbox/index.tsx",
+    "core/src/switch/index.tsx",
+    "core/src/radio-group/index.tsx"
+  ],
   "sources": {
     "core/src/button/button-root.tsx": {
       "upstreamSha256": "bc3a0d8b6bec2ae929ed1917abcbd4caf04bc069246e2ff18fe24238666cee60",
@@ -110,7 +116,7 @@
     },
     "core/src/form-control/form-control-label.tsx": {
       "upstreamSha256": "4abba8a8d77af23b121959ff7fbd7732c08615a28506b71e1a4cd531e441424b",
-      "localSha256": "2ce309dd636fc8b1ece1cb5f9942b6ea32d5f286ee90596d222cbfedc29ac5c8"
+      "localSha256": "e7f457e90a7f5429ebc27219633afa84f9b4ca2d671e3380e389424f572105d3"
     },
     "core/src/form-control/index.ts": {
       "upstreamSha256": "5c58e5a48a1b952dc98b18f474ba2229b09adda675958c470ada627254dfd5e0",
@@ -455,6 +461,122 @@
     "LICENSE.md": {
       "upstreamSha256": "47ce819869a418c00be1fd6470a63aaf466d7bbb23e2cf182dda44fd166e27a1",
       "localSha256": "47ce819869a418c00be1fd6470a63aaf466d7bbb23e2cf182dda44fd166e27a1"
+    },
+    "core/src/checkbox/checkbox-context.tsx": {
+      "upstreamSha256": "3cfceb9a9fc651d4a669b0158d44878674f23bc0636e9a2b62ea73adf00a400b",
+      "localSha256": "32ce7b93c75270b372ab32ba1f6bbf0e3377431cc77f8565b9e70517906f2faa"
+    },
+    "core/src/checkbox/checkbox-control.tsx": {
+      "upstreamSha256": "a381115a11f66c855d5a7657fbdf7a08df02ea468a495a268a554b90deaa3069",
+      "localSha256": "b8fa9da62a087a65888a678aede286a6f538d8e425fc79695c4df5becf2579e8"
+    },
+    "core/src/checkbox/checkbox-description.tsx": {
+      "upstreamSha256": "cbd31cf1ed72cfd841301b2eed5bb3776ef85e82dc91436e20ffc14c9c87e91a",
+      "localSha256": "c27dc85f908927cc33b7f76079e3f5e0bcf4c50c8b50862035c1783cb0d467bc"
+    },
+    "core/src/checkbox/checkbox-error-message.tsx": {
+      "upstreamSha256": "78e0a71e2ca9190aea5eb3da4b47ed9079996d64fc4bbdb8c91ac18855c209cf",
+      "localSha256": "e1653d1f695cdb65eba4892525fa96d366dde9663658b6ef080e80149fa6d0ab"
+    },
+    "core/src/checkbox/checkbox-indicator.tsx": {
+      "upstreamSha256": "6ab5c1c9c8f7bd54e78e308c027927c2673fb3fd5f5efe4051dbd0b5717f0542",
+      "localSha256": "5e697ff4c5278fad899326aff5740a36cd0f33d1dc66653bb02965f4adae63a3"
+    },
+    "core/src/checkbox/checkbox-input.tsx": {
+      "upstreamSha256": "30f6eb54a849de3bc259c7e713734dfee65cb5b82c0c54a6e7c91e70e582724e",
+      "localSha256": "2ed1440bf56002e638026a4b823ac1d4d20c59ffc58b2f32a6ca28d6c5bdb463"
+    },
+    "core/src/checkbox/checkbox-label.tsx": {
+      "upstreamSha256": "2b07e5bdba40c9bc50bc7818d085180efd3bfbb3fed6557401385151ab04699a",
+      "localSha256": "552a662f5742229a3ddeaa5dc22dfac7a7c0535bbd5dc2460efe7c6419e4ae2c"
+    },
+    "core/src/checkbox/checkbox-root.tsx": {
+      "upstreamSha256": "1ffa3b23ad07a42ba8bb83954611b99b7ff62617e7ff51212ab448aecdc8d886",
+      "localSha256": "19788106d79e700a11bdd852a014fbef7b36f2d7ded885991d06a1e0d2fdc167"
+    },
+    "core/src/checkbox/index.tsx": {
+      "upstreamSha256": "bdd06880a0dee7ccc6069267c3a51d1c5703d39a6665fd810f5c18253724f8c8",
+      "localSha256": "239144477dcd1234bb0fb9e2936af159426073cb83eb32f241fe10e77262d1ad"
+    },
+    "core/src/switch/switch-context.tsx": {
+      "upstreamSha256": "978bcd8eab7e711fe970de93521f4ac782f509ec090973da82ff339ae793e379",
+      "localSha256": "ac85e775f050ebff5630ac89ea4bb13f7f3390f8e4040fcc2d66f6e26f3c949e"
+    },
+    "core/src/switch/switch-control.tsx": {
+      "upstreamSha256": "5ceb2346571556ed85644ffaa8917eb4cb5bc0166f855c0dafaa4dc3356e6631",
+      "localSha256": "118f7d6d5292c0167a219907a3a80b21c47da0cf96b6b7a6eb625852af98738c"
+    },
+    "core/src/switch/switch-description.tsx": {
+      "upstreamSha256": "d01c0ed134a523f8ecc159e17acb4bda3cf03f66ef3e890eac6b2f76528cb369",
+      "localSha256": "96c9d5467d408e6754d98d3f033910949432f25795849e2b6b84277cdf4b209b"
+    },
+    "core/src/switch/switch-error-message.tsx": {
+      "upstreamSha256": "10b49f7454e7ec802300b6aa7863dacc16c56f6ffabf50bc0d2d89b9d12918a2",
+      "localSha256": "b9e087edbeb9ec37505ed288ed797c944cac45f38e43e9bf9cd350d0f0251385"
+    },
+    "core/src/switch/switch-input.tsx": {
+      "upstreamSha256": "486b17b9b18bf7f2d89b66c7b60eca2ebdeec8d873e1dbfa681730c84b001606",
+      "localSha256": "b45af8e76c8f1b5b9ca83477ebe7e848d0dcb357827dd387a984118625810152"
+    },
+    "core/src/switch/switch-label.tsx": {
+      "upstreamSha256": "acbf8dbfa50d1a2688c0f3f103012ffb287d2797be744483100ba7cbc8401dcd",
+      "localSha256": "0023fdc24a2af175226d903084683a21524cfeda12dd7d959b6efb2764a75209"
+    },
+    "core/src/switch/switch-root.tsx": {
+      "upstreamSha256": "a6ac4f876452ccc26577472ac522ad0fd395992bb07e3ce68407eae2442d844b",
+      "localSha256": "94da30e4743d63b4969aa3c6be05eb49a6ad4eff270030822e6bdac2cc8bfe4f"
+    },
+    "core/src/switch/switch-thumb.tsx": {
+      "upstreamSha256": "e6b878e59a1041b67125c41a6c311d428c57b5fb065d40cf437f5f01e2ee3b10",
+      "localSha256": "26e0984ca37480e5717a1a5330dba0774320440dd0170b423aa344d392d55d78"
+    },
+    "core/src/switch/index.tsx": {
+      "upstreamSha256": "fe66a7233c4698655a6b556084468b36e122c44d12bfe5300f458399ad4db225",
+      "localSha256": "61fcb4b184195951475fb8e49fbc12162290568392021e148f53927902578beb"
+    },
+    "core/src/radio-group/radio-group-context.tsx": {
+      "upstreamSha256": "7091eefe93bb3dc927965e73e61257642de70802b7c0d180f94208c9ca9f96f2",
+      "localSha256": "553ac432e1637d28acd351828e2dcae7b51e36364a79f421a6a8bba552916363"
+    },
+    "core/src/radio-group/radio-group-item-context.tsx": {
+      "upstreamSha256": "bc38b67aea1f8b8620e65bd436fd1946eb1dcb8a0cd78a3930143892b9c2c986",
+      "localSha256": "dee140b3f7568a1b802153431b5dc11ad31be6e6da26582b3f2975cad1fb5c6a"
+    },
+    "core/src/radio-group/radio-group-item.tsx": {
+      "upstreamSha256": "ee88500a7de49e5c332f267fed561621cc822f88210d8222d7d61b5005168991",
+      "localSha256": "f659dd0c3ffb288523cec47a69213f721230accaf37f20627d5325cf744ea837"
+    },
+    "core/src/radio-group/radio-group-item-control.tsx": {
+      "upstreamSha256": "86b9b9fadb6da4bcf60a27241611b910d09372353923646a7efcd06488f63723",
+      "localSha256": "0361986b21520acd8a917954cc08047ea282e6fe969db29009a1d3e5022ff46b"
+    },
+    "core/src/radio-group/radio-group-item-description.tsx": {
+      "upstreamSha256": "07afbf381507e76927fc19f9b2b4beda5b9e4b2263d3b26111fa22857d463dcf",
+      "localSha256": "ccc0e96a2a45e4fb5e8e5e47b4c1a11f6073e3c7605ff3b18a0d6f540727da4e"
+    },
+    "core/src/radio-group/radio-group-item-indicator.tsx": {
+      "upstreamSha256": "0844bd44d3405aad58e0e71061b741a6119f93e91366e80e9413143898f43be6",
+      "localSha256": "dab0da348749acb306854a753b178a4a17256d37622123dc26b334af4cccb8a5"
+    },
+    "core/src/radio-group/radio-group-item-input.tsx": {
+      "upstreamSha256": "ca9804beaa3ad3204b29f15453d193e30cc35b28a12bf5ef027f6532df58c59c",
+      "localSha256": "7f1e5a861a7b74ec3f48f2f3bfbf35a766380e7f518e558d7a84d37bcf87a951"
+    },
+    "core/src/radio-group/radio-group-item-label.tsx": {
+      "upstreamSha256": "09f51cbd811281c680c36c6e0d8bed774082845042f3346e56a6000f1bad32e8",
+      "localSha256": "f1c035dbef03c8cd7ba6ef537897299d6736dcfe2f6b93bef145a4065baab64d"
+    },
+    "core/src/radio-group/radio-group-label.tsx": {
+      "upstreamSha256": "77f4ce4a02cb5d40aff4d082f5019fb3324d06040a9d39eabeadbb8de9c820f2",
+      "localSha256": "5085eaebe7cedfeefa5b1cc6e69bb92ec3b4f7af62e2a83e8b3e21f666897a71"
+    },
+    "core/src/radio-group/radio-group-root.tsx": {
+      "upstreamSha256": "94666cd5d2e55d164b8e5fe9557025a40ceb3fe68535338fab168a026f1d0f7a",
+      "localSha256": "381fc7713687fe685cf9a21ad3ff490d6d8497b286e066402c14a99ca43aba08"
+    },
+    "core/src/radio-group/index.tsx": {
+      "upstreamSha256": "3c900aa577db8028e587bad78120f4848e09a309f78dee4447fbebc6a5ba4144",
+      "localSha256": "109e6ab7a3acb5b8da4a1fc0895cb752d98e7972aa133f8605bf5618a1235189"
     }
   }
 }

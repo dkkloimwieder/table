@@ -64,6 +64,7 @@ Open `http://127.0.0.1:7782/?size=25&save=all` for Table editing.
 Open `http://127.0.0.1:7782/?standalone=1` for the independent popup.
 Open `http://127.0.0.1:7782/?combobox=1` for the basic Combobox source-wiring fixture.
 Open `http://127.0.0.1:7782/?choices=1` for controlled choice fields and application-supplied pages.
+Open `http://127.0.0.1:7782/?booleans=1` for controlled Checkbox, Switch, and RadioGroup fields.
 Open `http://127.0.0.1:7782/?fields=1` for native controls, field layouts, and native form submission.
 
 The choice cases test pointer and keyboard selection, disabled options, rejected text changes, empty lists, loading content, and changed pages.

@@ -1,0 +1,150 @@
+/*
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/70e7caf1946c423bc9aa9cb0e50dbdbe953d239b/packages/@react-aria/radio/src/useRadio.ts
+ */
+
+import { createMemo, createSignal, createUniqueId, merge, omit } from 'solid-js'
+import { callHandler } from '../../../utils/src/index.ts'
+
+import { useFormControlContext } from '../form-control/index.ts'
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { createRegisterId } from '../primitives/index.ts'
+import { useRadioGroupContext } from './radio-group-context.tsx'
+import { RadioGroupItemContext } from './radio-group-item-context.tsx'
+import type { Accessor } from 'solid-js'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type {
+  RadioGroupItemContextValue,
+  RadioGroupItemDataSet,
+} from './radio-group-item-context.tsx'
+
+export interface RadioGroupItemOptions {
+  /**
+   * The value of the radio button, used when submitting an HTML form.
+   * See [MDN](https://developer.mozilla.org/en-US/docs/Web/HTML/Element/input/radio#Value).
+   */
+  value: string
+
+  /** Whether the radio button is disabled or not. */
+  disabled?: boolean
+}
+
+export interface RadioGroupItemCommonProps<
+  T extends HTMLElement = HTMLElement,
+> {
+  id: string
+  onPointerDown: JSX.EventHandlerUnion<T, PointerEvent>
+}
+
+export interface RadioGroupItemRenderProps
+  extends RadioGroupItemCommonProps, RadioGroupItemDataSet {
+  role: 'group'
+}
+
+export type RadioGroupItemProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = RadioGroupItemOptions & Partial<RadioGroupItemCommonProps<ElementOf<T>>>
+
+/**
+ * The root container for a radio button.
+ */
+export function RadioGroupItem<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, RadioGroupItemProps<T>>,
+) {
+  const formControlContext = useFormControlContext()
+  const radioGroupContext = useRadioGroupContext()
+
+  const defaultId = `${formControlContext.generateId(
+    'item',
+  )}-${createUniqueId()}`
+
+  const mergedProps = merge(
+    {
+      id: defaultId,
+    },
+    props as RadioGroupItemProps,
+  )
+
+  const others = omit(mergedProps, 'value', 'disabled', 'onPointerDown')
+
+  const [inputId, setInputId] = createSignal<string | undefined>(undefined, {
+    ownedWrite: true,
+  })
+  const [labelId, setLabelId] = createSignal<string | undefined>(undefined, {
+    ownedWrite: true,
+  })
+  const [descriptionId, setDescriptionId] = createSignal<string | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+
+  const [inputRef, setInputRef] = createSignal<HTMLInputElement | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+  const [isFocused, setIsFocused] = createSignal(false)
+
+  const isDefault = createMemo(() => {
+    return radioGroupContext.isDefaultValue(mergedProps.value)
+  })
+
+  const isSelected = createMemo(() => {
+    return radioGroupContext.isSelectedValue(mergedProps.value)
+  })
+
+  const isDisabled = createMemo(() => {
+    return mergedProps.disabled || formControlContext.isDisabled() || false
+  })
+
+  const onPointerDown: JSX.EventHandlerUnion<any, PointerEvent> = (e) => {
+    callHandler(e, mergedProps.onPointerDown)
+
+    // For consistency with native, prevent the input blurs on pointer down.
+    if (isFocused()) {
+      e.preventDefault()
+    }
+  }
+
+  const dataset: Accessor<RadioGroupItemDataSet> = createMemo(() => ({
+    ...formControlContext.dataset(),
+    'data-disabled': isDisabled() ? '' : undefined,
+    'data-checked': isSelected() ? '' : undefined,
+  }))
+
+  const context: RadioGroupItemContextValue = {
+    value: () => mergedProps.value,
+    dataset,
+    isDefault,
+    isSelected,
+    isDisabled,
+    inputId,
+    labelId,
+    descriptionId,
+    inputRef,
+    select: () => {
+      if (!isDisabled()) radioGroupContext.setSelectedValue(mergedProps.value)
+    },
+    generateId: (suffix: string) => `${others.id}-${suffix}`,
+    registerInput: createRegisterId(setInputId),
+    registerLabel: createRegisterId(setLabelId),
+    registerDescription: createRegisterId(setDescriptionId),
+    setIsFocused,
+    setInputRef,
+  }
+
+  return (
+    <RadioGroupItemContext value={context}>
+      <Polymorphic<RadioGroupItemRenderProps>
+        as="div"
+        role="group"
+        onPointerDown={onPointerDown}
+        {...dataset()}
+        {...others}
+      />
+    </RadioGroupItemContext>
+  )
+}

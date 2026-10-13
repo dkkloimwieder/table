@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { booleanCases } from './boolean-cases.mjs'
 import { createServer } from 'node:http'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { createWriteStream } from 'node:fs'
@@ -177,6 +178,7 @@ async function record(name, work) {
   }
 }
 try {
+  await booleanCases({ page, url, record, press, settle })
   await nativeFieldCases({ page, url, record, press, settle })
   await choiceCases({ page, url, record, press, settle })
   await record(

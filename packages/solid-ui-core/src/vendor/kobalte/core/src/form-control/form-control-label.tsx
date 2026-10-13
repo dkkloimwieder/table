@@ -1,16 +1,12 @@
-import type { ValidComponent } from '@solidjs/web'
-import { createEffect, createSignal, merge, omit, type Ref } from 'solid-js'
+import { createEffect, createSignal, merge, omit, untrack } from 'solid-js'
 
-import {
-  type ElementOf,
-  Polymorphic,
-  type PolymorphicProps,
-} from '../polymorphic/index.tsx'
+import { Polymorphic } from '../polymorphic/index.tsx'
 import { createTagName } from '../primitives/index.ts'
-import {
-  type FormControlDataSet,
-  useFormControlContext,
-} from './form-control-context.tsx'
+import { useFormControlContext } from './form-control-context.tsx'
+import type { Ref } from 'solid-js'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { FormControlDataSet } from './form-control-context.tsx'
+import type { ValidComponent } from '@solidjs/web'
 
 export interface FormControlLabelOptions {}
 
@@ -52,6 +48,7 @@ export function FormControlLabel<T extends ValidComponent = 'label'>(
   const others = omit(mergedProps, 'ref')
 
   const tagName = createTagName(ref, () => 'label')
+  const forwardedRef = untrack(() => mergedProps.ref)
 
   createEffect(
     () => others.id,
@@ -61,7 +58,7 @@ export function FormControlLabel<T extends ValidComponent = 'label'>(
   return (
     <Polymorphic<FormControlLabelRenderProps>
       as="label"
-      ref={[setRef, mergedProps.ref]}
+      ref={[setRef, forwardedRef]}
       for={tagName() === 'label' ? context.fieldId() : undefined}
       {...context.dataset()}
       {...others}

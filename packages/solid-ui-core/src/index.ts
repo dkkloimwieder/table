@@ -1,2 +1,5 @@
 export { Select } from './controls/select'
 export { Combobox } from './controls/combobox'
+export { Checkbox } from './controls/checkbox'
+export { Switch } from './controls/switch'
+export { RadioGroup } from './controls/radio-group'

@@ -14,7 +14,10 @@
     "./virtual": "./src/virtual/index.ts",
     "./select": "./src/components/Select.tsx",
     "./combobox": "./src/components/Combobox.tsx",
-    "./fields": "./src/components/NativeFields.tsx"
+    "./fields": "./src/components/NativeFields.tsx",
+    "./checkbox": "./src/components/Checkbox.tsx",
+    "./switch": "./src/components/Switch.tsx",
+    "./radio-group": "./src/components/RadioGroup.tsx"
   },
   "sideEffects": [
     "**/*.css"

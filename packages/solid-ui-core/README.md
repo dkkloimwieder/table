@@ -1,18 +1,18 @@
 # Owned component behavior
 
 `@table/ui-core` is a private workspace package for generic component behavior.
-The first source pass contains Select, Combobox, and their required Kobalte Core and Utils modules.
+The first source pass contains Select, Combobox, Checkbox, Switch, RadioGroup, and their required Kobalte Core and Utils modules.
 The component subpaths export the owned Kobalte behavior API.
 Styled generic controls follow in the presentation package.
 
 ## Source layout
 
-`src/controls` contains the Select and Combobox behavior entry points.
+`src/controls` contains the choice, boolean, and radio behavior entry points.
 `src/vendor/kobalte` contains the selected upstream Core and Utils source.
 Vendor source keeps its licenses, original hashes, and local repair history.
 Shared Kobalte modules have one owner and one copy.
 
-The first source pass includes Select, Combobox, and their required shared modules.
+The first source pass includes Select, Combobox, Checkbox, Switch, RadioGroup, and their required shared modules.
 Further control families expand that subset through their existing Beads issues.
 Existing selection, focus, accessibility, and custom element behavior remain part of the source contract.
 This pass does not redesign those behaviors.
