@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { consumerCases } from './consumer-cases.mjs'
 import { displayCases } from './display-cases.mjs'
 import { overlayCases } from './overlay-cases.mjs'
 import { dialogCases } from './dialog-cases.mjs'
@@ -185,6 +186,7 @@ async function record(name, work) {
   }
 }
 try {
+  await consumerCases({ page, url, record, press, settle })
   await displayCases({ createPage, url, record })
   await overlayCases({ page, url, record, press, settle })
   await dialogCases({ page, url, record, press, settle })

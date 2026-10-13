@@ -12,8 +12,22 @@ import { BooleanControls } from './BooleanControls'
 import { DialogControls } from './DialogControls'
 import { OverlayControls } from './OverlayControls'
 import { DisplayControls } from './DisplayControls'
+import { GenericConsumer } from './GenericConsumer'
 
-if (new URLSearchParams(location.search).has('display')) {
+if (new URLSearchParams(location.search).has('consumer')) {
+  const dispose = render(
+    () => <GenericConsumer />,
+    document.getElementById('root')!,
+  )
+  // eslint-disable-next-line require-yield -- Use the qualified synchronous runtime disposal path.
+  const cleanup = action(function* () {
+    dispose()
+  })
+  window.consumerFixture.stop = () => {
+    cleanup()
+    flush()
+  }
+} else if (new URLSearchParams(location.search).has('display')) {
   const dispose = render(
     () => <DisplayControls />,
     document.getElementById('root')!,

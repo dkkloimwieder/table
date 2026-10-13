@@ -11,6 +11,37 @@ The existing controller owns drafts, Zod Mini rules, revision conflicts, and sav
 The popup owns its open state and highlighted choice.
 This interface adds no record store or copy of the collection.
 
+## Generic form and Table consumer
+
+Open `http://127.0.0.1:7782/?consumer=1` for a form beside a read-only Table.
+Add `&alternate=1` for different field names and a stacked layout.
+Both layouts use public exports from `@table/ui` and `@table/ui/table`.
+They use the same compact styles as the other fixtures.
+
+The application owns field values, required-field rules, confirmation, requests, and saved records.
+The Table reads those records through the native engine.
+Sorting, filtering, grouping, and column controls remain independent of the form.
+A successful save adds one server response to the application collection.
+A failed save keeps the form values and existing records.
+The confirmation captures a submission snapshot and prevents duplicate saves while a request runs.
+
+The fake server returns choice pages after a short delay.
+Clear the search text to see all choices, then use More results for another page.
+Search for `fail` to see a request error.
+Use the name `Reject` to see a save error.
+These rules belong to the fake application transport, not the shared components.
+
+Browser tests add `&manual=1` to control each response without timing assumptions.
+They finish cancelled requests late to make sure that old results cannot replace the current search.
+They also test loading, empty results, retry, confirmation focus, both naming schemes, and external value updates.
+Cleanup aborts application requests, clears fake server timers and listeners, and removes popup portals.
+Pending promises settle during cleanup, and their callbacks cannot change disposed application state.
+These interaction tests do not measure heap retention or performance.
+Production WAMN components and generator output remain outside this fixture.
+
+The existing popup runner includes the consumer cases in source, distribution, and development runs.
+Run only these cases with `BENCH_CASE_PATTERN='^consumer:'` and disable benchmark workloads with `BENCH_WORKLOADS=0`.
+
 ## Source and local repairs
 
 The fixture imports styled Select and Combobox from the private `@table/ui` workspace package.
