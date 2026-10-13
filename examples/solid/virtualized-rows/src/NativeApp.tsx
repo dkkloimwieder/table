@@ -9,8 +9,7 @@ import {
   onSettled,
 } from 'solid-js'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
-import { VirtualRows } from '../../../../packages/solid-table/bench/table/VirtualRows'
-import { createTableVirtualizer } from '../../../../packages/solid-table/bench/table/createVirtualizer'
+import { VirtualRows, createTableVirtualizer } from '@table/ui/virtual'
 import { createNativeGridInteraction } from './createNativeGridInteraction'
 import { nativeEvents } from './nativeEvents'
 import type { NativeTable } from '@tanstack/solid-table/native'

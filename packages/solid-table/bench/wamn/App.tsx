@@ -6,7 +6,7 @@ import {
   onCleanup,
   onSettled,
 } from 'solid-js'
-import { createTableVirtualizer } from '../table/createVirtualizer'
+import { createTableVirtualizer } from '@table/ui/virtual'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { cellText } from './.input/runtime'
 import { get as getWidget } from './.input/widget'

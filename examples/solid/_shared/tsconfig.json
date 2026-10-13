@@ -1,5 +1,5 @@
 {
   "extends": "../../../tsconfig.json",
   "compilerOptions": { "jsx": "preserve", "jsxImportSource": "@solidjs/web" },
-  "include": ["../../../packages/solid-table/bench/table/createVirtualizer.ts"]
+  "include": ["../../../packages/solid-ui/src/virtual/createVirtualizer.ts"]
 }

@@ -10,7 +10,8 @@
     "./styles.css": "./src/styles/styles.css",
     "./density": "./src/styles/density.ts",
     "./table": "./src/table/index.ts",
-    "./events": "./src/utils/nativeEvents.ts"
+    "./events": "./src/utils/nativeEvents.ts",
+    "./virtual": "./src/virtual/index.ts"
   },
   "sideEffects": [
     "**/*.css"
@@ -18,7 +19,8 @@
   "scripts": {
     "test:types": "tsc --project tsconfig.json",
     "test:eslint": "eslint ./src --ignore-pattern \"src/virtual/vendor/**\" ./bench/styles/main.ts ./bench/styles/vite.config.ts",
-    "test:boundaries": "node scripts/check-imports.mjs"
+    "test:boundaries": "node scripts/check-imports.mjs",
+    "test:virtual:vendor": "node scripts/check-virtual-vendor.mjs"
   },
   "peerDependencies": {
     "solid-js": ">=2.0.0-rc.14 <3.0.0",

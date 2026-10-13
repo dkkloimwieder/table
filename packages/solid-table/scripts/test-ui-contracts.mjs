@@ -6,13 +6,17 @@ import ts from 'typescript'
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const directory = resolve(packageRoot, 'bench/table')
 const document = readFileSync(resolve(directory, 'UI-BOUNDARIES.md'), 'utf8')
-const configPath = resolve(directory, 'tsconfig.json')
+const configPath = resolve(packageRoot, '../solid-ui/tsconfig.json')
 const config = ts.readConfigFile(configPath, ts.sys.readFile)
 if (config.error)
   throw new Error(
     ts.flattenDiagnosticMessageText(config.error.messageText, '\n'),
   )
-const parsed = ts.parseJsonConfigFileContent(config.config, ts.sys, directory)
+const parsed = ts.parseJsonConfigFileContent(
+  config.config,
+  ts.sys,
+  dirname(configPath),
+)
 const files = new Map(
   [...document.matchAll(/^```(ts|tsx)\n([^]*?)^```/gm)].map((match, index) => [
     resolve(directory, `ui-contract-example-${index}.${match[1]}`),

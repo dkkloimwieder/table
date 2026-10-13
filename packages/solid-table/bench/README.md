@@ -337,7 +337,7 @@ The shared `VirtualRows` renderer uses one `createTableVirtualizer` binding thro
 The native example uses measured geometry for wrapped text, groups, and expanded rows.
 Analytics uses fixed-height geometry without allocating metadata for the complete query.
 Both modes use the same vendored `Virtualizer` class for range calculation, scrolling, and viewport observation.
-The [engine provenance and local changes](./table/vendor/virtual-core/README.md) describe its fixed-size measurement path.
+The [engine provenance and local changes](../../solid-ui/src/virtual/vendor/virtual-core/README.md) describe its fixed-size measurement path.
 Both modes supply visible keys, range edges, total height, and index scrolling.
 The measured binding reads display keys, preserves applicable measurements, and publishes the visible range.
 Records and feature state remain outside the virtualizer.

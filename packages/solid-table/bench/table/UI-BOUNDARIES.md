@@ -5,7 +5,8 @@ The private workspace packages now exist at the paths below.
 Select and Combobox behavior exports exist in `@table/ui-core`.
 Scoped styles and shared density values exist in `@table/ui`.
 Shared Table and column exports exist in `@table/ui/table`.
-Styled controls and virtual extraction remain planned.
+The shared virtual engine and binding exist in `@table/ui/virtual`.
+Styled control families remain planned.
 Follow-up issues implement them in focused changes.
 WAMN is a prospective consumer. Its interface does not define the library API.
 

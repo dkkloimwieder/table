@@ -24,6 +24,10 @@ const report = {
 }
 const modules = JSON.parse(await readFile(assets + 'modules.json', 'utf8'))
 assert.ok(
+  !modules.some((id) => id.includes('/solid-table/bench/table/')),
+  'fixture has no old shared UI source',
+)
+assert.ok(
   modules.some((id) => id.includes('/solid-ui/src/table/Table.tsx')),
   'fixture uses shared UI Table source',
 )
@@ -43,7 +47,9 @@ assert.ok(
   ),
 )
 assert.ok(
-  modules.some((path) => path.includes('/table/vendor/virtual-core/index.ts')),
+  modules.some((path) =>
+    path.includes('/solid-ui/src/virtual/vendor/virtual-core/index.ts'),
+  ),
 )
 assert.ok(
   !modules.some((path) => /node_modules\/@tanstack\/virtual-core\//.test(path)),

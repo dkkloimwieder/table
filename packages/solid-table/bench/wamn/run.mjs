@@ -18,6 +18,16 @@ const assets = fileURLToPath(new URL(`${directory}/`, import.meta.url))
 const output = process.env.BENCH_OUTPUT ?? '/tmp/table-wamn-browser.json'
 const workloads = process.env.BENCH_WORKLOADS !== '0'
 const modules = JSON.parse(await readFile(`${assets}modules.json`, 'utf8'))
+assert.ok(
+  modules.some((id) =>
+    id.includes('/solid-ui/src/virtual/vendor/virtual-core/index.ts'),
+  ),
+  'fixture uses the owned UI virtual engine',
+)
+assert.ok(
+  !modules.some((id) => id.includes('/solid-table/bench/table/')),
+  'fixture has no old shared UI source',
+)
 assert.ok(modules.some((path) => path.includes('/.input/runtime/transport.ts')))
 assert.ok(modules.some((path) => path.includes('/.input/widget.ts')))
 assert.ok(modules.some((path) => path.includes('/.input/widget_maker.ts')))

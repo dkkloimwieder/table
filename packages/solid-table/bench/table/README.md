@@ -20,7 +20,8 @@ Analytics keeps search and filtering disabled. Its server export includes the co
 Applications explicitly import `@table/ui/styles.css` and apply `uiScope()` to their owning wrapper.
 The shared stylesheet contains Table, editor, column, and popup rules. Fixture CSS contains page layout.
 The components now live in `packages/solid-ui/src/table`. The package stays private during extraction.
-This directory retains virtual presentation until Beads `table-qp8.3.2` moves that source.
+Virtual presentation and its owned engine now live in `packages/solid-ui/src/virtual`.
+This directory retains the boundary decision and documentation.
 
 [Generic UI boundaries](./UI-BOUNDARIES.md) defines the planned private workspace packages,
 generic component contracts, styles, and extraction order under Beads epic `table-qp8`.

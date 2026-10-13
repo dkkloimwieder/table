@@ -34,7 +34,7 @@ It removes native listeners when the Solid owner disposes.
 The library imports no example or application source.
 The original example helper re-exports this implementation for existing consumers.
 
-Virtual presentation stays in `packages/solid-table/bench/table` until its separate source migration.
+Optional virtual presentation is exported through `@table/ui/virtual`.
 Paging, caches, memory estimates, and server export remain application code.
 
 ## Tests

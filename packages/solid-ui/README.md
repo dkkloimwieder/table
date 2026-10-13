@@ -1,7 +1,7 @@
 # Shared UI presentation
 
 `@table/ui` is a private workspace package for generic styled controls and Table presentation.
-Shared Table, column controls, scoped styles, and density values are implemented. Remaining extraction follows Beads `table-qp8`.
+Shared Table, virtual presentation, column controls, scoped styles, and density values are implemented. Remaining controls follow Beads `table-qp8`.
 The root exports `uiScope`, `uiDensity`, `UI_DENSITIES`, and `UIDensity`.
 `@table/ui/table` exports Table presentation and column controls.
 It does not copy the running fixtures into a second renderer.
@@ -10,21 +10,20 @@ It does not copy the running fixtures into a second renderer.
 
 `src/components` is the destination for styled form, overlay, and display controls.
 `src/table` owns Table presentation and column controls.
-`src/virtual` is the destination for the Solid virtual binding and visible row presentation.
-`src/virtual/vendor/virtual-core` contains the existing owned virtual engine after migration.
+`src/virtual` owns the Solid virtual binding and visible row presentation.
+`src/virtual/vendor/virtual-core` owns the single virtual engine with its license and provenance.
 `src/styles` contains scoped styles, shared variables, and optional themes.
 
 Applications explicitly import `@table/ui/styles.css`.
-The virtual export remains planned as `@table/ui/virtual`.
-The source passes add these exports when their implementations exist.
+Import optional virtual presentation from `@table/ui/virtual`.
 Native engine imports remain `@tanstack/solid-table/native`.
 
 ## Current source owners
 
 [Shared Table presentation](./src/table/README.md) now lives in `src/table`.
 Editing, read-only, and analytics consume the same package exports.
-`createVirtualizer.ts`, `VirtualRows.tsx`, and `virtualWindow.ts` move to `src/virtual`.
-The existing `bench/table/vendor/virtual-core` moves to `src/virtual/vendor/virtual-core` with its licenses and provenance.
+[Virtual presentation](./src/virtual/README.md) owns fixed and measured modes through the same engine.
+Its source, license, original hashes, and local hashes stay together in the UI package.
 Shared Table, editor, header, column, and popup styles now live in `src/styles/components.css`.
 Fixtures retain page layout in their own CSS.
 `src/utils/nativeEvents.ts` owns the event helper. Library source never imports examples.

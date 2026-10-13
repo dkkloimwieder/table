@@ -4,7 +4,25 @@ import solid from '@solidjs/vite-plugin'
 
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
-  plugins: [solid()],
+  plugins: [
+    solid(),
+    {
+      name: 'native-virtual-source-audit',
+      generateBundle(_options, bundle) {
+        this.emitFile({
+          type: 'asset',
+          fileName: 'modules.json',
+          source: JSON.stringify(
+            Object.values(bundle).flatMap((item) =>
+              item.type === 'chunk' ? Object.keys(item.modules) : [],
+            ),
+            null,
+            2,
+          ),
+        })
+      },
+    },
+  ],
   resolve: {
     alias: [
       {

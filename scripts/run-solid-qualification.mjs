@@ -37,6 +37,12 @@ export function qualificationStages(output, { wamn = false } = {}) {
     ]),
     stage('ui-lint', ['--filter', '@table/ui', 'run', 'test:eslint']),
     stage('ui-boundaries', ['--filter', '@table/ui', 'run', 'test:boundaries']),
+    stage('ui-virtual-vendor', [
+      '--filter',
+      '@table/ui',
+      'run',
+      'test:virtual:vendor',
+    ]),
     stage('ui-styles-build', [
       'exec',
       'vite',

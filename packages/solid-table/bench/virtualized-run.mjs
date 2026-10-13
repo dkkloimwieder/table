@@ -21,6 +21,21 @@ const assets = fileURLToPath(
     import.meta.url,
   ),
 )
+const modules = JSON.parse(await readFile(assets + 'modules.json', 'utf8'))
+assert.ok(
+  modules.some((id) =>
+    id.includes('/solid-ui/src/virtual/createVirtualizer.ts'),
+  ),
+)
+assert.ok(
+  modules.some((id) =>
+    id.includes('/solid-ui/src/virtual/vendor/virtual-core/index.ts'),
+  ),
+)
+assert.ok(!modules.some((id) => id.includes('/solid-table/bench/table/')))
+assert.ok(
+  !modules.some((id) => /node_modules\/@tanstack\/virtual-core\//.test(id)),
+)
 const sizes = (process.env.BENCH_SIZES ?? '1000,10000,50000')
   .split(',')
   .map(Number)

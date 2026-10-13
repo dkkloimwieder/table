@@ -9,5 +9,11 @@
     "lazy-measurements.ts": "24308cea11906958506bc1dcdb3859f61d2e562024db7ee8690adce2f030d453",
     "LICENSE": "a405ee70c632bb938acb7ac5f210e814409b3760ea9d2329d8ed8ffcfd11a0e7"
   },
-  "npmIntegrity": "sha512-+ILjvtHup6Y2hzQ6YzwMgX1Q+oQpxEGOXCEsCNaPoIP0VxMbizIBTmYTDtkerkIQS8/CbP1BRuyt8V/8BCsy1g=="
+  "npmIntegrity": "sha512-+ILjvtHup6Y2hzQ6YzwMgX1Q+oQpxEGOXCEsCNaPoIP0VxMbizIBTmYTDtkerkIQS8/CbP1BRuyt8V/8BCsy1g==",
+  "localSha256": {
+    "index.ts": "af942185148dbc4ddc1b200195761edd4128ca677e01b16670a7bc29d47da95c",
+    "utils.ts": "33ca3c04caee8cc495a3783b9ef3b3aa7dafc605f372891c48568458f4622cd4",
+    "lazy-measurements.ts": "dfd89585160a6e992c29c24a4d9fa53d473dc072c1c935c0cda58efc7c5bea31",
+    "LICENSE": "a405ee70c632bb938acb7ac5f210e814409b3760ea9d2329d8ed8ffcfd11a0e7"
+  }
 }

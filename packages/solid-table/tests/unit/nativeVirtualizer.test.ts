@@ -1,7 +1,7 @@
 import { expect, test, vi } from 'vitest'
 import { OBSERVE, createRoot, createSignal, flush } from 'solid-js'
-import { Virtualizer } from '../../bench/table/vendor/virtual-core/index'
-import { createTableVirtualizer } from '../../bench/table/createVirtualizer'
+import { Virtualizer } from '../../../solid-ui/src/virtual/vendor/virtual-core/index'
+import { createTableVirtualizer } from '@table/ui/virtual'
 
 test('keyed geometry follows same-count reorder and preserves measured sizes by logical key', () => {
   const capture = OBSERVE!.diagnostics.capture()
