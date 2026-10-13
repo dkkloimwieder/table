@@ -176,7 +176,7 @@ async function record(name, work) {
   }
 }
 try {
-  await choiceCases({ page, url, record, press })
+  await choiceCases({ page, url, record, press, settle })
   await record(
     'popup inherits live scope themes without changing placement or size',
     async () => {

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 
-export async function choiceCases({ page, url, record, press }) {
+export async function choiceCases({ page, url, record, press, settle }) {
   const open = () => page.goto(`${url}?choices=1`)
   const select = () => page.getByRole('button', { name: /Selected category/ })
   const input = () => page.getByRole('combobox', { name: 'Find category' })
@@ -165,6 +165,7 @@ export async function choiceCases({ page, url, record, press }) {
       await page.waitForFunction(
         () => document.activeElement?.getAttribute('role') === 'option',
       )
+      await settle()
       await press('Tab')
       assert.equal(
         await page.evaluate(() => document.activeElement.textContent),
@@ -184,6 +185,13 @@ export async function choiceCases({ page, url, record, press }) {
       await press('Tab')
       await press('Enter')
       assert.equal((await read()).pages, 2)
+      assert.deepEqual((await read()).optionKeys, [
+        'alpha',
+        'beta',
+        'gamma',
+        'delta',
+        'page-2',
+      ])
       await press('Tab')
       assert.equal(
         await page.evaluate(() => document.activeElement.getAttribute('role')),

@@ -36,7 +36,11 @@ export function ChoiceControls() {
   }
   const nextPage = () => {
     pages++
-    setOptions((old) => [...old, { id: 'delta', label: 'Delta' }])
+    const id = pages === 1 ? 'delta' : `page-${pages}`
+    const label = pages === 1 ? 'Delta' : `Result ${pages}`
+    setOptions((old) =>
+      old.some((option) => option.id === id) ? old : [...old, { id, label }],
+    )
   }
   window.choiceFixture = {
     configure(next) {
@@ -51,6 +55,7 @@ export function ChoiceControls() {
     },
     read: () => ({
       value: value()?.id ?? null,
+      optionKeys: options().map((option) => option.id),
       query: query(),
       changes,
       searches,
@@ -176,6 +181,7 @@ declare global {
       }) => void
       read: () => {
         value: string | null
+        optionKeys: Array<string>
         query: string
         changes: number
         searches: number
