@@ -8,6 +8,7 @@ import {
   Input,
   InputGroup,
   Label,
+  NativeSelect,
   Textarea,
   uiScope,
 } from '@table/ui'
@@ -16,6 +17,8 @@ import { nativeEvents } from '@table/ui/events'
 
 export function NativeFieldsFixture() {
   const [text, setText] = createSignal('Initial')
+  const [choice, setChoice] = createSignal('alpha')
+  const [preventChoice, setPreventChoice] = createSignal(false)
   const [notes, setNotes] = createSignal('Notes')
   const [blurText, setBlurText] = createSignal('Blur initial')
   const [disabled, setDisabled] = createSignal(false)
@@ -37,6 +40,8 @@ export function NativeFieldsFixture() {
   })
   window.nativeFieldFixture = {
     configure(next) {
+      if ('choice' in next) setChoice(next.choice!)
+      if ('preventChoice' in next) setPreventChoice(next.preventChoice!)
       if ('text' in next) setText(next.text!)
       if ('blurText' in next) setBlurText(next.blurText!)
       if ('disabled' in next) setDisabled(next.disabled!)
@@ -48,6 +53,7 @@ export function NativeFieldsFixture() {
       flush()
     },
     read: () => ({
+      choice: choice(),
       text: text(),
       notes: notes(),
       blurText: blurText(),
@@ -128,6 +134,29 @@ export function NativeFieldsFixture() {
             <Label>Uncontrolled</Label>
             <Input name="uncontrolled" defaultValue="Default" />
           </Field>
+          <Field invalid={invalid()} required>
+            <Label>Native choice</Label>
+            <NativeSelect
+              name="choice"
+              value={choice()}
+              onValueChange={(value) => {
+                if (accept()) setChoice(value)
+              }}
+              onChange={(event) => {
+                if (preventChoice()) event.preventDefault()
+              }}
+            >
+              <option value="alpha">Alpha</option>
+              <option value="beta">Beta</option>
+              <option value="disabled" disabled>
+                Disabled
+              </option>
+            </NativeSelect>
+            <HelpText id="choice-help">Choose a value.</HelpText>
+            <FieldError id="choice-error">
+              The application rejected this value.
+            </FieldError>
+          </Field>
           <Input
             aria-label="Commit on blur"
             value={blurText()}
@@ -159,6 +188,8 @@ declare global {
   interface Window {
     nativeFieldFixture: {
       configure: (next: {
+        choice?: string
+        preventChoice?: boolean
         text?: string
         blurText?: string
         disabled?: boolean
@@ -169,6 +200,7 @@ declare global {
         id?: string
       }) => void
       read: () => {
+        choice: string
         text: string
         notes: string
         blurText: string

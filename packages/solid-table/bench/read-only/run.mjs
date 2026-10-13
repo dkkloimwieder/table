@@ -111,6 +111,12 @@ try {
     assert.deepEqual(await rows(), ['a', 'c', 'b'])
   })
   await test('Column filters and search process application records', async () => {
+    assert.equal(
+      await page
+        .getByRole('searchbox', { name: 'Search all columns', exact: true })
+        .getAttribute('placeholder'),
+      'Search values…',
+    )
     await page
       .getByRole('textbox', { name: 'Filter Category', exact: true })
       .fill('West')

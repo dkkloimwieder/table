@@ -1,4 +1,5 @@
 import { For, Show, onCleanup } from 'solid-js'
+import { Button } from '../components/NativeFields'
 import { nativeEvents } from '../utils/nativeEvents'
 import { TableSort } from './TableSort'
 import type { JSX } from '@solidjs/web'
@@ -276,7 +277,7 @@ function TableGroup<T, M>(props: {
                       'padding-left': `${Math.max(group.depth, 0) * 20}px`,
                     }}
                   >
-                    <button
+                    <Button
                       data-group-toggle={props.groupKey}
                       aria-expanded={group.getIsExpanded() ? 'true' : 'false'}
                       aria-label={`${group.getIsExpanded() ? 'Collapse' : 'Expand'} ${label()}`}
@@ -291,7 +292,7 @@ function TableGroup<T, M>(props: {
                         {group.getIsExpanded() ? '▾' : '▸'}
                       </span>{' '}
                       {valueLabel()}
-                    </button>
+                    </Button>
                     <span class="group-count">
                       {group.count} {group.count === 1 ? 'record' : 'records'}
                     </span>

@@ -1,3 +1,4 @@
+import { Button } from '../components/NativeFields'
 import { nativeEvents } from '../utils/nativeEvents'
 
 export function TableSort(props: {
@@ -10,7 +11,7 @@ export function TableSort(props: {
   unsortedMark?: string
 }) {
   return (
-    <button
+    <Button
       type="button"
       class={props.class ?? 'column-sort'}
       aria-label={props.accessibleLabel ?? `Sort by ${props.label}`}
@@ -27,6 +28,6 @@ export function TableSort(props: {
             ? '↓'
             : (props.unsortedMark ?? '↕')}
       </span>
-    </button>
+    </Button>
   )
 }

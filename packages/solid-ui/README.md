@@ -263,3 +263,18 @@ Application removal restores focus when the notification owns focus.
 Unmounting cancels timers and document listeners.
 There is no module-wide notification store. Applications own queues, limits, asynchronous operations, and persistence.
 The browser fixture at `?display=1` covers native semantics, geometry, focus, timing, and disposal.
+
+## Native choice controls in Table
+
+`NativeSelect` exports through the root and `@table/ui/fields`.
+It renders native `select` markup and accepts application-provided option children.
+Use `value` with `onValueChange` or standard `onChange` for a controlled single selection.
+Rejected changes restore the accepted value.
+For multiple selection, use standard `onChange` and the selected options collection.
+NativeSelect shares Field labels, help, errors, required state, and disabled state.
+Use disabled controls or controlled rejection for read-only choices.
+
+Table editors and column controls reuse Button, Input, and NativeSelect.
+`@table/ui/table` also exports TableChoiceEditor and its generic props and choice types.
+The normal editing demo uses that editor. The popup demo implements the same interface with shared Select.
+Editing-specific text and workflows stay in the application adapter.

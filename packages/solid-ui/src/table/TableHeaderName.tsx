@@ -1,4 +1,5 @@
 import { Show, createSignal, onSettled } from 'solid-js'
+import { Button, Input } from '../components/NativeFields'
 import { nativeEvents } from '../utils/nativeEvents'
 import { TableSort } from './TableSort'
 
@@ -37,7 +38,7 @@ export function TableHeaderName(props: {
           }}
         />
       </Show>
-      <button
+      <Button
         type="button"
         class="header-rename"
         hidden={editing()}
@@ -51,7 +52,7 @@ export function TableHeaderName(props: {
         ]}
       >
         ✎
-      </button>
+      </Button>
     </>
   )
 }
@@ -72,11 +73,11 @@ function HeaderEditor(props: {
     input.select()
   })
   return (
-    <input
+    <Input
       class="header-name"
       type="text"
       aria-label={'Header name for ' + props.label}
-      value={props.label}
+      defaultValue={props.label}
       ref={[
         (node) => {
           input = node

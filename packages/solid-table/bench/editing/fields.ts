@@ -1,6 +1,7 @@
+import type { TableChoice } from '@table/ui/table'
 import type { EditColumn } from './createEditing'
 
-export type FieldChoice = { value: string; label: string; disabled?: boolean }
+export type FieldChoice = TableChoice
 export type EditingField = {
   label: string
   filterLabel: string

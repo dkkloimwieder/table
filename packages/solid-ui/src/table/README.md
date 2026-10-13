@@ -44,3 +44,23 @@ Run `pnpm --filter @table/ui test:eslint` to test source lint.
 Run `pnpm --filter @table/ui test:boundaries` to test import ownership.
 The standard Solid qualification suite runs these tests and existing fixture browser cases.
 The tests cover source and built native-engine modes through the same UI exports.
+
+## Shared controls
+
+Table controls use the shared Button, Input, and NativeSelect components.
+Native header popovers and pointer gestures retain their existing browser behavior and event cleanup.
+Header renaming uses an uncontrolled Input draft until Enter or blur commits it.
+Escape discards that draft and restores the rename button focus.
+
+`TableChoiceEditor` renders a native select for a complete small choice list.
+`TableChoiceEditorProps` defines values, labels, choices, disabled and invalid state, and callbacks.
+`TableChoice` defines a string value, label, and optional disabled state.
+The application can implement another editor with the same interface and pass it through its row renderer.
+Opaque editor and owner IDs support DOM lookup and popup scope.
+These IDs introduce no record lookup or save behavior.
+
+TableFilter defaults to `Search values…` for search and accepts a caller `placeholder`.
+TableGrouping defaults to summaries over filtered records and accepts caller `summaryHelp` content.
+Editing adapters supply any saved-record wording that their processing rules require.
+Read-only and analytics controls retain generic defaults.
+The application keeps editing locks, validation, revisions, stale responses, named views, actions, and server export descriptors.

@@ -1,3 +1,4 @@
+import { Button, NativeSelect } from '@table/ui/fields'
 import './style.css'
 import { uiScope } from '@table/ui'
 import { For, Show, createSignal, flush, onSettled, untrack } from 'solid-js'
@@ -57,9 +58,9 @@ function ChildTable(props: {
             return state.status === 'error' ? state.message : ''
           })()}
         </p>
-        <button ref={nativeEvents({ click: entry.load })}>
+        <Button ref={nativeEvents({ click: entry.load })}>
           Retry sub-table
-        </button>
+        </Button>
       </Show>
       <Show when={readyModel()} keyed>
         {(model) => {
@@ -216,7 +217,7 @@ export function App(props: {
             <Show when={!model.isGrouped()}>
               <label class="child-dataset">
                 Sub-table dataset
-                <select
+                <NativeSelect
                   value={scope()}
                   disabled={model.locked()}
                   ref={nativeEvents<HTMLSelectElement>({
@@ -228,7 +229,7 @@ export function App(props: {
                 >
                   <option value="current">Current period</option>
                   <option value="previous">Previous period</option>
-                </select>
+                </NativeSelect>
               </label>
               <p class="column-layout">
                 Expand a row to load its sub-table. Each table saves its own
@@ -240,13 +241,13 @@ export function App(props: {
                     <aside class="child-drafts">
                       Sub-table for {entry.parentId}: {entry.draftCount()}{' '}
                       drafts.{' '}
-                      <button
+                      <Button
                         ref={nativeEvents({
                           click: () => revealChild(entry.parentId),
                         })}
                       >
                         Show sub-table {entry.parentId}
-                      </button>
+                      </Button>
                     </aside>
                   </Show>
                 )}

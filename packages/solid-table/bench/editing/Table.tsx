@@ -11,7 +11,7 @@ import {
   untrack,
 } from 'solid-js'
 import { Dynamic } from '@solidjs/web'
-import { Input } from '@table/ui/fields'
+import { Button, Input, NativeSelect } from '@table/ui/fields'
 import {
   TableColumnMove,
   TableColumnResize,
@@ -558,7 +558,7 @@ export function Table(props: {
   function SubTableToggle(id: string) {
     return (
       <Show when={props.details}>
-        <button
+        <Button
           class="sub-table-toggle"
           data-subtable-toggle={id}
           aria-label={`${props.details!.expanded(id) ? 'Collapse' : 'Expand'} sub-table ${id}`}
@@ -587,7 +587,7 @@ export function Table(props: {
               {props.details!.draftCount(id)} drafts
             </span>
           </Show>
-        </button>
+        </Button>
       </Show>
     )
   }
@@ -616,13 +616,13 @@ export function Table(props: {
     return (
       <For each={props.rowActions}>
         {(action) => (
-          <button
+          <Button
             type="button"
             aria-label={`${action.label} ${id}`}
             ref={nativeEvents({ click: () => action.onClick(id) })}
           >
             {action.label}
-          </button>
+          </Button>
         )}
       </For>
     )
@@ -713,7 +713,7 @@ export function Table(props: {
                   <Show
                     when={editing.drafts[id]?.expanded}
                     fallback={
-                      <button
+                      <Button
                         class="cell-value"
                         data-edit={`${id}/${field}`}
                         aria-label={`Edit ${editor.label.toLowerCase()} ${id}`}
@@ -735,7 +735,7 @@ export function Table(props: {
                             Edited
                           </span>
                         </Show>
-                      </button>
+                      </Button>
                     }
                   >
                     {editor.choices ? (
@@ -805,7 +805,7 @@ export function Table(props: {
             >
               <div class="buttons">
                 <Show when={saveMode() === 'row'}>
-                  <button
+                  <Button
                     aria-label={`Save ${id}`}
                     disabled={editing.drafts[id]?.status === 'pending'}
                     ref={nativeEvents({
@@ -815,9 +815,9 @@ export function Table(props: {
                     })}
                   >
                     Save
-                  </button>
+                  </Button>
                 </Show>
-                <button
+                <Button
                   aria-label={`Cancel ${id}`}
                   disabled={editing.drafts[id]?.status === 'pending'}
                   ref={nativeEvents({
@@ -825,7 +825,7 @@ export function Table(props: {
                   })}
                 >
                   Cancel
-                </button>
+                </Button>
                 <Show when={editing.drafts[id]?.status === 'pending'}>
                   <span role="status">Saving…</span>
                 </Show>
@@ -901,6 +901,7 @@ export function Table(props: {
       <Show when={props.controls?.grouping !== false}>
         <TableGrouping
           table={table}
+          summaryHelp="Summaries use saved, filtered records, including collapsed rows. First and last follow the table sort order. Range shows both endpoints. Span shows their difference."
           disabled={!model.localProcessing() || model.locked()}
           label={(id) =>
             table.getColumn(id)?.columnDef?.meta?.groupingLabel ?? id
@@ -928,6 +929,7 @@ export function Table(props: {
               label="Search all columns"
               clearLabel="Clear search"
               search
+              placeholder="Search saved values…"
               value={table.state.globalFilter}
               onValueChange={(value) => table.setGlobalFilter(value)}
               disabled={!model.localProcessing() || model.locked()}
@@ -937,7 +939,7 @@ export function Table(props: {
             />
           </div>
         </Show>
-        <button
+        <Button
           disabled={!model.localProcessing() || model.locked() || !hasFilters()}
           ref={nativeEvents({
             click: () => {
@@ -947,11 +949,11 @@ export function Table(props: {
           })}
         >
           Clear all filters
-        </button>
+        </Button>
         <Show when={!isGrouped()}>
           <label>
             Save mode
-            <select
+            <NativeSelect
               aria-label="Save mode"
               value={saveMode()}
               disabled={model.locked()}
@@ -971,10 +973,10 @@ export function Table(props: {
             >
               <option value="row">Per row</option>
               <option value="table">Whole table</option>
-            </select>
+            </NativeSelect>
           </label>
           <Show when={saveMode() === 'table'}>
-            <button
+            <Button
               aria-label="Save all"
               aria-describedby={domId('save-all-description')}
               disabled={
@@ -998,7 +1000,7 @@ export function Table(props: {
               {editing.savingAll()
                 ? 'Saving…'
                 : `Save all (${draftIds().length})`}
-            </button>
+            </Button>
           </Show>
         </Show>
       </div>
@@ -1031,7 +1033,7 @@ export function Table(props: {
                 <span>
                   {id}: {editing.drafts[id]?.name}
                 </span>
-                <button
+                <Button
                   disabled={!model.records[id]}
                   ref={nativeEvents({
                     click: () => {
@@ -1045,13 +1047,13 @@ export function Table(props: {
                   })}
                 >
                   Show {id}
-                </button>
-                <button
+                </Button>
+                <Button
                   disabled={editing.drafts[id]?.status === 'pending'}
                   ref={nativeEvents({ click: () => cancel(id, 'name') })}
                 >
                   Cancel hidden {id}
-                </button>
+                </Button>
                 <span role="alert">{editing.drafts[id]?.message}</span>
               </div>
             )}
@@ -1182,7 +1184,7 @@ export function Table(props: {
                 : 'No records yet.'}
             </p>
             <Show when={model.localProcessing() && hasFilters()}>
-              <button
+              <Button
                 ref={nativeEvents({
                   click: () => {
                     focusFilter()
@@ -1191,17 +1193,17 @@ export function Table(props: {
                 })}
               >
                 Show all records
-              </button>
+              </Button>
             </Show>
           </div>
         </Show>
       </div>
-      <button
+      <Button
         class="after-table"
         ref={nativeEvents({ click: () => setNotice('Focus left the table.') })}
       >
         After table
-      </button>
+      </Button>
     </section>
   )
 }

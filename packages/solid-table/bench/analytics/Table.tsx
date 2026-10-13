@@ -1,3 +1,4 @@
+import { Button, Input } from '@table/ui/fields'
 import {
   For,
   Show,
@@ -65,12 +66,12 @@ export function Table(
           {props.query.status === 'error' ? props.query.message : ''}
         </p>
         <Show when={props.retry}>
-          <button
+          <Button
             type="button"
             ref={nativeEvents({ click: () => props.retry?.() })}
           >
             Retry query
-          </button>
+          </Button>
         </Show>
       </Show>
       <Show when={scope()} keyed>
@@ -184,7 +185,7 @@ function ResultTable(
     <div {...uiScope(props.density)} class="analytics-table">
       <div class="toolbar">
         <Show when={props.onExport}>
-          <button
+          <Button
             type="button"
             disabled={
               !props.available ||
@@ -194,7 +195,7 @@ function ResultTable(
             ref={nativeEvents({ click: exportResult })}
           >
             {props.exportLabel ?? 'Export'}
-          </button>
+          </Button>
         </Show>
         <Show
           when={
@@ -204,7 +205,7 @@ function ResultTable(
               props.result.totalRows > displayRows().length)
           }
         >
-          <button
+          <Button
             type="button"
             disabled={!props.available}
             ref={nativeEvents({
@@ -218,10 +219,10 @@ function ResultTable(
             })}
           >
             Load all
-          </button>
+          </Button>
         </Show>
         <Show when={props.window && props.onShowPreview}>
-          <button
+          <Button
             type="button"
             disabled={!props.available}
             ref={nativeEvents({
@@ -235,9 +236,9 @@ function ResultTable(
             })}
           >
             Show preview
-          </button>
+          </Button>
         </Show>
-        <button
+        <Button
           type="button"
           disabled={!props.available}
           ref={nativeEvents({
@@ -250,7 +251,7 @@ function ResultTable(
           })}
         >
           Reset display
-        </button>
+        </Button>
       </div>
       <details>
         <summary>Display columns</summary>
@@ -260,7 +261,7 @@ function ResultTable(
             {(column) => (
               <div class="column-control" data-column={column.id}>
                 <label>
-                  <input
+                  <Input
                     type="checkbox"
                     checked={column.getIsVisible()}
                     ref={nativeEvents<HTMLInputElement>({

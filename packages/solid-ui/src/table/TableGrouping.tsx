@@ -1,5 +1,7 @@
 import { For, Show, onSettled } from 'solid-js'
+import { Button, NativeSelect } from '../components/NativeFields'
 import { nativeEvents } from '../utils/nativeEvents'
+import type { JSX } from '@solidjs/web'
 import type { NativeTable } from '@tanstack/solid-table/native'
 
 export function TableGrouping<T, M>(props: {
@@ -12,6 +14,7 @@ export function TableGrouping<T, M>(props: {
     id: string,
   ) => ReadonlyArray<{ value: string; label: string }> | undefined
   summary?: (id: string) => string | undefined
+  summaryHelp?: JSX.Element
   setSummary?: (id: string, value: string) => void
 }) {
   const table = props.table
@@ -65,7 +68,7 @@ export function TableGrouping<T, M>(props: {
       <div class="grouping-toolbar">
         <label>
           Add grouping
-          <select
+          <NativeSelect
             value=""
             ref={[
               (node) => {
@@ -94,24 +97,24 @@ export function TableGrouping<T, M>(props: {
                 </Show>
               )}
             </For>
-          </select>
+          </NativeSelect>
         </label>
         <Show when={table.state.grouping.length > 0}>
-          <button
+          <Button
             ref={nativeEvents({
               click: () => table.toggleAllGroupsExpanded(true),
             })}
           >
             Expand all groups
-          </button>
-          <button
+          </Button>
+          <Button
             ref={nativeEvents({
               click: () => table.toggleAllGroupsExpanded(false),
             })}
           >
             Collapse all groups
-          </button>
-          <button
+          </Button>
+          <Button
             ref={nativeEvents({
               click: () => {
                 addControl.focus()
@@ -120,7 +123,7 @@ export function TableGrouping<T, M>(props: {
             })}
           >
             Clear grouping
-          </button>
+          </Button>
         </Show>
       </div>
       <Show when={table.state.grouping.length > 0}>
@@ -133,7 +136,7 @@ export function TableGrouping<T, M>(props: {
                   <span class="grouping-level-label">
                     {index() + 1}. {label(id)}
                   </span>
-                  <button
+                  <Button
                     aria-label={`Move ${label(id)} up`}
                     disabled={index() === 0}
                     ref={nativeEvents({
@@ -145,8 +148,8 @@ export function TableGrouping<T, M>(props: {
                     })}
                   >
                     ↑
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     aria-label={`Move ${label(id)} down`}
                     disabled={index() === table.state.grouping.length - 1}
                     ref={nativeEvents({
@@ -158,10 +161,10 @@ export function TableGrouping<T, M>(props: {
                     })}
                   >
                     ↓
-                  </button>
+                  </Button>
                   <label>
                     Order {label(id)} groups
-                    <select
+                    <NativeSelect
                       value={orderValue(index(), id)}
                       ref={[
                         (node) => {
@@ -203,17 +206,17 @@ export function TableGrouping<T, M>(props: {
                           </Show>
                         )}
                       </For>
-                    </select>
+                    </NativeSelect>
                   </label>
-                  <button
+                  <Button
                     aria-label={`Expand ${label(id)} level`}
                     ref={nativeEvents({
                       click: () => table.toggleAllGroupsExpanded(true, index()),
                     })}
                   >
                     Expand level
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     aria-label={`Collapse ${label(id)} level`}
                     ref={nativeEvents({
                       click: () =>
@@ -221,8 +224,8 @@ export function TableGrouping<T, M>(props: {
                     })}
                   >
                     Collapse level
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     aria-label={`Remove ${label(id)} grouping`}
                     ref={nativeEvents({
                       click: () => {
@@ -236,7 +239,7 @@ export function TableGrouping<T, M>(props: {
                     })}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </li>
               )
             }}
@@ -252,7 +255,7 @@ export function TableGrouping<T, M>(props: {
               {(column) => (
                 <label>
                   {String(column.columnDef?.header)} summary
-                  <select
+                  <NativeSelect
                     value={props.summary?.(column.id)}
                     ref={nativeEvents<HTMLSelectElement>({
                       change: (event) =>
@@ -267,15 +270,19 @@ export function TableGrouping<T, M>(props: {
                         <option value={choice.value}>{choice.label}</option>
                       )}
                     </For>
-                  </select>
+                  </NativeSelect>
                 </label>
               )}
             </For>
           </div>
           <p class="summary-help">
-            Summaries use saved, filtered records, including collapsed rows.
-            First and last follow the table sort order. Range shows both
-            endpoints. Span shows their difference.
+            {props.summaryHelp ?? (
+              <>
+                Summaries use filtered records, including collapsed rows. First
+                and last follow the table sort order. Range shows both
+                endpoints. Span shows their difference.
+              </>
+            )}
           </p>
         </Show>
       </Show>

@@ -5,6 +5,7 @@ import {
   createUniqueId,
   onCleanup,
 } from 'solid-js'
+import { Button } from '../components/NativeFields'
 import { nativeEvents } from '../utils/nativeEvents'
 import { TableFilter } from './TableFilter'
 import type { TableFilterProps } from './TableFilter'
@@ -75,7 +76,7 @@ export function TableHeaderFilter(
   })
   return (
     <span class="header-filter">
-      <button
+      <Button
         type="button"
         class="header-filter-trigger"
         data-header-filter={props.columnId}
@@ -98,7 +99,7 @@ export function TableHeaderFilter(
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <path d="M2 3h12L9 8v5l-2 1V8Z" />
         </svg>
-      </button>
+      </Button>
       <Show when={props.value}>
         <span id={statusId} class="sr-only">
           Filter active
@@ -149,14 +150,14 @@ export function TableHeaderFilter(
         role="dialog"
         aria-label={`Filter ${props.columnLabel}`}
       >
-        <button
+        <Button
           type="button"
           class="header-filter-close"
           aria-label={`Close ${props.columnLabel} filter`}
           ref={nativeEvents({ click: () => close(true) })}
         >
           <span aria-hidden="true">×</span>
-        </button>
+        </Button>
         <TableFilter
           label={props.label}
           clearLabel={props.clearLabel}

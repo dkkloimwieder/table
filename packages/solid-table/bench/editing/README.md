@@ -648,3 +648,13 @@ Switching sort views runs the required sort scan and preserves record and render
 The shared host reached its temporary-file quota during qualification.
 On this host, `TMPDIR=/dev/shm` moves Chromium scratch files into the available shared-memory filesystem.
 Heap artifacts still use `BENCH_HEAPS`. Keep this host workaround outside application code.
+
+## Shared editor composition
+
+The native choice editor is `TableChoiceEditor` from `@table/ui/table`.
+The compatibility file only re-exports that editor and its props type.
+The popup editor implements the same generic props with shared Select.
+Field choices use the shared TableChoice shape, while the application owns their values and validation.
+Cell actions, view controls, sorting, grouping, and analytics controls use shared native UI fields.
+The application retains drafts, saves, revisions, conflicts, locks, named views, and row action callbacks.
+It supplies saved-record search and summary wording explicitly.

@@ -1,4 +1,5 @@
 import { createEffect, createUniqueId, onSettled } from 'solid-js'
+import { Button } from '../components/NativeFields'
 import { nativeEvents } from '../utils/nativeEvents'
 
 export type ColumnDestination = { id: string; side: 'before' | 'after' }
@@ -210,7 +211,7 @@ export function TableColumnMove(props: {
   })
   return (
     <>
-      <button
+      <Button
         type="button"
         class="column-move"
         aria-label={`Move ${props.label} column`}
@@ -265,7 +266,7 @@ export function TableColumnMove(props: {
           <span />
           <span />
         </span>
-      </button>
+      </Button>
       <span id={helpId} class="sr-only">
         Drag to move the column. Left and Right move one place. Home and End
         move to the first and last available places. Escape cancels a drag.
@@ -291,30 +292,30 @@ export function TableColumnMove(props: {
           }),
         ]}
       >
-        <button
+        <Button
           disabled={props.disabled || first()}
           ref={nativeEvents({ click: () => keyboardMove('Home') })}
         >
           Move first
-        </button>
-        <button
+        </Button>
+        <Button
           disabled={props.disabled || first()}
           ref={nativeEvents({ click: () => keyboardMove('ArrowLeft') })}
         >
           Move left
-        </button>
-        <button
+        </Button>
+        <Button
           disabled={props.disabled || last()}
           ref={nativeEvents({ click: () => keyboardMove('ArrowRight') })}
         >
           Move right
-        </button>
-        <button
+        </Button>
+        <Button
           disabled={props.disabled || last()}
           ref={nativeEvents({ click: () => keyboardMove('End') })}
         >
           Move last
-        </button>
+        </Button>
       </div>
     </>
   )

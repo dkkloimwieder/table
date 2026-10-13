@@ -290,3 +290,68 @@ export function InputGroup(props: InputGroupProps) {
     />
   )
 }
+
+export type NativeSelectProps = JSX.SelectHTMLAttributes<HTMLSelectElement> & {
+  invalid?: boolean
+  onValueChange?: (value: string, event: Event) => void
+}
+/** Native select for small option lists. Applications supply the option children. */
+export function NativeSelect(props: NativeSelectProps) {
+  const field = useContext(FieldContext)
+  const generated = `select-${createUniqueId()}`
+  const id = () => props.id || field?.baseControlId() || generated
+  field?.registerControl(id)
+  const attributes = omit(
+    props,
+    'ref',
+    'invalid',
+    'onValueChange',
+    ...nativeEventProps,
+  )
+  const events = ownedElementEvents(
+    merge(props, {
+      onChange(
+        event: Event & {
+          currentTarget: HTMLSelectElement
+          target: HTMLSelectElement
+        },
+      ) {
+        if (
+          !callHandler(
+            event,
+            props.onChange as JSX.EventHandlerUnion<HTMLSelectElement, Event>,
+          ) &&
+          !event.currentTarget.matches(':disabled')
+        )
+          props.onValueChange?.(event.currentTarget.value, event)
+        const value = props.value
+        if (typeof value === 'string' || typeof value === 'number')
+          event.currentTarget.value = String(value)
+        else if (Array.isArray(value)) {
+          const values = new Set(value.map(String))
+          for (const option of event.currentTarget.options)
+            option.selected = values.has(option.value)
+        }
+      },
+    }),
+  )
+  return (
+    <select
+      {...attributes}
+      id={id()}
+      disabled={props.disabled ?? field?.disabled()}
+      required={props.required ?? field?.required()}
+      aria-describedby={
+        [field?.describedBy(), props['aria-describedby']]
+          .filter(Boolean)
+          .join(' ') || undefined
+      }
+      aria-invalid={
+        props['aria-invalid'] ??
+        ((props.invalid ?? field?.invalid()) ? 'true' : undefined)
+      }
+      class={'ui-native-select ' + (props.class ?? '')}
+      ref={[props.ref, events]}
+    />
+  )
+}

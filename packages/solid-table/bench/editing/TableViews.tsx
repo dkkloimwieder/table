@@ -1,3 +1,4 @@
+import { Button, NativeSelect } from '@table/ui/fields'
 import { For, createSignal, onCleanup } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import type { TableViews as Views } from './createTableViews'
@@ -56,7 +57,7 @@ export function TableViews(props: { views: Views; locked: boolean }) {
         <div class="view-controls">
           <label>
             Saved view
-            <select
+            <NativeSelect
               value={props.views.selected()}
               ref={nativeEvents<HTMLSelectElement>({
                 change: (event) => {
@@ -71,9 +72,9 @@ export function TableViews(props: { views: Views; locked: boolean }) {
               <For each={props.views.views()}>
                 {(view) => <option value={view.id}>{view.name}</option>}
               </For>
-            </select>
+            </NativeSelect>
           </label>
-          <button
+          <Button
             disabled={!props.views.selected()}
             ref={nativeEvents({
               click: (event) => {
@@ -82,7 +83,7 @@ export function TableViews(props: { views: Views; locked: boolean }) {
             })}
           >
             Update view
-          </button>
+          </Button>
           <label>
             View name
             <input
@@ -93,7 +94,7 @@ export function TableViews(props: { views: Views; locked: boolean }) {
               })}
             />
           </label>
-          <button
+          <Button
             disabled={!name().trim()}
             ref={nativeEvents({
               click: (event) => {
@@ -102,8 +103,8 @@ export function TableViews(props: { views: Views; locked: boolean }) {
             })}
           >
             Save as new view
-          </button>
-          <button
+          </Button>
+          <Button
             disabled={!name().trim() || !props.views.selected()}
             ref={nativeEvents({
               click: (event) => {
@@ -112,8 +113,8 @@ export function TableViews(props: { views: Views; locked: boolean }) {
             })}
           >
             Rename view
-          </button>
-          <button
+          </Button>
+          <Button
             disabled={!props.views.selected()}
             ref={nativeEvents({
               click: (event) => {
@@ -122,8 +123,8 @@ export function TableViews(props: { views: Views; locked: boolean }) {
             })}
           >
             Delete view
-          </button>
-          <button
+          </Button>
+          <Button
             ref={nativeEvents({
               click: (event) => {
                 perform(event.currentTarget, props.views.reload)
@@ -131,7 +132,7 @@ export function TableViews(props: { views: Views; locked: boolean }) {
             })}
           >
             Reload views
-          </button>
+          </Button>
         </div>
       </fieldset>
       <p class="view-status" role={props.views.error() ? 'alert' : 'status'}>

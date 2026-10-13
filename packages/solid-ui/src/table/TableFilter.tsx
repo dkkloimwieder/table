@@ -1,4 +1,5 @@
 import { For, Show, createUniqueId } from 'solid-js'
+import { Button, Input, NativeSelect } from '../components/NativeFields'
 import { nativeEvents } from '../utils/nativeEvents'
 
 export type TableFilterProps = {
@@ -8,6 +9,7 @@ export type TableFilterProps = {
   onValueChange: (value: string) => void
   disabled?: boolean
   search?: boolean
+  placeholder?: string
   hideLabel?: boolean
   choices?: ReadonlyArray<{ value: string; label: string; disabled?: boolean }>
   inputRef?: (node: HTMLInputElement) => void
@@ -32,10 +34,13 @@ export function TableFilter(props: TableFilterProps) {
         <Show
           when={props.choices}
           fallback={
-            <input
+            <Input
               id={id}
               type={props.search ? 'search' : 'text'}
-              placeholder={props.search ? 'Search saved values…' : 'Contains…'}
+              placeholder={
+                props.placeholder ??
+                (props.search ? 'Search values…' : 'Contains…')
+              }
               value={props.value}
               disabled={props.disabled}
               ref={[
@@ -67,7 +72,7 @@ export function TableFilter(props: TableFilterProps) {
           }
         >
           {(choices) => (
-            <select
+            <NativeSelect
               id={id}
               value={props.value}
               disabled={props.disabled}
@@ -92,10 +97,10 @@ export function TableFilter(props: TableFilterProps) {
                   </option>
                 )}
               </For>
-            </select>
+            </NativeSelect>
           )}
         </Show>
-        <button
+        <Button
           type="button"
           class="clear-input"
           aria-label={props.clearLabel}
@@ -104,7 +109,7 @@ export function TableFilter(props: TableFilterProps) {
           ref={nativeEvents({ click: clear })}
         >
           ×
-        </button>
+        </Button>
       </div>
     </div>
   )

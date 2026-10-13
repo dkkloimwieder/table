@@ -1,9 +1,9 @@
 import { Select } from '@table/ui/select'
 import { createMemo, untrack } from 'solid-js'
-import type { PriorityEditorProps } from '../editing/TablePriorityEditor'
+import type { TableChoiceEditorProps } from '@table/ui/table'
 import type { FieldChoice } from '../editing/fields'
 
-export function PopupPriorityEditor(props: PriorityEditorProps) {
+export function PopupPriorityEditor(props: TableChoiceEditorProps) {
   const options = createMemo(() => [...props.choices])
   return (
     <Select
@@ -28,7 +28,7 @@ export function PopupPriorityEditor(props: PriorityEditorProps) {
         aria-label={props.label}
         aria-describedby={props.describedBy}
         aria-invalid={props.invalid ? 'true' : undefined}
-        onFocus={() => untrack(() => props.onFocus())}
+        onFocus={() => untrack(() => props.onFocus?.())}
       >
         <Select.Value<FieldChoice>>
           {(state) => state.selectedOption().label}

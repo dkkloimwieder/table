@@ -1,3 +1,4 @@
+import { NativeSelect } from '@table/ui/fields'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import type { TableControls } from './Table'
 
@@ -12,7 +13,7 @@ export function TableOptions(props: {
       <fieldset class="display-fields" disabled={props.disabled}>
         <label>
           Column filter controls
-          <select
+          <NativeSelect
             value={props.controls.filters}
             ref={nativeEvents<HTMLSelectElement>({
               change: (event) =>
@@ -26,7 +27,7 @@ export function TableOptions(props: {
             <option value="headers">In column headers</option>
             <option value="both">Both</option>
             <option value="none">Hidden</option>
-          </select>
+          </NativeSelect>
         </label>
         <label class="check-option">
           <input
@@ -76,7 +77,7 @@ export function TableOptions(props: {
         </label>
         <label>
           Resize behavior
-          <select
+          <NativeSelect
             value={props.controls.resizeBehavior}
             ref={nativeEvents<HTMLSelectElement>({
               change: (event) =>
@@ -88,7 +89,7 @@ export function TableOptions(props: {
           >
             <option value="grow">Grow table</option>
             <option value="fixed">Keep table width</option>
-          </select>
+          </NativeSelect>
         </label>
         <label class="check-option">
           <input

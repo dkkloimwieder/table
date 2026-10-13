@@ -13,6 +13,45 @@ export async function nativeFieldCases({ page, url, record, press, settle }) {
     await settle()
   }
   await record(
+    'fields: native select preserves accepted values, rejected changes and field links',
+    async () => {
+      await open()
+      const control = page.getByRole('combobox', {
+        name: 'Native choice',
+        exact: true,
+      })
+      await control.selectOption('beta')
+      await settle()
+      assert.equal((await read()).choice, 'beta')
+      assert.equal(await control.inputValue(), 'beta')
+      await configure({ accept: false })
+      await control.selectOption('alpha')
+      await settle()
+      assert.equal(await control.inputValue(), 'beta')
+      await configure({ accept: true, preventChoice: true, invalid: true })
+      await control.evaluate((node) => {
+        node.value = 'alpha'
+      })
+      await control.dispatchEvent('change', { bubbles: true, cancelable: true })
+      await settle()
+      assert.equal(await control.inputValue(), 'beta')
+      assert.equal(await control.getAttribute('aria-invalid'), 'true')
+      assert.equal(await control.getAttribute('required'), '')
+      assert.equal(
+        await control.getAttribute('aria-describedby'),
+        'choice-help choice-error',
+      )
+      assert.equal(
+        await page.evaluate(() =>
+          new FormData(document.querySelector('form')).get('choice'),
+        ),
+        'beta',
+      )
+      await configure({ disabled: true })
+      assert.equal(await control.isDisabled(), true)
+    },
+  )
+  await record(
     'fields: labels follow explicit and changed control IDs and descriptions detach',
     async () => {
       await open()

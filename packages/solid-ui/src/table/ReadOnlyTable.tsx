@@ -1,4 +1,5 @@
 import { For, Show, createMemo } from 'solid-js'
+import { Input } from '../components/NativeFields'
 import { nativeEvents } from '../utils/nativeEvents'
 import { TableSort } from './TableSort'
 import { Table } from './Table'
@@ -91,7 +92,7 @@ export function ReadOnlyTable<T, M>(props: {
           <For each={table.getColumns()}>
             {(column) => (
               <label class="check-option">
-                <input
+                <Input
                   type="checkbox"
                   checked={column.getIsVisible()}
                   disabled={column.columnDef?.enableHiding === false}
