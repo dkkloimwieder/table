@@ -1,12 +1,14 @@
 import { Show, createEffect, onCleanup } from 'solid-js'
+import { uiDensity } from '@table/ui'
 import { TableRow } from '../table/Table'
 import { VirtualRows } from '../table/VirtualRows'
 import { createTableVirtualizer } from '../table/createVirtualizer'
-import { QUERY_ROW_HEIGHT } from './fixed-window'
+import type { UIDensity } from '@table/ui'
 import type { NativeTable } from '@tanstack/solid-table/native'
 import type { QueryRecord, QueryWindow } from './types'
 
 export function QueryRows(props: {
+  density?: UIDensity
   table: NativeTable<QueryRecord>
   window?: QueryWindow
   viewport: () => HTMLElement | null
@@ -22,7 +24,9 @@ export function QueryRows(props: {
     get count() {
       return props.window?.totalRows ?? props.table.getRowIds().length
     },
-    rowHeight: QUERY_ROW_HEIGHT,
+    get rowHeight() {
+      return uiDensity(props.density).rowHeight
+    },
     getScrollElement: props.viewport,
     get scrollMargin() {
       const node = props.viewport()

@@ -28,6 +28,33 @@ export function qualificationStages(output, { wamn = false } = {}) {
       'run',
       'test:lib',
     ]),
+    stage('ui-types', ['--filter', '@table/ui', 'run', 'test:types']),
+    stage('ui-styles-types', [
+      'exec',
+      'tsc',
+      '--project',
+      'packages/solid-ui/bench/styles/tsconfig.json',
+    ]),
+    stage('ui-lint', [
+      'exec',
+      'eslint',
+      'packages/solid-ui/src/index.ts',
+      'packages/solid-ui/src/styles/density.ts',
+      'packages/solid-ui/bench/styles/main.ts',
+      'packages/solid-ui/bench/styles/vite.config.ts',
+    ]),
+    stage('ui-styles-build', [
+      'exec',
+      'vite',
+      'build',
+      '--config',
+      'packages/solid-ui/bench/styles/vite.config.ts',
+    ]),
+    stage('ui-styles-browser', [
+      'exec',
+      'node',
+      'packages/solid-ui/bench/styles/run.mjs',
+    ]),
     stage('fixture-types', [...pkg, 'run', 'test:fixtures:types']),
     stage('fixture-lint', [...pkg, 'run', 'test:fixtures:eslint']),
     stage('analytics-server', [

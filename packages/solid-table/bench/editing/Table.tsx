@@ -25,7 +25,6 @@ import type { Component } from 'solid-js'
 import type { JSX } from '@solidjs/web'
 import type { EditingModel } from './model'
 import type { EditColumn } from './createEditing'
-import './style.css'
 
 export type SaveMode = 'row' | 'table'
 export type TableRowAction = {
@@ -847,6 +846,7 @@ export function Table(props: {
   }
   return (
     <section
+      data-ui=""
       class="table-component"
       data-table-scope={props.scope ?? 'root'}
       aria-label={props.title ?? 'Table'}

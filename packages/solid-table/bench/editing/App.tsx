@@ -1,3 +1,5 @@
+import './style.css'
+import { uiScope } from '@table/ui'
 import { For, Show, createSignal, flush, onSettled, untrack } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { Table } from './Table'
@@ -175,7 +177,7 @@ export function App(props: {
     )
   }
   return (
-    <main>
+    <main data-ui-portal-root="" {...uiScope()}>
       <h1>Table</h1>
       <Show when={inspectedRow()}>
         <p role="status" data-row-action-result>

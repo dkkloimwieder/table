@@ -1,3 +1,4 @@
+import { uiScope } from '@table/ui'
 import { render } from '@solidjs/web'
 import {
   OBSERVE,
@@ -11,6 +12,7 @@ import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/na
 import { Table } from './Table'
 import { inventory, sales, sortResult } from './demo-data'
 import { createQueryPageCache } from './page-cache'
+import type { UIDensity } from '@table/ui'
 import type { QueryCacheConfiguration } from './page-cache'
 import type {
   QueryExportRequest,
@@ -27,6 +29,7 @@ let cacheStats:
   | (() => ReturnType<ReturnType<typeof createQueryPageCache>['stats']>)
   | undefined
 let configureExport: ((configuration: ExportConfiguration) => void) | undefined
+let configureDensity: ((density: UIDensity) => void) | undefined
 type ExportConfiguration = {
   mode?: 'csv' | 'capture' | 'none'
   disabled?: boolean
@@ -68,6 +71,7 @@ function stop() {
   dispose = undefined
   publish = undefined
   configureExport = undefined
+  configureDensity = undefined
   refreshServer = undefined
   cacheStats = undefined
   flush()
@@ -85,6 +89,11 @@ function start(
     cacheStats = cache.stats
     onCleanup(cache.clear)
     const [query, setQuery] = createSignal<QueryState>(state)
+    const [density, setDensity] = createSignal<UIDensity>('compact')
+    configureDensity = (value) => {
+      setDensity(value)
+      flush()
+    }
     const [choice, setChoice] = createSignal('sales')
     const [exportConfiguration, setExportConfiguration] =
       createSignal(configuration)
@@ -271,7 +280,7 @@ function start(
       flush()
     }
     return (
-      <main>
+      <main data-ui-portal-root="" {...uiScope(density())}>
         <h1>Query analytics</h1>
         <p>
           The application supplies the result. Display changes affect this table
@@ -300,6 +309,7 @@ function start(
           Run query
         </button>
         <Table
+          density={density()}
           query={query()}
           retry={() =>
             exportConfiguration().server
@@ -412,6 +422,7 @@ async function startServer(cache: QueryCacheConfiguration = {}) {
 }
 
 const api = {
+  configureDensity: (value: UIDensity) => configureDensity?.(value),
   start,
   stop,
   startServer,

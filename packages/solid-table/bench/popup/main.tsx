@@ -1,3 +1,4 @@
+import './style.css'
 import { render } from '@solidjs/web'
 import { mountEditingFixture } from '../editing/fixture'
 import { popupFields } from '../editing/fields'

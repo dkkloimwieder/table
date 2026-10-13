@@ -3,6 +3,7 @@
 This decision defines the generic UI library under Beads epic `table-qp8`.
 The private workspace packages now exist at the paths below.
 Select and Combobox behavior exports exist in `@table/ui-core`.
+Scoped styles and shared density values exist in `@table/ui`.
 Styled controls and shared Table extraction remain planned.
 Follow-up issues implement them in focused changes.
 WAMN is a prospective consumer. Its interface does not define the library API.
@@ -15,7 +16,7 @@ Component subpaths expose behavior without importing presentation CSS.
 For example, `@table/ui-core/select` exposes the owned Select behavior.
 Its vendor directory contains original licenses, provenance, and documented source repairs.
 
-`packages/solid-ui` provides the private scaffold for `@table/ui`.
+`packages/solid-ui` provides private package `@table/ui`.
 It owns styled controls and shared Table presentation.
 The root exports styled controls. `@table/ui/table` exports Table and column controls.
 `@table/ui/virtual` exports the existing virtual engine binding and row presentation.

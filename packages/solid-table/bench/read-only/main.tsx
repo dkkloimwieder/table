@@ -1,8 +1,10 @@
+import { uiScope } from '@table/ui'
 import { render } from '@solidjs/web'
 import { OBSERVE, action, createSignal, flush } from 'solid-js'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
 import { ReadOnlyTable } from '../table/ReadOnlyTable'
-import '../editing/style.css'
+import '@table/ui/styles.css'
+import '../fixture-page.css'
 
 type RecordData = { category: string; name: string; amount: number }
 const textColumn = {
@@ -67,7 +69,7 @@ function start() {
       ],
     })
     return (
-      <main>
+      <main data-ui-portal-root="" {...uiScope()}>
         <h1>Read-only table</h1>
         <ReadOnlyTable table={table} />
       </main>

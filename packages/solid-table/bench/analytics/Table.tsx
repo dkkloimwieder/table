@@ -6,6 +6,7 @@ import {
   createProjection,
   createSignal,
 } from 'solid-js'
+import { uiDensity, uiScope } from '@table/ui'
 import { createTable } from '@tanstack/solid-table/native'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
@@ -13,7 +14,7 @@ import { Table as TablePresentation } from '../table/Table'
 import { TableHeaderName } from '../table/TableHeaderName'
 import { DEFAULT_PREVIEW_LIMIT } from './types'
 import { QueryRows } from './QueryRows'
-import { QUERY_ROW_HEIGHT } from './fixed-window'
+import type { UIDensity } from '@table/ui'
 import type {
   QueryBrowseRequest,
   QueryExportProps,
@@ -25,6 +26,7 @@ import type {
 } from './types'
 
 type QueryDisplayProps = QueryExportProps & {
+  density?: UIDensity
   sorting?: QuerySorting
   onSortingChange?: (request: QueryBrowseRequest) => void
   previewLimit?: number
@@ -71,6 +73,7 @@ export function Table(
       <Show when={scope()} keyed>
         {(_scope) => (
           <ResultTable
+            density={props.density}
             result={result()!}
             available={props.query.status === 'ready'}
             onExport={props.onExport}
@@ -170,11 +173,12 @@ function ResultTable(
     <QueryRows
       table={table}
       window={props.window}
+      density={props.density}
       viewport={() => viewport ?? null}
     />
   )
   return (
-    <div class="analytics-table">
+    <div {...uiScope(props.density)} class="analytics-table">
       <div class="toolbar">
         <Show when={props.onExport}>
           <button
@@ -281,7 +285,9 @@ function ResultTable(
           fallback={<p>Show a column to view or export results.</p>}
         >
           <div
-            style={{ '--query-row-height': `${QUERY_ROW_HEIGHT}px` }}
+            style={{
+              '--ui-row-height': `${uiDensity(props.density).rowHeight}px`,
+            }}
             class={
               props.window ? 'table-scroll virtual-scroll' : 'table-scroll'
             }

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>UI style isolation</title>
+  </head>
+  <body>
+    <main id="unrelated">
+      <h1>Unrelated content</h1>
+      <button id="outside-button">Outside</button><input id="outside-input" />
+      <div class="table-scroll">
+        <table id="outside-table">
+          <tbody>
+            <tr>
+              <td>Outside table</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </main>
+    <section id="light">
+      <button id="light-button">Light</button><input /><textarea></textarea>
+      <div class="table-scroll">
+        <table>
+          <tbody>
+            <tr data-row style="height: var(--ui-row-height)">
+              <td>Compact row</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section id="dark">
+      <button id="dark-button">Dark</button><input />
+      <div class="table-scroll">
+        <table>
+          <tbody>
+            <tr data-row style="height: var(--ui-row-height)">
+              <td>Dark row</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <section id="comfortable">
+      <button>Comfortable</button>
+      <div class="table-scroll">
+        <table>
+          <tbody>
+            <tr data-row style="height: var(--ui-row-height)">
+              <td>Comfortable row</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>

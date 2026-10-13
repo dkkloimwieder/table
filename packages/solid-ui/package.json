@@ -5,6 +5,14 @@
   "type": "module",
   "description": "Generic Solid controls and shared Table presentation.",
   "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts",
+    "./styles.css": "./src/styles/styles.css",
+    "./density": "./src/styles/density.ts"
+  },
+  "sideEffects": [
+    "**/*.css"
+  ],
   "scripts": {
     "test:types": "tsc --project tsconfig.json"
   }

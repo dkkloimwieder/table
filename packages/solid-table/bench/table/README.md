@@ -17,6 +17,8 @@ Column movement, resizing, filters, sorting buttons, and header renaming also li
 The editing and analytics adapters use these shared controls.
 Analytics keeps search and filtering disabled. Its server export includes the complete query, independent of the preview or loaded window.
 
+Applications explicitly import `@table/ui/styles.css` and apply `uiScope()` to their owning wrapper.
+The shared stylesheet contains Table, editor, column, and popup rules. Fixture CSS contains page layout.
 The components remain development examples. They do not add a published UI API.
 
 [Generic UI boundaries](./UI-BOUNDARIES.md) defines the planned private workspace packages,

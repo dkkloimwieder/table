@@ -16651,6 +16651,9 @@ importers:
         specifier: workspace:*
         version: link:../table-core
     devDependencies:
+      '@table/ui':
+        specifier: workspace:*
+        version: link:../solid-ui
       '@solidjs/testing-library':
         specifier: 1.0.0-beta.3
         version: 1.0.0-beta.3(@solidjs/web@2.0.0-rc.14(solid-js@2.0.0-rc.14))(solid-js@2.0.0-rc.14)

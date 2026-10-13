@@ -39,6 +39,7 @@ export function ReadOnlyTable<T, M>(props: {
   )
   return (
     <section
+      data-ui=""
       class="table-component"
       aria-label={props.title ?? 'Read-only table'}
     >

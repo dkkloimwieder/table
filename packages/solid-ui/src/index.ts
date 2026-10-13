@@ -1,2 +1,2 @@
-// Component exports follow the shared presentation migration.
-export {}
+export { UI_DENSITIES, uiDensity, uiScope } from './styles/density'
+export type { UIDensity } from './styles/density'

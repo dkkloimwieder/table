@@ -1,0 +1,55 @@
+@import './components.css';
+
+:where([data-ui]) {
+  font-family: var(
+    --ui-font-family,
+    'DejaVu Sans Mono',
+    'Liberation Mono',
+    'Courier New',
+    monospace
+  );
+  font-size: var(--ui-font-size, 12px);
+  line-height: var(--ui-line-height, 1.45);
+  color-scheme: var(--ui-color-scheme, light);
+  color: var(--ui-text, #191919);
+}
+
+:where([data-ui]),
+:where([data-ui]) * {
+  box-sizing: border-box;
+}
+
+:where([data-ui]) textarea {
+  font: inherit;
+  border: 1px solid var(--ui-control-border, #999);
+  background: var(--ui-surface, white);
+  color: inherit;
+  padding: var(--ui-control-padding-y, 4px) var(--ui-input-padding-x, 6px);
+}
+
+:where([data-ui]) textarea:focus-visible {
+  outline: 2px solid var(--ui-focus, #1657a8);
+  outline-offset: 2px;
+}
+
+:where([data-ui][data-ui-theme='dark']) {
+  --ui-color-scheme: dark;
+  --ui-text: #e8edf4;
+  --ui-surface: #171d27;
+  --ui-muted-surface: #252d3a;
+  --ui-muted-text: #bac4d2;
+  --ui-subtle-text: #9daabc;
+  --ui-border: #515d70;
+  --ui-divider: #3e4859;
+  --ui-control-border: #72829a;
+  --ui-button-border: #72829a;
+  --ui-handle-border: #515d70;
+  --ui-highlight: #263d5d;
+  --ui-hover: #212a37;
+  --ui-focus: #88baff;
+  --ui-error: #ffa69b;
+  --ui-warning-surface: #39301c;
+  --ui-warning-text: #f1d68c;
+  --ui-warning-border: #a78d4d;
+  background: var(--ui-surface);
+}

@@ -8,7 +8,6 @@ import {
 } from 'solid-js'
 import type { PriorityEditorProps } from '../editing/TablePriorityEditor'
 import type { FieldChoice } from '../editing/fields'
-import './style.css'
 
 export function PopupPriorityEditor(props: PriorityEditorProps) {
   const options = createMemo(() => [...props.choices])
@@ -65,7 +64,11 @@ export function PopupPriorityEditor(props: PriorityEditorProps) {
         </Select.Value>
         <span aria-hidden="true">▾</span>
       </Select.Trigger>
-      <Select.Portal>
+      <Select.Portal
+        mount={
+          trigger?.closest<HTMLElement>('[data-ui-portal-root]') ?? undefined
+        }
+      >
         <Select.Content
           ref={(element) => {
             content = element

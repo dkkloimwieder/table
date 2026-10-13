@@ -1,4 +1,5 @@
-@import '../table/style.css';
+@import '@table/ui/styles.css';
+@import '../fixture-page.css';
 main {
   height: 100dvh;
   display: flex;
@@ -67,7 +68,7 @@ details {
   box-shadow: 0 1px #ddd;
 }
 .table-scroll tbody tr {
-  height: var(--query-row-height);
+  height: var(--ui-row-height);
 }
 .table-scroll tbody[aria-hidden] tr {
   height: 0;

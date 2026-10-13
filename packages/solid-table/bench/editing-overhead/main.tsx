@@ -1,3 +1,5 @@
+import '@table/ui/styles.css'
+import '../fixture-page.css'
 import { render } from '@solidjs/web'
 import { action, createRoot, createStore, flush, onCleanup } from 'solid-js'
 import { createEditing } from '../editing/createEditing'

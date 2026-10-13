@@ -164,6 +164,38 @@ async function record(name, work) {
 }
 try {
   await record(
+    'popup inherits live scope themes without changing placement or size',
+    async () => {
+      await page.goto(`${url}?standalone=1`)
+      await page.locator('.popup-trigger').click()
+      const content = page.locator('.popup-content')
+      const before = await content.boundingBox()
+      const color = await content.evaluate(
+        (node) => getComputedStyle(node).backgroundColor,
+      )
+      assert.equal(
+        await content.evaluate(
+          (node) => !!node.closest('[data-ui-portal-root]'),
+        ),
+        true,
+      )
+      await page.evaluate(() => {
+        document.querySelector('main').dataset.uiTheme = 'dark'
+      })
+      assert.notEqual(
+        await content.evaluate(
+          (node) => getComputedStyle(node).backgroundColor,
+        ),
+        color,
+      )
+      assert.deepEqual(await content.boundingBox(), before)
+      await page.evaluate(() => {
+        delete document.querySelector('main').dataset.uiTheme
+      })
+      await press('Escape')
+    },
+  )
+  await record(
     'vendored Combobox opens, filters, and selects through owned input events',
     async () => {
       await page.goto(`${url}?combobox=1`)

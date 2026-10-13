@@ -1,3 +1,4 @@
+import { uiScope } from '@table/ui'
 import { createSignal, flush } from 'solid-js'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
 import { popupFields } from '../editing/fields'
@@ -23,7 +24,7 @@ export function Standalone() {
     }),
   }
   return (
-    <main>
+    <main data-ui-portal-root="" {...uiScope()}>
       <h1>Popup compatibility</h1>
       <div class="standalone-controls">
         <button>Before popup</button>

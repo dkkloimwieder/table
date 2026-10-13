@@ -1,0 +1,33 @@
+:root {
+  font-family: 'DejaVu Sans Mono', 'Liberation Mono', 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color-scheme: light;
+  color: #191919;
+  background: #fff;
+}
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+}
+main {
+  max-width: 1440px;
+  margin: 20px auto;
+  padding: 0 20px;
+}
+h1 {
+  font-size: 20px;
+  margin: 0 0 12px;
+}
+p {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+@media (max-width: 700px) {
+  main {
+    margin: 12px auto;
+    padding: 0 12px;
+  }
+}

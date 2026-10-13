@@ -423,6 +423,63 @@ try {
     await page.evaluate(() => window.analyticsFixture.stop())
     assert.equal(await page.locator('#root').textContent(), '')
   })
+  await test('density drives both virtual geometry and cell styles while theme preserves bounds', async () => {
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await page.evaluate(() => window.analyticsFixture.startServer())
+    await page
+      .getByRole('combobox', { name: 'Example query' })
+      .selectOption('large')
+    await page.getByText('1000 of 100005 rows', { exact: true }).waitFor()
+    await page.locator('tbody tr[data-row]').first().waitFor()
+    await page.getByRole('button', { name: 'Load all' }).click()
+    for (const [density, height] of [
+      ['comfortable', 40],
+      ['compact', 32],
+    ]) {
+      await page.evaluate(
+        (density) => window.analyticsFixture.configureDensity(density),
+        density,
+      )
+      await page.waitForFunction((height) => {
+        const rows = document.querySelectorAll('tbody tr[data-row]')
+        const first = rows[0]?.getBoundingClientRect()
+        const second = rows[1]?.getBoundingClientRect()
+        const extent = document.querySelector('.virtual-scroll')?.scrollHeight
+        return (
+          first &&
+          second &&
+          extent !== undefined &&
+          Math.abs(first.height - height) < 0.5 &&
+          Math.abs(second.y - first.y - height) < 0.5 &&
+          Math.abs(extent - 100005 * height) < 150
+        )
+      }, height)
+      const first = await page
+        .locator('tbody tr[data-row]')
+        .first()
+        .boundingBox()
+      const second = await page
+        .locator('tbody tr[data-row]')
+        .nth(1)
+        .boundingBox()
+      assert.ok(
+        Math.abs(second.y - first.y - height) < 0.5,
+        JSON.stringify({ density, height, first, second }),
+      )
+      const end = await page
+        .locator('.virtual-scroll')
+        .evaluate((node) => node.scrollHeight)
+      assert.ok(Math.abs(end - 100005 * height) < 150)
+    }
+    const bounds = await page.locator('.table-scroll').boundingBox()
+    await page.evaluate(() => {
+      document.querySelector('main').dataset.uiTheme = 'dark'
+    })
+    assert.deepEqual(await page.locator('.table-scroll').boundingBox(), bounds)
+    await page.evaluate(() => {
+      delete document.querySelector('main').dataset.uiTheme
+    })
+  })
   await test('Table fills available screen height for small and empty results', async () => {
     for (const size of [
       { width: 1280, height: 900 },
