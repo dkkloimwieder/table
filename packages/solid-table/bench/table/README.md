@@ -18,3 +18,7 @@ The editing and analytics adapters use these shared controls.
 Analytics keeps search and filtering disabled. Its server export includes the complete query, independent of the preview or loaded window.
 
 The components remain development examples. They do not add a published UI API.
+
+[Generic UI boundaries](./UI-BOUNDARIES.md) defines the planned private workspace packages,
+generic component contracts, styles, and extraction order under Beads epic `table-qp8`.
+Its TypeScript examples compile with `pnpm --filter @tanstack/solid-table test:ui:contracts`.

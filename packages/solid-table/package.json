@@ -75,7 +75,8 @@
     "test:fixtures:eslint": "node scripts/lint-fixtures.mjs",
     "test:build": "publint --strict && node ./scripts/test-native-imports.mjs",
     "build": "rimraf ./dist && tsdown && node ./scripts/build-solid.mjs",
-    "test:ssr": "node ./scripts/test-ssr.mjs"
+    "test:ssr": "node ./scripts/test-ssr.mjs",
+    "test:ui:contracts": "node ./scripts/test-ui-contracts.mjs"
   },
   "dependencies": {
     "@tanstack/store": "^0.11.1",
