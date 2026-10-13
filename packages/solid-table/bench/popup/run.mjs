@@ -10,6 +10,7 @@ import { fileURLToPath } from 'node:url'
 import { loadavg } from 'node:os'
 import { chromium } from '@playwright/test'
 import { choiceCases } from './choice-cases.mjs'
+import { nativeFieldCases } from './native-field-cases.mjs'
 import { fieldConfigurationCases } from '../editing/field-configuration-cases.mjs'
 import { editingCallbackCases } from '../editing/editing-callback-cases.mjs'
 import { applicationRecordCases } from '../editing/application-record-cases.mjs'
@@ -176,6 +177,7 @@ async function record(name, work) {
   }
 }
 try {
+  await nativeFieldCases({ page, url, record, press, settle })
   await choiceCases({ page, url, record, press, settle })
   await record(
     'popup inherits live scope themes without changing placement or size',

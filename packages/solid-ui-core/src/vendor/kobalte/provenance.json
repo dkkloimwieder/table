@@ -418,7 +418,7 @@
     },
     "utils/src/events.ts": {
       "upstreamSha256": "4e45da55ad25b09266222d6f032608305cb29753903c1663752ec0a2f5ee1d61",
-      "localSha256": "02809f775a9819a1e21ab3cdcf31c664e50b39e79ac955800b9f6ac7bedafd01"
+      "localSha256": "96df945c000bdc8c83e50c5edd4097a71a7fd71e1e9b2a4f13711c6a50437cc3"
     },
     "utils/src/get-scroll-parent.ts": {
       "upstreamSha256": "b8fe99527dd8b55979c6ffaf927838b880548ed9c118cdcf8e01a743ed58a18b",

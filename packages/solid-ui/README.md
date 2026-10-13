@@ -94,3 +94,34 @@ The default portal mount uses the nearest `data-ui-portal-root`, then the enclos
 Pass `mount` to choose another host.
 Both controls use the shared compact styles, density variables, and live scope theme.
 The popup fixture uses Select as a Table editor and tests both controls as standalone form fields.
+
+## Native fields
+
+The root and `@table/ui/fields` export Button, IconButton, Input, Textarea, Field, Label, HelpText, FieldError, FieldSet, and InputGroup.
+Each component renders its native HTML element and accepts its standard attributes, children, event handlers, and ref.
+Button defaults to `type="button"`. Use `type="submit"` for native form submission.
+IconButton requires an `aria-label` from the application.
+
+Field groups one text control with its label, help, and error.
+Label follows the control ID, including an explicit or changed Input ID.
+HelpText and FieldError register description IDs while mounted.
+FieldError appears and joins the control description when Field is invalid.
+Input and Textarea combine those IDs with the caller's `aria-describedby`.
+Field supplies default disabled, readonly, required, and invalid states.
+Explicit control attributes override those defaults.
+
+For controlled text, supply `value` and `onValueChange`.
+The callback receives the text and native input event.
+The input restores the supplied value when the application rejects the change.
+Standard `onInput` handlers also work. A prevented input event skips `onValueChange`.
+For native change events, supply `value` and `onChange` instead.
+The browser retains typed text until the change event, then the control restores the value that the application accepts.
+For uncontrolled text, omit `value` and use `defaultValue` when needed.
+The browser owns the value and native form reset.
+
+FieldSet uses native group disabling and accepts a caller-provided legend.
+InputGroup holds a control and arbitrary prefix, suffix, or action children.
+It introduces no extra field state.
+The application owns validation, submission, transport, and persistence.
+The controls use the shared compact styles and owned native event listeners.
+The Table text editor now uses the same Input as the generic form fixture.

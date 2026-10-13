@@ -13,7 +13,8 @@
     "./events": "./src/utils/nativeEvents.ts",
     "./virtual": "./src/virtual/index.ts",
     "./select": "./src/components/Select.tsx",
-    "./combobox": "./src/components/Combobox.tsx"
+    "./combobox": "./src/components/Combobox.tsx",
+    "./fields": "./src/components/NativeFields.tsx"
   },
   "sideEffects": [
     "**/*.css"

@@ -11,6 +11,7 @@ import {
   untrack,
 } from 'solid-js'
 import { Dynamic } from '@solidjs/web'
+import { Input } from '@table/ui/fields'
 import {
   TableColumnMove,
   TableColumnResize,
@@ -757,7 +758,7 @@ export function Table(props: {
                         }
                       />
                     ) : (
-                      <input
+                      <Input
                         data-editor={`${id}/${field}`}
                         aria-label={`${editor.label} ${id}`}
                         aria-describedby={`${domId(`error-${id}-${field}`)} ${domId(`message-${id}`)}`}
@@ -768,27 +769,21 @@ export function Table(props: {
                         }
                         value={editing.drafts[id]?.[field] ?? ''}
                         readonly={editing.drafts[id]?.status === 'pending'}
-                        ref={nativeEvents<HTMLInputElement>({
-                          focus: () => editing.focus(id, field),
-                          input: (event) =>
-                            editing.change(
-                              id,
-                              field,
-                              event.currentTarget.value,
-                            ),
-                          keydown: (event) => {
-                            if (event.isComposing || event.keyCode === 229)
-                              return
-                            if (event.key === 'Enter') {
-                              event.preventDefault()
-                              if (saveMode() === 'table') finish(id, field)
-                              else void save(id, field)
-                            } else if (event.key === 'Escape') {
-                              event.preventDefault()
-                              cancel(id, field)
-                            }
-                          },
-                        })}
+                        onFocus={() => editing.focus(id, field)}
+                        onValueChange={(value) =>
+                          editing.change(id, field, value)
+                        }
+                        onKeyDown={(event) => {
+                          if (event.isComposing || event.keyCode === 229) return
+                          if (event.key === 'Enter') {
+                            event.preventDefault()
+                            if (saveMode() === 'table') finish(id, field)
+                            else void save(id, field)
+                          } else if (event.key === 'Escape') {
+                            event.preventDefault()
+                            cancel(id, field)
+                          }
+                        }}
                       />
                     )}
                   </Show>

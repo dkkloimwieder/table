@@ -1,5 +1,6 @@
 :where([data-ui]) button,
 :where([data-ui]) input,
+:where([data-ui]) textarea,
 :where([data-ui]) select {
   font: inherit;
 }
@@ -20,6 +21,7 @@
 }
 :where([data-ui]) button:focus-visible,
 :where([data-ui]) input:focus-visible,
+:where([data-ui]) textarea:focus-visible,
 :where([data-ui]) select:focus-visible {
   outline: 2px solid var(--ui-focus, #1657a8);
   outline-offset: 2px;
@@ -32,6 +34,7 @@
   outline-offset: 2px;
 }
 :where([data-ui]) input,
+:where([data-ui]) textarea,
 :where([data-ui]) select {
   width: 100%;
   min-width: 0;
@@ -41,10 +44,12 @@
   padding: var(--ui-control-padding-y, 4px) var(--ui-input-padding-x, 6px);
 }
 :where([data-ui]) input[readonly],
+:where([data-ui]) textarea[readonly],
 :where([data-ui]) select:disabled {
   background: var(--ui-muted-surface, #f0f0f0);
 }
 :where([data-ui]) input[aria-invalid='true'],
+:where([data-ui]) textarea[aria-invalid='true'],
 :where([data-ui]) select[aria-invalid='true'] {
   border-color: var(--ui-error, #9d251e);
 }
@@ -686,6 +691,7 @@
 }
 
 :where([data-ui]) input,
+:where([data-ui]) textarea,
 :where([data-ui]) select {
   color: inherit;
 }
@@ -708,4 +714,43 @@
 }
 :where([data-ui]) [data-invalid] {
   border-color: var(--ui-error, #9d251e);
+}
+
+:where([data-ui]) .ui-field {
+  display: grid;
+  gap: var(--ui-gap, 6px);
+}
+:where([data-ui]) .ui-label {
+  font-weight: 650;
+}
+:where([data-ui]) .ui-help {
+  color: var(--ui-muted-text, #555);
+}
+:where([data-ui]) .ui-field-error {
+  color: var(--ui-error, #9d251e);
+}
+:where([data-ui]) .ui-help,
+:where([data-ui]) .ui-field-error {
+  font-size: var(--ui-small-font-size, 11px);
+}
+:where([data-ui]) .ui-field-set {
+  margin: 0;
+  min-width: 0;
+  padding: var(--ui-cell-padding-x, 8px);
+  border: 1px solid var(--ui-border, #ccc);
+}
+:where([data-ui]) .ui-input-group {
+  display: flex;
+  align-items: center;
+  gap: var(--ui-gap, 6px);
+}
+:where([data-ui]) .ui-input-group .ui-input {
+  flex: 1;
+  min-width: 0;
+}
+:where([data-ui]) .ui-icon-button {
+  padding: var(--ui-control-padding-y, 4px);
+}
+:where([data-ui]) .ui-textarea {
+  resize: vertical;
 }

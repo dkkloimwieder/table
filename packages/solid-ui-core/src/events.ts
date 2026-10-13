@@ -1,1 +1,5 @@
-export { callHandler } from './vendor/kobalte/utils/src/events'
+export {
+  callHandler,
+  nativeEventProps,
+  ownedElementEvents,
+} from './ownedEvents'

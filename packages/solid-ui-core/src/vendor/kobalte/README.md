@@ -38,6 +38,8 @@ The hidden select retains missing selected keys for native form submission.
 It reapplies native selection after the browser processes replacement option nodes.
 Select exposes `aria-invalid` on its trigger when its validation state is invalid.
 These repairs do not fetch options or store a separate record cache.
+The event dispatch helper now lives in generic Core source outside this subset.
+Utils re-exports that helper, so native controls reuse it without importing Kobalte modules.
 
 The external scroll registry uses the existing owner repair through a pnpm patch.
 Solid, Solid Primitives, Floating UI, and internationalized number formatting remain external.
