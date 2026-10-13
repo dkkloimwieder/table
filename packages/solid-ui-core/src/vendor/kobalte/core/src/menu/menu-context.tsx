@@ -1,0 +1,64 @@
+import { createContext, useContext } from 'solid-js'
+import type { Accessor } from 'solid-js'
+
+import type { ListState } from '../list/index.ts'
+import type { Placement } from '../popper/utils.ts'
+import type { CollectionItemWithRef } from '../primitives/index.ts'
+import type { FocusStrategy } from '../selection/index.ts'
+import type { GraceIntent, Side } from './utils.ts'
+
+export interface MenuDataSet {
+  'data-expanded': string | undefined
+  'data-closed': string | undefined
+}
+
+export interface MenuContextValue {
+  dataset: Accessor<MenuDataSet>
+  isOpen: Accessor<boolean>
+  contentPresent: Accessor<boolean>
+  currentPlacement: Accessor<Placement>
+  pointerGraceTimeoutId: Accessor<number>
+  autoFocus: Accessor<FocusStrategy | boolean | undefined>
+  listState: Accessor<ListState>
+  parentMenuContext: Accessor<MenuContextValue | undefined>
+  triggerRef: Accessor<HTMLElement | undefined>
+  contentRef: Accessor<HTMLElement | undefined>
+  triggerId: Accessor<string | undefined>
+  contentId: Accessor<string | undefined>
+  setTriggerRef: (el: HTMLElement) => void
+  setContentRef: (el: HTMLElement | undefined) => void
+  open: (focusStrategy: FocusStrategy | boolean) => void
+  close: (recursively?: boolean) => void
+  toggle: (focusStrategy: FocusStrategy | boolean) => void
+  focusContent: () => void
+  onItemEnter: (e: PointerEvent) => void
+  onItemLeave: (e: PointerEvent) => void
+  onTriggerLeave: (e: PointerEvent) => void
+  setPointerDir: (dir: Side) => void
+  setPointerGraceTimeoutId: (id: number) => void
+  setPointerGraceIntent: (intent: GraceIntent | null) => void
+  registerNestedMenu: (element: HTMLElement) => () => void
+  registerItemToParentDomCollection:
+    ((item: CollectionItemWithRef) => () => void) | undefined
+  registerTriggerId: (id: string) => () => void
+  registerContentId: (id: string) => () => void
+  nestedMenus: Accessor<Array<Element>>
+}
+
+export const MenuContext = createContext<MenuContextValue | null>(null)
+
+export function useOptionalMenuContext(): MenuContextValue | undefined {
+  return useContext(MenuContext) ?? undefined
+}
+
+export function useMenuContext() {
+  const context = useOptionalMenuContext()
+
+  if (context === undefined) {
+    throw new Error(
+      '[kobalte]: `useMenuContext` must be used within a `Menu` component',
+    )
+  }
+
+  return context
+}

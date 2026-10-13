@@ -20,7 +20,10 @@
     "./radio-group": "./src/components/RadioGroup.tsx",
     "./dialog": "./src/components/Dialog.tsx",
     "./alert-dialog": "./src/components/AlertDialog.tsx",
-    "./sheet": "./src/components/Sheet.tsx"
+    "./sheet": "./src/components/Sheet.tsx",
+    "./popover": "./src/components/Popover.tsx",
+    "./dropdown-menu": "./src/components/DropdownMenu.tsx",
+    "./tooltip": "./src/components/Tooltip.tsx"
   },
   "sideEffects": [
     "**/*.css"

@@ -1,0 +1,70 @@
+/*
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/6b51339cca0b8344507d3c8e81e7ad05d6e75f9b/packages/@react-aria/separator/src/useSeparator.ts
+ */
+
+import { createSignal, merge, omit } from 'solid-js'
+
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { createTagName } from '../primitives/index.ts'
+import type { Ref } from 'solid-js'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { ValidComponent } from '@solidjs/web'
+import type { Orientation } from '../../../utils/src/index.ts'
+
+export interface SeparatorRootOptions {
+  /** The orientation of the separator. */
+  orientation?: Orientation
+}
+
+export interface SeparatorRootCommonProps<T extends HTMLElement = HTMLElement> {
+  ref: Ref<T>
+}
+
+export interface SeparatorRootRenderProps extends SeparatorRootCommonProps {
+  role: 'separator' | undefined
+  'aria-orientation': 'vertical' | undefined
+  'data-orientation': Orientation | undefined
+}
+
+export type SeparatorRootProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = SeparatorRootOptions & Partial<SeparatorRootCommonProps<ElementOf<T>>>
+
+/**
+ * A separator visually or semantically separates content.
+ */
+export function SeparatorRoot<T extends ValidComponent = 'hr'>(
+  props: PolymorphicProps<T, SeparatorRootProps<T>>,
+) {
+  const [ref, setRef] = createSignal<HTMLElement | undefined>(undefined, {
+    ownedWrite: true,
+  })
+
+  const mergedProps = merge(
+    {
+      orientation: 'horizontal',
+    } as const,
+    props as SeparatorRootProps,
+  )
+
+  const others = omit(mergedProps, 'ref', 'orientation')
+
+  const tagName = createTagName(ref, () => 'hr')
+
+  return (
+    <Polymorphic<SeparatorRootRenderProps>
+      as="hr"
+      ref={[setRef, mergedProps.ref]}
+      role={tagName() !== 'hr' ? 'separator' : undefined}
+      aria-orientation={
+        mergedProps.orientation === 'vertical' ? 'vertical' : undefined
+      }
+      data-orientation={mergedProps.orientation}
+      {...others}
+    />
+  )
+}

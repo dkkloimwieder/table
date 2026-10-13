@@ -1,0 +1,446 @@
+/*
+ * Portions of this file are based on code from ariakit.
+ * MIT Licensed, Copyright (c) Diego Haz.
+ *
+ * Credits to the Ariakit team:
+ * https://github.com/ariakit/ariakit/blob/84e97943ad637a582c01c9b56d880cd95f595737/packages/ariakit/src/tooltip/tooltip.tsx
+ *
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/e67d48d4935b772f915b08f1d695d2ebafb876f0/packages/@react-stately/tooltip/src/useTooltipTriggerState.ts
+ */
+
+import { createPresence } from '@solid-primitives/presence'
+import { isServer } from '@solidjs/web'
+import {
+  createEffect,
+  createMemo,
+  createSignal,
+  createUniqueId,
+  merge,
+  omit,
+  onCleanup,
+  untrack,
+} from 'solid-js'
+import { isPointInPolygon } from '../../../utils/src/index.ts'
+import { Popper } from '../popper/index.tsx'
+import { createDisclosureState, createRegisterId } from '../primitives/index.ts'
+import { TooltipContext } from './tooltip-context.tsx'
+import { getTooltipSafeArea } from './utils.ts'
+import type { TooltipContextValue, TooltipDataSet } from './tooltip-context.tsx'
+import type { Accessor, ParentProps } from 'solid-js'
+import type { PopperRootOptions } from '../popper/index.tsx'
+import type { Placement } from '../popper/utils.ts'
+
+const tooltips: Record<string, (immediate?: boolean) => void> =
+  Object.create(null)
+let warmupOwner: string | undefined
+let cooldownOwner: string | undefined
+let skipOwner: string | undefined
+let tooltipsCounter = 0
+let globalWarmedUp = false
+let globalWarmUpTimeout: number | undefined
+let globalCoolDownTimeout: number | undefined
+let globalSkipDelayTimeout: number | undefined
+
+export interface TooltipRootOptions extends Omit<
+  PopperRootOptions,
+  'anchorRef' | 'contentRef'
+> {
+  /** The controlled open state of the tooltip. */
+  open?: boolean
+
+  /**
+   * The default open state when initially rendered.
+   * Useful when you do not need to control the open state.
+   */
+  defaultOpen?: boolean
+
+  /** Event handler called when the open state of the tooltip changes. */
+  onOpenChange?: (isOpen: boolean) => void
+
+  /** Whether the tooltip should be disabled, independent of the trigger. */
+  disabled?: boolean
+
+  /**
+   * Whether to open the tooltip only when the trigger is focused.
+   * By default, opens for both focus and hover.
+   */
+  triggerOnFocusOnly?: boolean
+
+  /** The duration from when the mouse enters the trigger until the tooltip opens. */
+  openDelay?: number
+
+  /** The duration from when the mouse leaves the trigger or content until the tooltip closes. */
+  closeDelay?: number
+
+  /** The duration from when the mouse leaves the trigger or content and moves to another tooltip trigger or content */
+  skipDelayDuration?: number
+
+  /** Whether to close the tooltip even if the user cursor is inside the safe area between the trigger and tooltip. */
+  ignoreSafeArea?: boolean
+
+  /**
+   * Used to force mounting the tooltip (portal and content) when more control is needed.
+   * Useful when controlling animation with SolidJS animation libraries.
+   */
+  forceMount?: boolean
+
+  /**
+   * A unique identifier for the component.
+   * The id is used to generate id attributes for nested components.
+   * If no id prop is provided, a generated id will be used.
+   */
+  id?: string
+}
+
+export interface TooltipRootProps extends ParentProps<TooltipRootOptions> {}
+
+/**
+ * A popup that displays information related to an element
+ * when the element receives keyboard focus or the mouse hovers over it.
+ */
+export function TooltipRoot(props: TooltipRootProps) {
+  const defaultId = `tooltip-${createUniqueId()}`
+
+  // This is not the DOM id.
+  const tooltipId = `${++tooltipsCounter}`
+
+  const mergedProps = merge(
+    {
+      id: defaultId,
+      openDelay: 700,
+      closeDelay: 300,
+      skipDelayDuration: 300,
+    },
+    props,
+  )
+
+  const others = omit(
+    mergedProps,
+    'id',
+    'open',
+    'defaultOpen',
+    'onOpenChange',
+    'disabled',
+    'triggerOnFocusOnly',
+    'openDelay',
+    'closeDelay',
+    'skipDelayDuration',
+    'ignoreSafeArea',
+    'forceMount',
+    'onCurrentPlacementChange',
+  )
+
+  let closeTimeoutId: number | undefined
+
+  const [contentId, setContentId] = createSignal<string | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+  const [triggerRef, setTriggerRef] = createSignal<HTMLElement | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+  const [contentRef, setContentRef] = createSignal<HTMLElement | undefined>(
+    undefined,
+    { ownedWrite: true },
+  )
+
+  const [currentPlacement, setCurrentPlacement] = createSignal<Placement>(
+    others.placement ?? 'bottom',
+  )
+
+  const disclosureState = createDisclosureState({
+    open: () => mergedProps.open,
+    defaultOpen: () => mergedProps.defaultOpen,
+    onOpenChange: (isOpen) => mergedProps.onOpenChange?.(isOpen),
+  })
+
+  const { isMounted: contentPresent } = createPresence(
+    () => mergedProps.forceMount || disclosureState.isOpen() || undefined,
+    { transitionDuration: 0 },
+  )
+
+  const ensureTooltipEntry = () => {
+    tooltips[tooltipId] = hideTooltip
+  }
+
+  const closeOpenTooltips = () => {
+    for (const hideTooltipId in tooltips) {
+      if (hideTooltipId !== tooltipId) {
+        tooltips[hideTooltipId]?.(true)
+        delete tooltips[hideTooltipId]
+      }
+    }
+  }
+
+  const hideTooltip = (immediate = false) => {
+    if (isServer) {
+      return
+    }
+
+    if (immediate || (mergedProps.closeDelay ?? 0) <= 0) {
+      window.clearTimeout(closeTimeoutId)
+      closeTimeoutId = undefined
+      disclosureState.close()
+    } else if (!closeTimeoutId) {
+      closeTimeoutId = window.setTimeout(() => {
+        closeTimeoutId = undefined
+        untrack(() => disclosureState.close())
+      }, mergedProps.closeDelay)
+    }
+
+    window.clearTimeout(globalWarmUpTimeout)
+    globalWarmUpTimeout = undefined
+
+    if (mergedProps.skipDelayDuration && mergedProps.skipDelayDuration >= 0) {
+      window.clearTimeout(globalSkipDelayTimeout)
+      skipOwner = tooltipId
+      globalSkipDelayTimeout = window.setTimeout(() => {
+        window.clearTimeout(globalSkipDelayTimeout)
+        globalSkipDelayTimeout = undefined
+      }, mergedProps.skipDelayDuration)
+    }
+
+    if (globalWarmedUp) {
+      window.clearTimeout(globalCoolDownTimeout)
+
+      cooldownOwner = tooltipId
+      globalCoolDownTimeout = window.setTimeout(() => {
+        delete tooltips[tooltipId]
+        globalCoolDownTimeout = undefined
+        globalWarmedUp = false
+      }, mergedProps.closeDelay)
+    }
+  }
+
+  const showTooltip = () => {
+    if (isServer) {
+      return
+    }
+
+    clearTimeout(closeTimeoutId)
+    closeTimeoutId = undefined
+    closeOpenTooltips()
+    ensureTooltipEntry()
+    globalWarmedUp = true
+    disclosureState.open()
+
+    window.clearTimeout(globalWarmUpTimeout)
+    globalWarmUpTimeout = undefined
+
+    window.clearTimeout(globalCoolDownTimeout)
+    globalCoolDownTimeout = undefined
+
+    window.clearTimeout(globalSkipDelayTimeout)
+    globalSkipDelayTimeout = undefined
+  }
+
+  const warmupTooltip = () => {
+    if (isServer) {
+      return
+    }
+
+    closeOpenTooltips()
+    ensureTooltipEntry()
+
+    if (!disclosureState.isOpen() && !globalWarmUpTimeout && !globalWarmedUp) {
+      warmupOwner = tooltipId
+      globalWarmUpTimeout = window.setTimeout(() => {
+        globalWarmUpTimeout = undefined
+        globalWarmedUp = true
+        untrack(showTooltip)
+      }, mergedProps.openDelay)
+    } else if (!disclosureState.isOpen()) {
+      showTooltip()
+    }
+  }
+
+  const openTooltip = (immediate = false) => {
+    if (isServer) {
+      return
+    }
+
+    if (
+      !immediate &&
+      mergedProps.openDelay &&
+      mergedProps.openDelay > 0 &&
+      !closeTimeoutId &&
+      !globalSkipDelayTimeout
+    ) {
+      warmupTooltip()
+    } else {
+      showTooltip()
+    }
+  }
+
+  const cancelOpening = () => {
+    if (isServer) {
+      return
+    }
+
+    window.clearTimeout(globalWarmUpTimeout)
+    globalWarmUpTimeout = undefined
+    globalWarmedUp = false
+  }
+
+  const cancelClosing = () => {
+    if (isServer) {
+      return
+    }
+
+    window.clearTimeout(closeTimeoutId)
+    closeTimeoutId = undefined
+  }
+
+  const isTargetOnTooltip = (target: Node | null) => {
+    return (
+      (triggerRef()?.contains(target) ?? false) ||
+      (contentRef()?.contains(target) ?? false)
+    )
+  }
+
+  const getPolygonSafeArea = (placement: Placement) => {
+    const triggerEl = triggerRef()
+    const contentEl = contentRef()
+
+    if (!triggerEl || !contentEl) {
+      return
+    }
+
+    return getTooltipSafeArea(placement, triggerEl, contentEl)
+  }
+
+  const onHoverOutside = (event: PointerEvent) => {
+    const target = event.target as Node | null
+
+    // Don't close if the mouse is moving through valid tooltip element.
+    if (isTargetOnTooltip(target)) {
+      cancelClosing()
+      return
+    }
+
+    if (!mergedProps.ignoreSafeArea) {
+      const polygon = getPolygonSafeArea(currentPlacement())
+
+      // Don't close if the current's event mouse position is inside the polygon safe area.
+      if (
+        polygon &&
+        isPointInPolygon([event.clientX, event.clientY], polygon)
+      ) {
+        cancelClosing()
+        return
+      }
+    }
+
+    // If there's already a scheduled timeout to hide the tooltip, we do nothing.
+    if (closeTimeoutId) {
+      return
+    }
+
+    // Otherwise, hide the tooltip after the close delay.
+    hideTooltip()
+  }
+
+  // Checks whether the mouse is moving outside the tooltip.
+  // If yes, hide the tooltip after the close delay.
+  createEffect(
+    () => disclosureState.isOpen(),
+    (isOpen) => {
+      if (isServer || !isOpen) return
+
+      const doc = document
+      const handler = (event: PointerEvent) =>
+        untrack(() => onHoverOutside(event))
+      doc.addEventListener('pointermove', handler, true)
+      return () => {
+        doc.removeEventListener('pointermove', handler, true)
+      }
+    },
+  )
+
+  // Close the tooltip if the trigger is scrolled.
+  createEffect(
+    () => ({ trigger: triggerRef(), isOpen: disclosureState.isOpen() }),
+    ({ trigger, isOpen }) => {
+      if (!trigger || !isOpen) return
+
+      const handleScroll = (event: Event) => {
+        const target = event.target as HTMLElement
+        if (target.contains(trigger)) {
+          untrack(() => hideTooltip(true))
+        }
+      }
+
+      const win = window
+      win.addEventListener('scroll', handleScroll, { capture: true })
+      return () => {
+        win.removeEventListener('scroll', handleScroll, { capture: true })
+      }
+    },
+  )
+
+  onCleanup(() => {
+    clearTimeout(closeTimeoutId)
+    if (warmupOwner === tooltipId) {
+      clearTimeout(globalWarmUpTimeout)
+      globalWarmUpTimeout = undefined
+      warmupOwner = undefined
+    }
+    if (cooldownOwner === tooltipId) {
+      clearTimeout(globalCoolDownTimeout)
+      globalCoolDownTimeout = undefined
+      cooldownOwner = undefined
+    }
+    if (skipOwner === tooltipId) {
+      clearTimeout(globalSkipDelayTimeout)
+      globalSkipDelayTimeout = undefined
+      skipOwner = undefined
+    }
+    if (!globalCoolDownTimeout && !globalWarmUpTimeout) globalWarmedUp = false
+    const tooltip = tooltips[tooltipId]
+
+    if (tooltip) {
+      delete tooltips[tooltipId]
+    }
+  })
+
+  const dataset: Accessor<TooltipDataSet> = createMemo(() => ({
+    'data-expanded': disclosureState.isOpen() ? '' : undefined,
+    'data-closed': !disclosureState.isOpen() ? '' : undefined,
+  }))
+
+  const context: TooltipContextValue = {
+    dataset,
+    isOpen: disclosureState.isOpen,
+    isDisabled: () => mergedProps.disabled ?? false,
+    triggerOnFocusOnly: () => mergedProps.triggerOnFocusOnly ?? false,
+    contentId,
+    contentPresent,
+    openTooltip,
+    hideTooltip,
+    cancelOpening,
+    generateId: (suffix: string) => `${mergedProps.id}-${suffix}`,
+    registerContentId: createRegisterId(setContentId),
+    isTargetOnTooltip,
+    setTriggerRef,
+    setContentRef,
+  }
+
+  return (
+    <TooltipContext value={context}>
+      <Popper
+        anchorRef={triggerRef}
+        contentRef={contentRef}
+        onCurrentPlacementChange={(value) => {
+          setCurrentPlacement(value)
+          mergedProps.onCurrentPlacementChange?.(value)
+        }}
+        {...others}
+      />
+    </TooltipContext>
+  )
+}

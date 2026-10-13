@@ -1,0 +1,280 @@
+/*
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/5c1920e50d4b2b80c826ca91aff55c97350bf9f9/packages/@react-aria/menu/src/useMenuTrigger.ts
+ */
+
+import { createEffect, createMemo, merge, omit, untrack } from 'solid-js'
+import { callHandler } from '../../../utils/src/index.ts'
+
+import * as Button from '../button/index.tsx'
+import { useLocale } from '../i18n/i18n-provider.tsx'
+import { useOptionalMenubarContext } from '../menubar/menubar-context.tsx'
+import { createTagName } from '../primitives/create-tag-name/index.ts'
+import { useMenuContext } from './menu-context.tsx'
+import { useMenuRootContext } from './menu-root-context.tsx'
+import type { MenuDataSet } from './menu-context.tsx'
+import type { Orientation } from '../../../utils/src/index.ts'
+import type { Component } from 'solid-js'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type { Direction } from '../i18n/utils.ts'
+
+export interface MenuTriggerOptions {}
+
+export interface MenuTriggerCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends Button.ButtonRootCommonProps<T> {
+  id: string
+  onPointerDown: JSX.EventHandlerUnion<T, PointerEvent>
+  onClick: JSX.EventHandlerUnion<T, MouseEvent>
+  onKeyDown: JSX.EventHandlerUnion<T, KeyboardEvent>
+  onMouseOver: JSX.EventHandlerUnion<T, MouseEvent>
+  onFocus: JSX.EventHandlerUnion<T, FocusEvent>
+}
+
+export interface MenuTriggerRenderProps
+  extends MenuTriggerCommonProps, Button.ButtonRootRenderProps, MenuDataSet {
+  role: 'menuitem' | undefined
+  'data-kb-menu-value-trigger': string | undefined
+}
+
+export type MenuTriggerProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = MenuTriggerOptions & Partial<MenuTriggerCommonProps<ElementOf<T>>>
+
+export const MENUBAR_KEYS = {
+  next: (dir: Direction, orientation: Orientation) =>
+    dir === 'ltr'
+      ? orientation === 'horizontal'
+        ? 'ArrowRight'
+        : 'ArrowDown'
+      : orientation === 'horizontal'
+        ? 'ArrowLeft'
+        : 'ArrowUp',
+  previous: (dir: Direction, orientation: Orientation) =>
+    MENUBAR_KEYS.next(dir === 'ltr' ? 'rtl' : 'ltr', orientation),
+}
+
+const MENU_KEYS = {
+  first: (orientation: Orientation) =>
+    orientation === 'horizontal' ? 'ArrowDown' : 'ArrowRight',
+  last: (orientation: Orientation) =>
+    orientation === 'horizontal' ? 'ArrowUp' : 'ArrowLeft',
+}
+
+/**
+ * The button that toggles the menu.
+ */
+export function MenuTrigger<T extends ValidComponent = 'button'>(
+  props: PolymorphicProps<T, MenuTriggerProps<T>>,
+) {
+  const rootContext = useMenuRootContext()
+  const context = useMenuContext()
+  const optionalMenubarContext = useOptionalMenubarContext()
+
+  const { direction } = useLocale()
+
+  const mergedProps = merge(
+    {
+      id: rootContext.generateId('trigger'),
+    },
+    props as MenuTriggerProps,
+  )
+
+  const others = omit(
+    mergedProps,
+    'ref',
+    'id',
+    'disabled',
+    'onPointerDown',
+    'onClick',
+    'onKeyDown',
+    'onMouseOver',
+    'onFocus',
+  )
+
+  let key = () => rootContext.value()
+
+  if (optionalMenubarContext !== undefined) {
+    key = () => rootContext.value() ?? mergedProps.id
+    if (untrack(() => optionalMenubarContext.lastValue()) === undefined)
+      optionalMenubarContext.setLastValue(key)
+  }
+
+  const tagName = createTagName(
+    () => context.triggerRef(),
+    () => 'button',
+  )
+
+  const isNativeLink = createMemo(() => {
+    return (
+      tagName() === 'a' && context.triggerRef()?.getAttribute('href') != null
+    )
+  })
+
+  // When native link focus the trigger instead of the content when current menu is active.
+  createEffect(
+    () => optionalMenubarContext?.value(),
+    (value) => {
+      if (!untrack(isNativeLink)) return
+      if (value === untrack(key)) untrack(() => context.triggerRef())?.focus()
+    },
+  )
+
+  const handleClick = () => {
+    if (optionalMenubarContext !== undefined) {
+      // When opened by click, automatically focus Menubar menus
+      if (!context.isOpen()) {
+        if (!optionalMenubarContext.autoFocusMenu()) {
+          optionalMenubarContext.setAutoFocusMenu(true)
+        }
+        context.open(false)
+      } else {
+        if (optionalMenubarContext.value() === key())
+          optionalMenubarContext.closeMenu()
+      }
+    } else context.toggle(true)
+  }
+
+  const onPointerDown: JSX.EventHandlerUnion<HTMLElement, PointerEvent> = (
+    e,
+  ) => {
+    if (callHandler(e, mergedProps.onPointerDown)) return
+
+    e.currentTarget.dataset.pointerType = e.pointerType
+
+    // For consistency with native, open the select on mouse down (main button), but touch up.
+    if (!mergedProps.disabled && e.pointerType !== 'touch' && e.button === 0) {
+      handleClick()
+    }
+  }
+
+  const onClick: JSX.EventHandlerUnion<HTMLElement, MouseEvent> = (e) => {
+    if (callHandler(e, mergedProps.onClick)) return
+
+    if (!mergedProps.disabled) {
+      if (e.currentTarget.dataset.pointerType === 'touch') handleClick()
+    }
+  }
+
+  const onKeyDown: JSX.EventHandlerUnion<HTMLElement, KeyboardEvent> = (e) => {
+    if (callHandler(e, mergedProps.onKeyDown)) return
+
+    if (mergedProps.disabled) {
+      return
+    }
+
+    if (isNativeLink()) {
+      switch (e.key) {
+        case 'Enter':
+        case ' ':
+          return
+      }
+    }
+
+    // For consistency with native, open the menu on key down.
+    switch (e.key) {
+      case 'Enter':
+      case ' ':
+      case MENU_KEYS.first(rootContext.orientation()):
+        e.stopPropagation()
+        e.preventDefault()
+        e.currentTarget.scrollIntoView({ block: 'nearest' })
+        context.open('first')
+        optionalMenubarContext?.setAutoFocusMenu(true)
+        optionalMenubarContext?.setValue(key)
+        break
+      case MENU_KEYS.last(rootContext.orientation()):
+        e.stopPropagation()
+        e.preventDefault()
+        context.open('last')
+        break
+      case MENUBAR_KEYS.next(direction(), rootContext.orientation()):
+        if (optionalMenubarContext === undefined) break
+        e.stopPropagation()
+        e.preventDefault()
+        optionalMenubarContext.nextMenu()
+        break
+      case MENUBAR_KEYS.previous(direction(), rootContext.orientation()):
+        if (optionalMenubarContext === undefined) break
+        e.stopPropagation()
+        e.preventDefault()
+        optionalMenubarContext.previousMenu()
+        break
+    }
+  }
+
+  const onMouseOver: JSX.EventHandlerUnion<HTMLElement, MouseEvent> = (e) => {
+    callHandler(e, mergedProps.onMouseOver)
+
+    // Skip touch event
+    if (context.triggerRef()?.dataset.pointerType === 'touch') return
+
+    // When one of the menubar menus is open, automatically open others on trigger hover
+    if (
+      !mergedProps.disabled &&
+      optionalMenubarContext !== undefined &&
+      optionalMenubarContext.value() !== undefined
+    ) {
+      optionalMenubarContext.setValue(key)
+    }
+  }
+
+  const onFocus: JSX.EventHandlerUnion<HTMLElement, FocusEvent> = (e) => {
+    callHandler(e, mergedProps.onFocus)
+
+    if (
+      optionalMenubarContext !== undefined &&
+      e.currentTarget.dataset.pointerType !== 'touch'
+    )
+      optionalMenubarContext.setValue(key)
+  }
+
+  createEffect(
+    () => mergedProps.id,
+    (id) => context.registerTriggerId(id),
+  )
+
+  return (
+    <Button.Root<
+      Component<
+        Omit<
+          MenuTriggerRenderProps,
+          Exclude<keyof Button.ButtonRootRenderProps, 'role'>
+        >
+      >
+    >
+      ref={[context.setTriggerRef, mergedProps.ref]}
+      data-kb-menu-value-trigger={rootContext.value()}
+      id={mergedProps.id}
+      disabled={mergedProps.disabled}
+      aria-haspopup="true"
+      aria-expanded={context.isOpen() ? 'true' : 'false'}
+      aria-controls={context.isOpen() ? context.contentId() : undefined}
+      data-highlighted={
+        key() !== undefined && optionalMenubarContext?.value() === key()
+          ? true
+          : undefined
+      }
+      tabindex={
+        optionalMenubarContext !== undefined
+          ? optionalMenubarContext.value() === key() ||
+            optionalMenubarContext.lastValue() === key()
+            ? 0
+            : -1
+          : undefined
+      }
+      onPointerDown={onPointerDown}
+      onMouseOver={onMouseOver}
+      onClick={onClick}
+      onKeyDown={onKeyDown}
+      onFocus={onFocus}
+      role={optionalMenubarContext !== undefined ? 'menuitem' : undefined}
+      {...context.dataset()}
+      {...others}
+    />
+  )
+}

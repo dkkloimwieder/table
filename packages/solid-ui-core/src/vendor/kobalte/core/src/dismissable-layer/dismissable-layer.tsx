@@ -126,44 +126,50 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
     }
   }
 
-  const shouldExcludeElement = (element: Element) => {
-    if (!ref()) {
-      return false
-    }
+  const shouldExcludeElement = (element: Element) =>
+    untrack(() => {
+      if (!ref()) {
+        return false
+      }
 
-    return (
-      props.excludedElements?.some((node) => node()?.contains(element)) ||
-      [...nestedLayers].some((layer) => layer.contains(element))
-    )
-  }
+      return (
+        props.excludedElements?.some((node) => node()?.contains(element)) ||
+        [...nestedLayers].some((layer) => layer.contains(element))
+      )
+    })
 
-  const onPointerDownOutside = (e: PointerDownOutsideEvent) => {
-    if (untrack(() => props.enabled === false)) return
-    if (!ref() || layerStack.isBelowPointerBlockingLayer(ref()!)) {
-      return
-    }
+  const onPointerDownOutside = (e: PointerDownOutsideEvent) =>
+    untrack(() => {
+      if (untrack(() => props.enabled === false)) return
+      if (!ref() || layerStack.isBelowPointerBlockingLayer(ref()!)) {
+        return
+      }
 
-    if (!props.bypassTopMostLayerCheck && !layerStack.isTopMostLayer(ref()!)) {
-      return
-    }
+      if (
+        !props.bypassTopMostLayerCheck &&
+        !layerStack.isTopMostLayer(ref()!)
+      ) {
+        return
+      }
 
-    props.onPointerDownOutside?.(e)
-    props.onInteractOutside?.(e)
+      props.onPointerDownOutside?.(e)
+      props.onInteractOutside?.(e)
 
-    if (!e.defaultPrevented) {
-      props.onDismiss?.()
-    }
-  }
+      if (!e.defaultPrevented) {
+        props.onDismiss?.()
+      }
+    })
 
-  const onFocusOutside = (e: FocusOutsideEvent) => {
-    if (untrack(() => props.enabled === false)) return
-    props.onFocusOutside?.(e)
-    props.onInteractOutside?.(e)
+  const onFocusOutside = (e: FocusOutsideEvent) =>
+    untrack(() => {
+      if (untrack(() => props.enabled === false)) return
+      props.onFocusOutside?.(e)
+      props.onInteractOutside?.(e)
 
-    if (!e.defaultPrevented) {
-      props.onDismiss?.()
-    }
-  }
+      if (!e.defaultPrevented) {
+        props.onDismiss?.()
+      }
+    })
 
   const interactOutsideRef = interactOutside({
     shouldExcludeElement,
@@ -252,6 +258,7 @@ export function DismissableLayer<T extends ValidComponent = 'div'>(
     <DismissableLayerContext value={context}>
       <Polymorphic<JSX.HTMLAttributes<HTMLElement>>
         {...attributes}
+        data-kb-top-layer={props.enabled === false ? undefined : ''}
         as={props.as ?? 'div'}
         ref={[
           setRef,

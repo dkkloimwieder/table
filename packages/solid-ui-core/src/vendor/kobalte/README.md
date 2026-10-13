@@ -1,6 +1,6 @@
 # Owned Kobalte subset
 
-This directory contains 152 source modules for the owned controls and their shared Kobalte Core and Utils dependencies.
+This directory contains 204 source modules for the owned controls and their shared Kobalte Core and Utils dependencies.
 The origin is revision `e9d426d438b7c9ea0cc81bd1133831a20cd5fcae` from the Kobalte `solid2` branch.
 `provenance.json` records the original and local SHA-256 for each source and license.
 The copied originals match archive SHA-256 `c07f47331a9aee20f69e2e55d81454f0b48976e2e6e98551da2b27a9169c6f70`.
@@ -75,3 +75,23 @@ When source changes, update its local hash after review.
 Keep original hashes unchanged unless the upstream revision changes.
 Runtime preparation never downloads source.
 The fuller update procedure and subset cost audit remain under Beads `table-qp8.1.3`.
+
+## Contextual controls
+
+Popover, DropdownMenu, and Tooltip share the existing Popper and dismissable layer.
+Popover and menu scroll locks follow open state, including force-mounted content.
+Closed content releases its dismissal layer.
+Native Polymorphic elements use the full owned event registry, including pointer entry and exit.
+Trigger and item handlers respect caller events that prevent the default action.
+Focus callbacks use untracked reads and respect caller focus restoration.
+Submenu refs retain direct callback arrays. Escape closes the current menu before its parent.
+Menu item close timers and submenu grace timers cancel on disposal.
+Tooltip uses a typed plain registry and cancels its owned delay timers on disposal.
+Tooltip timer and document callbacks use untracked imperative reads.
+These components contain no application commands or services.
+
+Nonmodal Popover and menu focus restoration use the external focus restore primitive.
+Popover initial focus and menu focus strategies wait for mounted content and cancel that work on closure.
+Selectable collections also cancel their deferred initial focus on disposal.
+Enabled dismissable layers expose the shared accessibility exemption for nested modal content.
+Menu Escape handling runs before list navigation consumes the key.

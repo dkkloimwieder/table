@@ -1,0 +1,43 @@
+import { merge } from 'solid-js'
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { useMenuContext } from './menu-context.tsx'
+import type { Element } from 'solid-js'
+
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { MenuDataSet } from './menu-context.tsx'
+import type { ValidComponent } from '@solidjs/web'
+
+export interface MenuIconOptions {}
+
+export interface MenuIconCommonProps<_T extends HTMLElement = HTMLElement> {
+  children: Element
+}
+
+export interface MenuIconRenderProps extends MenuIconCommonProps, MenuDataSet {
+  'aria-hidden': 'true'
+}
+
+export type MenuIconProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = MenuIconOptions & Partial<MenuIconCommonProps<ElementOf<T>>>
+
+/**
+ * A small icon often displayed inside the menu trigger as a visual affordance for the fact it can be open.
+ * It renders a `▼` by default, but you can use your own icon by providing a `children`.
+ */
+export function MenuIcon<T extends ValidComponent = 'span'>(
+  props: PolymorphicProps<T, MenuIconProps<T>>,
+) {
+  const context = useMenuContext()
+
+  const mergedProps = merge({ children: '▼' }, props as MenuIconProps)
+
+  return (
+    <Polymorphic<MenuIconRenderProps>
+      as="span"
+      aria-hidden="true"
+      {...context.dataset()}
+      {...mergedProps}
+    />
+  )
+}

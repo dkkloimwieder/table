@@ -1,0 +1,55 @@
+import { createEffect, merge, omit } from 'solid-js'
+
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { usePopoverContext } from './popover-context.tsx'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { PopoverDataSet } from './popover-context.tsx'
+import type { ValidComponent } from '@solidjs/web'
+
+export interface PopoverDescriptionOptions {}
+
+export interface PopoverDescriptionCommonProps<
+  _T extends HTMLElement = HTMLElement,
+> {
+  id: string
+}
+
+export interface PopoverDescriptionRenderProps
+  extends PopoverDescriptionCommonProps, PopoverDataSet {}
+
+export type PopoverDescriptionProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = PopoverDescriptionOptions &
+  Partial<PopoverDescriptionCommonProps<ElementOf<T>>>
+
+/**
+ * An optional accessible description to be announced when the popover is open.
+ */
+export function PopoverDescription<T extends ValidComponent = 'p'>(
+  props: PolymorphicProps<T, PopoverDescriptionProps<T>>,
+) {
+  const context = usePopoverContext()
+
+  const mergedProps = merge(
+    {
+      id: context.generateId('description'),
+    },
+    props as PopoverDescriptionProps,
+  )
+
+  const others = omit(mergedProps, 'id')
+
+  createEffect(
+    () => mergedProps.id,
+    (id) => context.registerDescriptionId(id),
+  )
+
+  return (
+    <Polymorphic<PopoverDescriptionRenderProps>
+      as="p"
+      id={mergedProps.id}
+      {...context.dataset()}
+      {...others}
+    />
+  )
+}

@@ -1,14 +1,10 @@
-import {
-  ownedSelectEvents,
-  selectEventProps,
-} from '../../../../../ownedEvents.ts'
-import {
-  type ComponentProps,
-  Dynamic,
-  type JSX,
-  type ValidComponent,
-} from '@solidjs/web'
+import { Dynamic } from '@solidjs/web'
 import { omit, untrack } from 'solid-js'
+import {
+  nativeEventProps,
+  ownedElementEvents,
+} from '../../../../../ownedEvents.ts'
+import type { ComponentProps, JSX, ValidComponent } from '@solidjs/web'
 
 /* -------------------------------------------------------------------------------------------------
  * Polymorphic
@@ -83,8 +79,8 @@ export function Polymorphic<RenderProps>(
     return <Dynamic {...others} component={props.as} />
   }
   const nativeProps = others as JSX.HTMLAttributes<HTMLElement>
-  const attributes = omit(nativeProps, 'ref', ...selectEventProps)
-  const events = ownedSelectEvents(nativeProps)
+  const attributes = omit(nativeProps, 'ref', ...nativeEventProps)
+  const events = ownedElementEvents(nativeProps)
   // Refs bind at element creation. Keep this one-time callback read explicit.
   const forwardedRef = untrack(() => nativeProps.ref)
   return (

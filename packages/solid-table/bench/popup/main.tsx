@@ -10,8 +10,22 @@ import { ComboboxSmoke } from './ComboboxSmoke'
 import { NativeFieldsFixture } from './NativeFieldsFixture'
 import { BooleanControls } from './BooleanControls'
 import { DialogControls } from './DialogControls'
+import { OverlayControls } from './OverlayControls'
 
-if (new URLSearchParams(location.search).has('dialogs')) {
+if (new URLSearchParams(location.search).has('overlays')) {
+  const dispose = render(
+    () => <OverlayControls />,
+    document.getElementById('root')!,
+  )
+  // eslint-disable-next-line require-yield -- Use the qualified synchronous runtime disposal path.
+  const cleanup = action(function* () {
+    dispose()
+  })
+  window.overlayFixture.stop = () => {
+    cleanup()
+    flush()
+  }
+} else if (new URLSearchParams(location.search).has('dialogs')) {
   const dispose = render(
     () => <DialogControls />,
     document.getElementById('root')!,

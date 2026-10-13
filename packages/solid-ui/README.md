@@ -186,3 +186,35 @@ Sheet shares the same Root, focus, dismissal, portal, and scroll behavior as Dia
 Its Content accepts `side`: `left`, `right`, `top`, or `bottom`.
 The default side is `right`.
 All four presentations use the shared compact tokens and stay within the viewport.
+
+## Popover, DropdownMenu, and Tooltip
+
+The root exports Popover, DropdownMenu, and Tooltip.
+Their `popover`, `dropdown-menu`, and `tooltip` subpaths export styled parts and types.
+Each Root accepts controlled `open` and `onOpenChange` or uncontrolled `defaultOpen`.
+The application owns every menu action through Item `onSelect`.
+Disabled items skip selection and keyboard navigation.
+Use `closeOnSelect={false}` to keep a menu open after an action.
+CheckboxItem and RadioGroup expose generic checked values and callbacks.
+Sub, SubTrigger, and SubContent compose nested menus with keyboard and pointer access.
+
+Popover composes Trigger, Portal, Content, Title, Description, and CloseButton.
+Its default mode is nonmodal. Set `modal` to trap focus and lock outside interaction.
+Escape closes the current popup and restores its trigger focus.
+Outside interaction in nonmodal mode preserves the selected focus target.
+Force-mounted closed content keeps its DOM and releases document locks.
+Styled controls preserve custom `as` elements, refs, and prevented caller events.
+
+Tooltip composes Trigger, Portal, and Content for descriptive text.
+Hover opens after `openDelay`. Keyboard focus opens immediately.
+Use `triggerOnFocusOnly` to limit opening to focus.
+Use `disabled` to suppress trigger behavior.
+Tooltip links the trigger description to its content while open.
+Escape dismisses it. Disposal cancels pending delay work.
+
+The three controls share owned positioning with external Floating UI.
+Root accepts placement, gutter, flip, and slide configuration from that implementation.
+Portal uses the trigger's style scope or `data-ui-portal-root`.
+Pass an explicit `mount` for another host.
+Applications import the shared stylesheet and own popup content, action policy, and asynchronous operations.
+The fixture at `?overlays=1` tests these controls in source, distribution, and development builds.

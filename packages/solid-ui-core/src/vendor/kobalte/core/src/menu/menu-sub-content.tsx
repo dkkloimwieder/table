@@ -1,0 +1,138 @@
+/*
+ * Portions of this file are based on code from radix-ui-primitives.
+ * MIT Licensed, Copyright (c) 2022 WorkOS.
+ *
+ * Credits to the Radix UI team:
+ * https://github.com/radix-ui/primitives/blob/81b25f4b40c54f72aeb106ca0e64e1e09655153e/packages/react/menu/src/Menu.tsx
+ */
+
+import { omit } from 'solid-js'
+import { callHandler } from '../../../utils/src/index.ts'
+import { useLocale } from '../i18n/index.tsx'
+import { MenuContentBase } from './menu-content-base.tsx'
+import { useMenuContext } from './menu-context.tsx'
+import { useMenuRootContext } from './menu-root-context.tsx'
+import type {
+  MenuContentBaseCommonProps,
+  MenuContentBaseOptions,
+  MenuContentBaseRenderProps,
+} from './menu-content-base.tsx'
+import type { Orientation } from '../../../utils/src/index.ts'
+import type { Component } from 'solid-js'
+import type { Direction } from '../i18n/index.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type { FocusOutsideEvent } from '@solid-primitives/interaction'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+
+export interface MenuSubContentOptions extends Omit<
+  MenuContentBaseOptions,
+  'onOpenAutoFocus' | 'onCloseAutoFocus'
+> {}
+
+export interface MenuSubContentCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends MenuContentBaseCommonProps<T> {
+  onKeyDown: JSX.EventHandlerUnion<T, KeyboardEvent>
+}
+
+export interface MenuSubContentRenderProps
+  extends MenuSubContentCommonProps, MenuContentBaseRenderProps {}
+
+export type MenuSubContentProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = MenuSubContentOptions & Partial<MenuSubContentCommonProps<ElementOf<T>>>
+
+const SUB_CLOSE_KEYS = {
+  close: (dir: Direction, orientation: Orientation) => {
+    if (dir === 'ltr') {
+      return [orientation === 'horizontal' ? 'ArrowLeft' : 'ArrowUp']
+    }
+    return [orientation === 'horizontal' ? 'ArrowRight' : 'ArrowDown']
+  },
+}
+
+/**
+ * The component that pops out when a submenu is open.
+ */
+export function MenuSubContent<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, MenuSubContentProps<T>>,
+) {
+  const context = useMenuContext()
+  const rootContext = useMenuRootContext()
+
+  const others = omit(
+    props as MenuSubContentProps,
+    'onFocusOutside',
+    'onKeyDown',
+  )
+
+  const { direction } = useLocale()
+
+  const onOpenAutoFocus = (e: Event) => {
+    // when opening a submenu, focus content for keyboard users only (handled by `MenuSubTrigger`).
+    e.preventDefault()
+  }
+
+  const onCloseAutoFocus = (e: Event) => {
+    // The menu might close because of focusing another menu item in the parent menu.
+    // We don't want it to refocus the trigger in that case, so we handle trigger focus ourselves.
+    e.preventDefault()
+  }
+
+  const onFocusOutside = (e: FocusOutsideEvent) => {
+    props.onFocusOutside?.(e)
+
+    const target = e.target as HTMLElement | null
+
+    // We prevent closing when the trigger is focused to avoid triggering a re-open animation
+    // on pointer interaction.
+    if (!context.triggerRef()?.contains(target)) {
+      context.close()
+    }
+  }
+
+  const onKeyDown: JSX.EventHandlerUnion<HTMLElement, KeyboardEvent> = (e) => {
+    callHandler(
+      e,
+      props.onKeyDown as
+        JSX.EventHandlerUnion<HTMLElement, KeyboardEvent> | undefined,
+    )
+
+    // Submenu key events bubble through portals. We only care about keys in this menu.
+    const isKeyDownInside = e.currentTarget.contains(e.target)
+    const isCloseKey = SUB_CLOSE_KEYS.close(
+      direction(),
+      rootContext.orientation(),
+    ).includes(e.key)
+    const isSubMenu = context.parentMenuContext() != null
+
+    if (isKeyDownInside && isCloseKey && isSubMenu) {
+      // Mark this key as handled so `MenuContentBase`'s own `onKeyDown`
+      // (composed on the same element) doesn't also treat it as a
+      // menubar "previous menu" key. It can't rely on `context.isOpen()`
+      // or the `data-closed` attribute for this, since `context.close()`
+      // only queues a signal write that isn't reflected until the next
+      // microtask flush.
+      e.preventDefault()
+
+      context.close()
+
+      // We focus manually because we prevented it in `onCloseAutoFocus`.
+      context.triggerRef()?.focus({ preventScroll: true })
+    }
+  }
+
+  return (
+    <MenuContentBase<
+      Component<
+        Omit<MenuSubContentRenderProps, keyof MenuContentBaseRenderProps>
+      >
+    >
+      onOpenAutoFocus={onOpenAutoFocus}
+      onCloseAutoFocus={onCloseAutoFocus}
+      onFocusOutside={onFocusOutside}
+      onKeyDown={onKeyDown}
+      {...others}
+    />
+  )
+}

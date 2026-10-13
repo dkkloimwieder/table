@@ -1,18 +1,19 @@
 # Owned component behavior
 
 `@table/ui-core` is a private workspace package for generic component behavior.
-The first source pass contains Select, Combobox, Checkbox, Switch, RadioGroup, Dialog, AlertDialog, and their required Kobalte Core and Utils modules.
+The source contains Select, Combobox, Checkbox, Switch, RadioGroup, Dialog, AlertDialog, Popover, DropdownMenu, and Tooltip.
+It also contains their required Kobalte Core and Utils modules.
 The component subpaths export the owned Kobalte behavior API.
 Styled generic controls follow in the presentation package.
 
 ## Source layout
 
-`src/controls` contains the choice, boolean, radio, and dialog behavior entry points.
+`src/controls` contains the choice, boolean, radio, dialog, and popup behavior entry points.
 `src/vendor/kobalte` contains the selected upstream Core and Utils source.
 Vendor source keeps its licenses, original hashes, and local repair history.
 Shared Kobalte modules have one owner and one copy.
 
-The first source pass includes Select, Combobox, Checkbox, Switch, RadioGroup, Dialog, AlertDialog, and their required shared modules.
+The first source pass includes Select, Combobox, Checkbox, Switch, RadioGroup, Dialog, AlertDialog, Popover, DropdownMenu, Tooltip, and their required shared modules.
 Further control families expand that subset through their existing Beads issues.
 Existing selection, focus, accessibility, and custom element behavior remain part of the source contract.
 This pass does not redesign those behaviors.
@@ -45,7 +46,7 @@ From the repository root, run:
 pnpm --filter @table/ui-core test:types
 ```
 
-This command tests all owned source, including both behavior entry points.
+This command tests all owned source, including every behavior entry point.
 Strict types, unused declarations, return paths, and indexed accesses remain checked.
 The fixture lint command still checks its application code for unused declarations.
 

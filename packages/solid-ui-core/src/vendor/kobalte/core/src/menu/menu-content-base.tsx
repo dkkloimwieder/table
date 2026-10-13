@@ -1,0 +1,406 @@
+/*
+ * Portions of this file are based on code from radix-ui-primitives.
+ * MIT Licensed, Copyright (c) 2022 WorkOS.
+ *
+ * Credits to the Radix UI team:
+ * https://github.com/radix-ui/primitives/blob/81b25f4b40c54f72aeb106ca0e64e1e09655153e/packages/react/menu/src/Menu.tsx
+ */
+
+import { createFocusRestore, createFocusTrap } from '@solid-primitives/focus'
+
+import { combineStyle } from '@solid-primitives/props'
+import {
+  Show,
+  createEffect,
+  createSignal,
+  createUniqueId,
+  merge,
+  omit,
+  onCleanup,
+  untrack,
+} from 'solid-js'
+import { callHandler, composeEventHandlers } from '../../../utils/src/index.ts'
+import { DismissableLayer } from '../dismissable-layer/index.ts'
+import { useLocale } from '../i18n/i18n-provider.tsx'
+import { createSelectableList } from '../list/index.ts'
+import { useOptionalMenubarContext } from '../menubar/menubar-context.tsx'
+import { useOptionalNavigationMenuContext } from '../navigation-menu/navigation-menu-context.tsx'
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { Popper } from '../popper/index.tsx'
+import { useMenuContext } from './menu-context.tsx'
+import { useMenuRootContext } from './menu-root-context.tsx'
+import { MENUBAR_KEYS } from './menu-trigger.tsx'
+import type { MenuDataSet } from './menu-context.tsx'
+import type { Orientation } from '../../../utils/src/index.ts'
+import type { Component, Ref } from 'solid-js'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { DismissableLayerRenderProps } from '../dismissable-layer/index.ts'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type {
+  FocusOutsideEvent,
+  InteractOutsideEvent,
+  PointerDownOutsideEvent,
+} from '@solid-primitives/interaction'
+
+export interface MenuContentBaseOptions {
+  /**
+   * Event handler called when focus moves into the component after opening.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onOpenAutoFocus?: (event: Event) => void
+
+  /**
+   * Event handler called when focus moves to the trigger after closing.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onCloseAutoFocus?: (event: Event) => void
+
+  /**
+   * Event handler called when the escape key is down.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onEscapeKeyDown?: (event: KeyboardEvent) => void
+
+  /**
+   * Event handler called when a pointer event occurs outside the bounds of the component.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onPointerDownOutside?: (event: PointerDownOutsideEvent) => void
+
+  /**
+   * Event handler called when the focus moves outside the bounds of the component.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onFocusOutside?: (event: FocusOutsideEvent) => void
+
+  /**
+   * Event handler called when an interaction (pointer or focus event) happens outside the bounds of the component.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onInteractOutside?: (event: InteractOutsideEvent) => void
+}
+
+export interface MenuContentBaseCommonProps<
+  T extends HTMLElement = HTMLElement,
+> {
+  id: string
+  ref: Ref<T>
+  onPointerEnter: JSX.EventHandlerUnion<T, PointerEvent>
+  onPointerMove: JSX.EventHandlerUnion<T, PointerEvent>
+  onKeyDown: JSX.EventHandlerUnion<T, KeyboardEvent>
+  onMouseDown: JSX.EventHandlerUnion<T, MouseEvent>
+  onFocusIn: JSX.EventHandlerUnion<T, FocusEvent>
+  onFocusOut: JSX.EventHandlerUnion<T, FocusEvent>
+  style?: JSX.CSSProperties | string
+}
+
+export interface MenuContentBaseRenderProps
+  extends MenuContentBaseCommonProps, DismissableLayerRenderProps, MenuDataSet {
+  role: 'menu'
+  tabindex: number | undefined
+  'aria-labelledby': string | undefined
+  'data-orientation': Orientation
+}
+
+export type MenuContentBaseProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = MenuContentBaseOptions & Partial<MenuContentBaseCommonProps<ElementOf<T>>>
+
+export function MenuContentBase<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, MenuContentBaseProps<T>>,
+) {
+  const [ref, setRef] = createSignal<HTMLElement | undefined>(undefined, {
+    ownedWrite: true,
+  })
+
+  const rootContext = useMenuRootContext()
+  const context = useMenuContext()
+  const optionalMenubarContext = useOptionalMenubarContext()
+  const optionalNavigationMenuContext = useOptionalNavigationMenuContext()
+
+  const { direction } = useLocale()
+
+  const mergedProps = merge(
+    {
+      id: rootContext.generateId(`content-${createUniqueId()}`),
+    },
+    props as MenuContentBaseProps,
+  )
+
+  const others = omit(
+    mergedProps,
+    'ref',
+    'id',
+    'style',
+    'onOpenAutoFocus',
+    'onCloseAutoFocus',
+    'onEscapeKeyDown',
+    'onFocusOutside',
+    'onPointerEnter',
+    'onPointerMove',
+    'onKeyDown',
+    'onMouseDown',
+    'onFocusIn',
+    'onFocusOut',
+  )
+
+  let lastPointerX = 0
+
+  // Only the root menu can apply "modal" behavior (block pointer-events and trap focus).
+  const isRootModalContent = () => {
+    return (
+      context.parentMenuContext() == null &&
+      optionalMenubarContext === undefined &&
+      rootContext.isModal()
+    )
+  }
+
+  const selectableList = createSelectableList(
+    {
+      selectionManager: context.listState().selectionManager,
+      collection: context.listState().collection,
+      autoFocus: context.autoFocus,
+      deferAutoFocus: true, // ensure all menu items are mounted and collection is not empty before trying to autofocus.
+      shouldFocusWrap: true,
+      disallowTypeAhead: () =>
+        !context.listState().selectionManager().isFocused(),
+      orientation: () =>
+        rootContext.orientation() === 'horizontal' ? 'vertical' : 'horizontal',
+    },
+    ref,
+  )
+
+  createFocusTrap({
+    element: ref,
+    enabled: () => isRootModalContent() && context.isOpen(),
+    onInitialFocus: (event) => {
+      if (optionalMenubarContext === undefined)
+        untrack(() => mergedProps.onOpenAutoFocus?.(event))
+    },
+    onFinalFocus: (event) =>
+      untrack(() => mergedProps.onCloseAutoFocus?.(event)),
+  })
+
+  createFocusRestore({
+    element: ref,
+    enabled: () => context.isOpen() && !isRootModalContent(),
+    onFinalFocus: (event) =>
+      untrack(() => mergedProps.onCloseAutoFocus?.(event)),
+  })
+
+  const onKeyDown: JSX.EventHandlerUnion<HTMLElement, KeyboardEvent> = (e) => {
+    // Submenu key events bubble through portals. We only care about keys in this menu.
+    if (!e.currentTarget.contains(e.target)) {
+      return
+    }
+
+    // Menus should not be navigated using tab key, so we prevent it.
+    if (e.key === 'Tab' && context.isOpen()) {
+      e.preventDefault()
+    }
+
+    if (optionalMenubarContext !== undefined) {
+      if (e.currentTarget.getAttribute('aria-haspopup') !== 'true')
+        switch (e.key) {
+          case MENUBAR_KEYS.next(direction(), rootContext.orientation()):
+            e.stopPropagation()
+            e.preventDefault()
+            context.close(true)
+            optionalMenubarContext.setAutoFocusMenu(true)
+            optionalMenubarContext.nextMenu()
+
+            break
+          case MENUBAR_KEYS.previous(direction(), rootContext.orientation()):
+            // Skip if a nested handler (e.g. `MenuSubContent`'s own
+            // "close submenu" key handling) already handled this key.
+            // `context.isOpen()`/`data-closed` can't be used here because
+            // they reflect a signal write queued by that same handler,
+            // which isn't visible until the next microtask flush.
+            if (
+              e.currentTarget.hasAttribute('data-closed') ||
+              e.defaultPrevented
+            )
+              break
+
+            e.stopPropagation()
+            e.preventDefault()
+            context.close(true)
+            optionalMenubarContext.setAutoFocusMenu(true)
+            optionalMenubarContext.previousMenu()
+            break
+        }
+    }
+  }
+
+  const onEscapeKeyDown = (e: KeyboardEvent) => {
+    mergedProps.onEscapeKeyDown?.(e)
+    if (e.defaultPrevented) return
+
+    optionalMenubarContext?.setAutoFocusMenu(false)
+
+    // `createSelectableList` prevent escape key down,
+    // which prevent our `onDismiss` in `DismissableLayer` to run,
+    // so we force "close on escape" here.
+    context.close()
+    context.triggerRef()?.focus({ preventScroll: true })
+  }
+
+  const onFocusOutside = (e: FocusOutsideEvent) => {
+    mergedProps.onFocusOutside?.(e)
+
+    if (rootContext.isModal()) {
+      // When focus is trapped, a `focusout` event may still happen.
+      // We make sure we don't trigger our `onDismiss` in such case.
+      e.preventDefault()
+    }
+  }
+
+  const onPointerEnter: JSX.EventHandlerUnion<HTMLElement, PointerEvent> = (
+    e,
+  ) => {
+    callHandler(e, mergedProps.onPointerEnter)
+
+    if (!context.isOpen()) {
+      return
+    }
+
+    // Remove visual focus from parent menu content.
+    context
+      .parentMenuContext()
+      ?.listState()
+      .selectionManager()
+      .setFocused(false)
+    context
+      .parentMenuContext()
+      ?.listState()
+      .selectionManager()
+      .setFocusedKey(undefined)
+  }
+
+  const onPointerMove: JSX.EventHandlerUnion<HTMLElement, PointerEvent> = (
+    e,
+  ) => {
+    callHandler(e, mergedProps.onPointerMove)
+
+    if (e.pointerType !== 'mouse') {
+      return
+    }
+
+    const target = e.target as HTMLElement
+    const pointerXHasChanged = lastPointerX !== e.clientX
+
+    // We don't use `event.movementX` for this check because Safari will
+    // always return `0` on a pointer event.
+    if (e.currentTarget.contains(target) && pointerXHasChanged) {
+      context.setPointerDir(e.clientX > lastPointerX ? 'right' : 'left')
+      lastPointerX = e.clientX
+    }
+  }
+
+  createEffect(
+    () => mergedProps.id,
+    (id) => context.registerContentId(id),
+  )
+
+  onCleanup(() => context.setContentRef(undefined))
+
+  const commonAttributes: Omit<MenuContentBaseRenderProps, keyof MenuDataSet> =
+    {
+      ref: [
+        (el) => {
+          context.setContentRef(el)
+          setRef(el)
+        },
+        mergedProps.ref,
+      ],
+      role: 'menu',
+      get id() {
+        return mergedProps.id
+      },
+      get tabindex() {
+        return selectableList.tabIndex()
+      },
+      get 'aria-labelledby'() {
+        return context.triggerId()
+      },
+      onKeyDown: (event) => {
+        if (callHandler(event, mergedProps.onKeyDown)) return
+        if (event.key === 'Escape') {
+          onEscapeKeyDown(event)
+          event.preventDefault()
+          event.stopPropagation()
+          return
+        }
+        callHandler(event, selectableList.onKeyDown)
+        onKeyDown(event)
+      },
+      onMouseDown: composeEventHandlers([
+        mergedProps.onMouseDown,
+        selectableList.onMouseDown,
+      ]),
+      onFocusIn: composeEventHandlers([
+        mergedProps.onFocusIn,
+        selectableList.onFocusIn,
+      ]),
+      onFocusOut: composeEventHandlers([
+        mergedProps.onFocusOut,
+        selectableList.onFocusOut,
+      ]),
+      onPointerEnter,
+      onPointerMove,
+      get 'data-orientation'() {
+        return rootContext.orientation()
+      },
+    }
+
+  return (
+    <Show when={context.contentPresent()}>
+      <Show
+        when={
+          optionalNavigationMenuContext === undefined ||
+          context.parentMenuContext() != null
+        }
+        fallback={
+          <Polymorphic<MenuContentBaseRenderProps>
+            as="div"
+            {...context.dataset()}
+            {...commonAttributes}
+            {...others}
+          />
+        }
+      >
+        <Popper.Positioner>
+          <DismissableLayer<
+            Component<
+              Omit<
+                MenuContentBaseRenderProps,
+                keyof DismissableLayerRenderProps
+              >
+            >
+          >
+            enabled={context.isOpen()}
+            disableOutsidePointerEvents={
+              isRootModalContent() && context.isOpen()
+            }
+            excludedElements={[context.triggerRef]}
+            bypassTopMostLayerCheck
+            style={combineStyle(
+              {
+                '--kb-menu-content-transform-origin':
+                  'var(--kb-popper-content-transform-origin)',
+                position: 'relative',
+              },
+              mergedProps.style,
+            )}
+            onEscapeKeyDown={onEscapeKeyDown}
+            onFocusOutside={onFocusOutside}
+            onDismiss={context.close}
+            {...context.dataset()}
+            {...commonAttributes}
+            {...others}
+          />
+        </Popper.Positioner>
+      </Show>
+    </Show>
+  )
+}

@@ -1,0 +1,89 @@
+import { merge, omit } from 'solid-js'
+
+import { createToggleState } from '../primitives/index.ts'
+import { MenuItemBase } from './menu-item-base.tsx'
+import type {
+  MenuItemBaseCommonProps,
+  MenuItemBaseOptions,
+  MenuItemBaseRenderProps,
+} from './menu-item-base.tsx'
+import type { Component } from 'solid-js'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { ValidComponent } from '@solidjs/web'
+
+export interface MenuCheckboxItemOptions extends Omit<
+  MenuItemBaseOptions,
+  'checked'
+> {
+  /** The controlled checked state of the menu item checkbox. */
+  checked?: boolean
+
+  /**
+   * The default checked state when initially rendered.
+   * Useful when you do not need to control the checked state.
+   */
+  defaultChecked?: boolean
+
+  /** Event handler called when the checked state of the menu item checkbox changes. */
+  onChange?: (isChecked: boolean) => void
+}
+
+export interface MenuCheckboxItemCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends MenuItemBaseCommonProps<T> {}
+
+export interface MenuCheckboxItemRenderProps
+  extends MenuCheckboxItemCommonProps, MenuItemBaseRenderProps {
+  role: 'menuitemcheckbox'
+}
+
+export type MenuCheckboxItemProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = MenuCheckboxItemOptions & Partial<MenuCheckboxItemCommonProps<ElementOf<T>>>
+
+/**
+ * An item that can be controlled and rendered like a checkbox.
+ */
+export function MenuCheckboxItem<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, MenuCheckboxItemProps<T>>,
+) {
+  const mergedProps = merge(
+    {
+      closeOnSelect: false,
+    },
+    props as MenuCheckboxItemProps,
+  )
+
+  const others = omit(
+    mergedProps,
+    'checked',
+    'defaultChecked',
+    'onChange',
+    'onSelect',
+  )
+
+  const state = createToggleState({
+    isSelected: () => mergedProps.checked,
+    defaultIsSelected: () => mergedProps.defaultChecked,
+    onSelectedChange: (checked) => mergedProps.onChange?.(checked),
+    isDisabled: () => others.disabled,
+  })
+
+  const onSelect = () => {
+    mergedProps.onSelect?.()
+    state.toggle()
+  }
+
+  return (
+    <MenuItemBase<
+      Component<
+        Omit<MenuCheckboxItemRenderProps, keyof MenuItemBaseRenderProps>
+      >
+    >
+      role="menuitemcheckbox"
+      checked={state.isSelected()}
+      onSelect={onSelect}
+      {...others}
+    />
+  )
+}

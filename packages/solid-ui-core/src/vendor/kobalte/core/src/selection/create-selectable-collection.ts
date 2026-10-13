@@ -6,13 +6,10 @@
  * https://github.com/adobe/react-spectrum/blob/8f2f2acb3d5850382ebe631f055f88c704aa7d17/packages/@react-aria/selection/src/useSelectableCollection.ts
  */
 
-import { callHandler, type Orientation } from '../../../utils/src/index.ts'
 import { createEventListener } from '@solid-primitives/event-listener'
 import { getFocusableTreeWalker } from '@solid-primitives/focus'
-import { access, type MaybeAccessor } from '@solid-primitives/utils'
-import type { JSX } from '@solidjs/web'
+import { access } from '@solid-primitives/utils'
 import {
-  type Accessor,
   createEffect,
   createMemo,
   flush,
@@ -20,15 +17,20 @@ import {
   onSettled,
   untrack,
 } from 'solid-js'
+import { callHandler } from '../../../utils/src/index.ts'
 
 import { useLocale } from '../i18n/index.tsx'
 import { createTypeSelect } from './create-type-select.ts'
+import { isCtrlKeyPressed, isNonContiguousSelectionModifier } from './utils.ts'
+import type { Orientation } from '../../../utils/src/index.ts'
+import type { Accessor } from 'solid-js'
+import type { MaybeAccessor } from '@solid-primitives/utils'
+import type { JSX } from '@solidjs/web'
 import type {
   FocusStrategy,
   KeyboardDelegate,
   MultipleSelectionManager,
 } from './types.ts'
-import { isCtrlKeyPressed, isNonContiguousSelectionModifier } from './utils.ts'
 
 interface CreateSelectableCollectionProps {
   /** An interface for reading and updating multiple selection state. */
@@ -144,7 +146,7 @@ export function createSelectableCollection<
 
     // Keyboard events bubble through portals. Don't handle keyboard events
     // for elements outside the collection (e.g. menus).
-    if (!refEl?.contains(e.target as HTMLElement)) {
+    if (!refEl?.contains(e.target)) {
       return
     }
 
@@ -504,13 +506,16 @@ export function createSelectableCollection<
     }
   }
 
-  onSettled(() => {
-    if (mergedProps.deferAutoFocus) {
-      setTimeout(tryAutoFocus, 0) // TODO: does this work EVERY time ?
-    } else {
+  onSettled(() =>
+    untrack(() => {
+      if (mergedProps.deferAutoFocus) {
+        const timer = setTimeout(() => untrack(tryAutoFocus), 0)
+        return () => clearTimeout(timer)
+      }
       tryAutoFocus()
-    }
-  })
+      return undefined
+    }),
+  )
 
   // If not virtualized, scroll the focused element into view when the focusedKey changes.
   // When virtualized, the Virtualizer should handle this.

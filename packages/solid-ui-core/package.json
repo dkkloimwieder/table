@@ -20,7 +20,10 @@
     "./switch": "./src/controls/switch.ts",
     "./radio-group": "./src/controls/radio-group.ts",
     "./dialog": "./src/controls/dialog.ts",
-    "./alert-dialog": "./src/controls/alert-dialog.ts"
+    "./alert-dialog": "./src/controls/alert-dialog.ts",
+    "./popover": "./src/controls/popover.ts",
+    "./dropdown-menu": "./src/controls/dropdown-menu.ts",
+    "./tooltip": "./src/controls/tooltip.ts"
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",

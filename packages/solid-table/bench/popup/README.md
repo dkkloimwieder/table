@@ -112,3 +112,10 @@ The basic Combobox case covers input filtering, selection, and Escape.
 The controlled choice cases cover the shared styled controls.
 Deeper component coverage remains separate work after the first source pass.
 This fixture does not run the upstream Kobalte test suite.
+
+## Contextual controls
+
+Open `?overlays=1` for Popover, DropdownMenu, and Tooltip.
+The fixture uses application-owned state and action callbacks.
+It also places Popover and DropdownMenu inside a modal Dialog.
+Browser cases cover pointer and keyboard input, nested menus, focus, placement, force-mounted content, and disposal.

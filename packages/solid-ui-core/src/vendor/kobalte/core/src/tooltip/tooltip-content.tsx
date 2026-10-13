@@ -1,0 +1,110 @@
+/*
+ * Portions of this file are based on code from radix-ui-primitives.
+ * MIT Licensed, Copyright (c) 2022 WorkOS.
+ *
+ * Credits to the Radix UI team:
+ * https://github.com/radix-ui/primitives/blob/1b05a8e35cf35f3020484979086d70aefbaf4095/packages/react/tooltip/src/Tooltip.tsx
+ */
+
+import { combineStyle } from '@solid-primitives/props'
+import { Show, createEffect, merge, omit } from 'solid-js'
+import { DismissableLayer } from '../dismissable-layer/index.ts'
+import { Popper } from '../popper/index.tsx'
+import { useTooltipContext } from './tooltip-context.tsx'
+import type { TooltipDataSet } from './tooltip-context.tsx'
+import type { Component, Ref } from 'solid-js'
+import type { DismissableLayerRenderProps } from '../dismissable-layer/index.ts'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type { PointerDownOutsideEvent } from '@solid-primitives/interaction'
+
+export interface TooltipContentOptions {
+  /**
+   * Event handler called when the escape key is down.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onEscapeKeyDown?: (event: KeyboardEvent) => void
+
+  /**
+   * Event handler called when a pointer event occurs outside the bounds of the component.
+   * It can be prevented by calling `event.preventDefault`.
+   */
+  onPointerDownOutside?: (event: PointerDownOutsideEvent) => void
+}
+
+export interface TooltipContentCommonProps<
+  T extends HTMLElement = HTMLElement,
+> {
+  id: string
+  ref: Ref<T>
+  style?: JSX.CSSProperties | string
+}
+
+export interface TooltipContentRenderProps
+  extends
+    TooltipContentCommonProps,
+    DismissableLayerRenderProps,
+    TooltipDataSet {
+  role: 'tooltip'
+}
+
+export type TooltipContentProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = TooltipContentOptions & Partial<TooltipContentCommonProps<ElementOf<T>>>
+
+/**
+ * Contains the content to be rendered when the tooltip is open.
+ */
+export function TooltipContent<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, TooltipContentProps<T>>,
+) {
+  const context = useTooltipContext()
+
+  const mergedProps = merge(
+    {
+      id: context.generateId('content'),
+    },
+    props as TooltipContentProps,
+  )
+
+  const others = omit(mergedProps, 'ref', 'style')
+
+  createEffect(
+    () => others.id,
+    (id) => context.registerContentId(id),
+  )
+
+  return (
+    <Show when={context.contentPresent()}>
+      <Popper.Positioner>
+        <DismissableLayer<
+          Component<
+            Omit<TooltipContentRenderProps, keyof DismissableLayerRenderProps>
+          >
+        >
+          ref={[
+            (el: HTMLElement) => {
+              context.setContentRef(el)
+            },
+            mergedProps.ref,
+          ]}
+          role="tooltip"
+          enabled={context.isOpen()}
+          disableOutsidePointerEvents={false}
+          style={combineStyle(
+            {
+              '--kb-tooltip-content-transform-origin':
+                'var(--kb-popper-content-transform-origin)',
+              position: 'relative',
+            },
+            mergedProps.style,
+          )}
+          onFocusOutside={(e) => e.preventDefault()}
+          onDismiss={() => context.hideTooltip(true)}
+          {...context.dataset()}
+          {...others}
+        />
+      </Popper.Positioner>
+    </Show>
+  )
+}

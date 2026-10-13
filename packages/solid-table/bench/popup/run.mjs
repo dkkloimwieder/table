@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { overlayCases } from './overlay-cases.mjs'
 import { dialogCases } from './dialog-cases.mjs'
 import { booleanCases } from './boolean-cases.mjs'
 import { createServer } from 'node:http'
@@ -179,6 +180,7 @@ async function record(name, work) {
   }
 }
 try {
+  await overlayCases({ page, url, record, press, settle })
   await dialogCases({ page, url, record, press, settle })
   await booleanCases({ page, url, record, press, settle })
   await nativeFieldCases({ page, url, record, press, settle })

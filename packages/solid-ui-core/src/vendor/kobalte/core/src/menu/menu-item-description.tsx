@@ -1,0 +1,64 @@
+/*
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/b35d5c02fe900badccd0cf1a8f23bb593419f238/packages/@react-aria/listbox/src/useOption.ts
+ */
+
+import { createEffect, merge, omit } from 'solid-js'
+
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { useMenuItemContext } from './menu-item.context.tsx'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { MenuItemDataSet } from './menu-item.context.tsx'
+import type { ValidComponent } from '@solidjs/web'
+
+export interface MenuItemDescriptionOptions {}
+
+export interface MenuItemDescriptionCommonProps<
+  _T extends HTMLElement = HTMLElement,
+> {
+  id: string
+}
+
+export interface MenuItemDescriptionRenderProps
+  extends MenuItemDescriptionCommonProps, MenuItemDataSet {}
+
+export type MenuItemDescriptionProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = MenuItemDescriptionOptions &
+  Partial<MenuItemDescriptionCommonProps<ElementOf<T>>>
+
+/**
+ * An optional accessible description to be announced for the menu item.
+ * Useful for menu items that have more complex content (e.g. icons, multiple lines of text, etc.)
+ */
+export function MenuItemDescription<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, MenuItemDescriptionProps<T>>,
+) {
+  const context = useMenuItemContext()
+
+  const mergedProps = merge(
+    {
+      id: context.generateId('description'),
+    },
+    props as MenuItemDescriptionProps,
+  )
+
+  const others = omit(mergedProps, 'id')
+
+  createEffect(
+    () => mergedProps.id,
+    (id) => context.registerDescription(id),
+  )
+
+  return (
+    <Polymorphic<MenuItemDescriptionRenderProps>
+      as="div"
+      id={mergedProps.id}
+      {...context.dataset()}
+      {...others}
+    />
+  )
+}

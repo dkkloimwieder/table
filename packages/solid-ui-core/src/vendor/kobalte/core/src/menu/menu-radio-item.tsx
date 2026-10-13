@@ -1,0 +1,68 @@
+import { merge, omit } from 'solid-js'
+
+import { MenuItemBase } from './menu-item-base.tsx'
+import { useMenuRadioGroupContext } from './menu-radio-group-context.tsx'
+import type {
+  MenuItemBaseCommonProps,
+  MenuItemBaseOptions,
+  MenuItemBaseRenderProps,
+} from './menu-item-base.tsx'
+import type { Component } from 'solid-js'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { ValidComponent } from '@solidjs/web'
+
+export interface MenuRadioItemOptions<TValue = string> extends Omit<
+  MenuItemBaseOptions,
+  'checked' | 'indeterminate'
+> {
+  /** The value of the menu item radio. */
+  value: TValue
+}
+
+export interface MenuRadioItemCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends MenuItemBaseCommonProps<T> {}
+
+export interface MenuRadioItemRenderProps
+  extends MenuRadioItemCommonProps, MenuItemBaseRenderProps {
+  role: 'menuitemradio'
+}
+
+export type MenuRadioItemProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+  TValue = string,
+> = MenuRadioItemOptions<TValue> &
+  Partial<MenuRadioItemCommonProps<ElementOf<T>>>
+
+/**
+ * An item that can be controlled and rendered like a radio.
+ */
+export function MenuRadioItem<
+  TValue = string,
+  T extends ValidComponent = 'div',
+>(props: PolymorphicProps<T, MenuRadioItemProps<T, TValue>>) {
+  const context = useMenuRadioGroupContext<TValue>()
+
+  const mergedProps = merge(
+    { closeOnSelect: false },
+    props as MenuRadioItemProps<T, TValue>,
+  )
+
+  const others = omit(mergedProps, 'value', 'onSelect')
+
+  const onSelect = () => {
+    mergedProps.onSelect?.()
+    context.setSelectedValue(mergedProps.value)
+  }
+
+  return (
+    <MenuItemBase<
+      Component<Omit<MenuRadioItemRenderProps, keyof MenuItemBaseRenderProps>>
+    >
+      role="menuitemradio"
+      checked={context.isSelectedValue(mergedProps.value)}
+      onSelect={onSelect}
+      {...others}
+    />
+  )
+}

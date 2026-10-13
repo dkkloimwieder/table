@@ -1,0 +1,44 @@
+import { MenuItemBase } from './menu-item-base.tsx'
+import type {
+  MenuItemBaseCommonProps,
+  MenuItemBaseOptions,
+  MenuItemBaseRenderProps,
+} from './menu-item-base.tsx'
+import type { ValidComponent } from '@solidjs/web'
+import type { Component } from 'solid-js'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+
+export interface MenuItemOptions extends Omit<
+  MenuItemBaseOptions,
+  'checked' | 'indeterminate'
+> {}
+
+export interface MenuItemCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends MenuItemBaseCommonProps<T> {}
+
+export interface MenuItemRenderProps
+  extends MenuItemCommonProps, MenuItemBaseRenderProps {
+  role: 'menuitem'
+}
+
+export type MenuItemProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = MenuItemOptions & Partial<MenuItemCommonProps<ElementOf<T>>>
+
+/**
+ * An item of the menu.
+ */
+export function MenuItem<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, MenuItemProps<T>>,
+) {
+  return (
+    <MenuItemBase<
+      Component<Omit<MenuItemRenderProps, keyof MenuItemBaseRenderProps>>
+    >
+      role="menuitem"
+      closeOnSelect
+      {...(props as MenuItemProps)}
+    />
+  )
+}

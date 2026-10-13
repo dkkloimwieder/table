@@ -1,0 +1,68 @@
+/*
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/e6808d1b5e80cef7af7e63974f658043593b2e1e/packages/@react-aria/menu/src/useMenuSection.ts
+ */
+
+import { createSignal, createUniqueId, merge } from 'solid-js'
+
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { createRegisterId } from '../primitives/index.ts'
+import { MenuGroupContext } from './menu-group-context.tsx'
+import { useMenuRootContext } from './menu-root-context.tsx'
+import type { MenuGroupContextValue } from './menu-group-context.tsx'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { ValidComponent } from '@solidjs/web'
+
+export interface MenuGroupOptions {}
+
+export interface MenuGroupCommonProps<_T extends HTMLElement = HTMLElement> {
+  id: string
+}
+
+export interface MenuGroupRenderProps extends MenuGroupCommonProps {
+  role: 'group'
+  'aria-labelledby': string | undefined
+}
+
+export type MenuGroupProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = MenuGroupOptions & Partial<MenuGroupCommonProps<ElementOf<T>>>
+
+/**
+ * A container used to group multiple `Menu.Item`s.
+ */
+export function MenuGroup<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, MenuGroupProps<T>>,
+) {
+  const rootContext = useMenuRootContext()
+
+  const mergedProps = merge(
+    {
+      id: rootContext.generateId(`group-${createUniqueId()}`),
+    },
+    props as MenuGroupProps,
+  )
+
+  const [labelId, setLabelId] = createSignal<string | undefined>(undefined, {
+    ownedWrite: true,
+  })
+
+  const context: MenuGroupContextValue = {
+    generateId: (suffix: string) => `${mergedProps.id}-${suffix}`,
+    registerLabelId: createRegisterId(setLabelId),
+  }
+
+  return (
+    <MenuGroupContext value={context}>
+      <Polymorphic<MenuGroupRenderProps>
+        as="div"
+        role="group"
+        aria-labelledby={labelId()}
+        {...mergedProps}
+      />
+    </MenuGroupContext>
+  )
+}
