@@ -1,5 +1,5 @@
 import { createEffect, createMemo, createUniqueId, onSettled } from 'solid-js'
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 
 /** Controlled width input. Pointer movement updates the rendered column. */
 export function TableColumnResize(props: {

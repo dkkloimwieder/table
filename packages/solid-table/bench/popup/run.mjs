@@ -50,6 +50,18 @@ const server = createServer(async (request, response) => {
 if (!process.env.BENCH_URL) {
   const modules = JSON.parse(await readFile(assets + 'modules.json', 'utf8'))
   assert.ok(
+    modules.some((id) => id.includes('/solid-ui/src/table/Table.tsx')),
+    'fixture uses shared UI Table source',
+  )
+  assert.ok(
+    !modules.some(
+      (id) =>
+        id.includes('/solid-table/bench/table/') &&
+        /\/(Table[^/]*|ReadOnlyTable)\.tsx$/.test(id),
+    ),
+    'fixture has no duplicate Table source',
+  )
+  assert.ok(
     modules.some((id) =>
       id.includes('/solid-ui-core/src/vendor/kobalte/core/src/select/'),
     ),

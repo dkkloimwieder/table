@@ -4,7 +4,8 @@ This decision defines the generic UI library under Beads epic `table-qp8`.
 The private workspace packages now exist at the paths below.
 Select and Combobox behavior exports exist in `@table/ui-core`.
 Scoped styles and shared density values exist in `@table/ui`.
-Styled controls and shared Table extraction remain planned.
+Shared Table and column exports exist in `@table/ui/table`.
+Styled controls and virtual extraction remain planned.
 Follow-up issues implement them in focused changes.
 WAMN is a prospective consumer. Its interface does not define the library API.
 
@@ -33,15 +34,15 @@ Both new packages remain private during extraction.
 
 Applications import `@table/ui`, the native engine, and external Solid Primitives as needed.
 `@table/ui` imports `@table/ui-core` for control behavior.
-Its Table subpath imports `@tanstack/solid-table/native`.
+Its Table subpath uses native engine types and caller-owned Table objects.
 Its virtual subpath owns the existing vendored virtual engine and one Solid binding.
 `@table/ui-core` imports external Solid, Solid Primitives, and Floating UI.
 It does not import Table presentation.
 
 Neither library package imports application models, demo transports, generated screens, or WAMN modules.
 Examples import the library. The library never imports examples.
-The current `nativeEvents` helper still lives in an example directory.
-Extraction must remove that reverse dependency before exposing library components.
+The canonical `nativeEvents` helper lives in `@table/ui/events`.
+The example helper re-exports this implementation. Library source has no example imports.
 
 Solid and Solid Primitives remain external dependencies.
 Floating UI also remains external in the initial scope.
@@ -135,13 +136,12 @@ Editing uses shared cells and controls with application-provided composition.
 The application owns drafts, validation, revisions, save rules, conflicts, permissions, and row actions.
 The application also owns saved view persistence.
 
-The existing renderer remains the extraction baseline.
-This example uses current imports because the planned component exports do not exist yet.
-The extraction task will replace these imports with supported package exports.
+The existing renderer now lives in the private UI package.
+This example uses its supported Table export.
 
 ```tsx
 import type { NativeTable } from '@tanstack/solid-table/native'
-import { ReadOnlyTable } from './ReadOnlyTable'
+import { ReadOnlyTable } from '@table/ui/table'
 
 export function Results<Row, Metadata>(props: {
   table: NativeTable<Row, Metadata>

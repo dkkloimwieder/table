@@ -1,8 +1,8 @@
 import { uiScope } from '@table/ui'
 import { render } from '@solidjs/web'
 import { OBSERVE, action, createSignal, flush } from 'solid-js'
+import { ReadOnlyTable } from '@table/ui/table'
 import { createTable, nativeAggregations } from '@tanstack/solid-table/native'
-import { ReadOnlyTable } from '../table/ReadOnlyTable'
 import '@table/ui/styles.css'
 import '../fixture-page.css'
 

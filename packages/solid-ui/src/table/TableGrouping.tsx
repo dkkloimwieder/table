@@ -1,5 +1,5 @@
 import { For, Show, onSettled } from 'solid-js'
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 import type { NativeTable } from '@tanstack/solid-table/native'
 
 export function TableGrouping<T, M>(props: {

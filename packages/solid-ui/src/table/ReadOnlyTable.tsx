@@ -1,5 +1,5 @@
 import { For, Show, createMemo } from 'solid-js'
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 import { TableSort } from './TableSort'
 import { Table } from './Table'
 import { TableFilter } from './TableFilter'

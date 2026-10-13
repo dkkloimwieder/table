@@ -72,6 +72,7 @@
     "@faker-js/faker": "^10.6.0",
     "@playwright/test": "^1.63.0",
     "@size-limit/preset-small-lib": "^13.1.1",
+    "@table/ui": "workspace:*",
     "@tanstack/eslint-config": "0.4.0",
     "@tanstack/intent": "^0.4.0",
     "@tanstack/typedoc-config": "0.3.4",

@@ -1,5 +1,5 @@
 import { createEffect, createUniqueId, onSettled } from 'solid-js'
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 
 export type ColumnDestination = { id: string; side: 'before' | 'after' }
 

@@ -1,5 +1,5 @@
 import { Show, createSignal, onSettled } from 'solid-js'
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 import { TableSort } from './TableSort'
 
 export function TableHeaderName(props: {

@@ -11,14 +11,18 @@ import {
   untrack,
 } from 'solid-js'
 import { Dynamic } from '@solidjs/web'
-import { TableSort } from '../table/TableSort'
+import {
+  TableColumnMove,
+  TableColumnResize,
+  TableFilter,
+  TableGrouping,
+  TableHeaderFilter,
+  Table as TablePresentation,
+  TableRow,
+  TableSort,
+  moveColumn,
+} from '@table/ui/table'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import { Table as TablePresentation, TableRow } from '../table/Table'
-import { TableFilter } from '../table/TableFilter'
-import { TableHeaderFilter } from '../table/TableHeaderFilter'
-import { TableGrouping } from '../table/TableGrouping'
-import { TableColumnResize } from '../table/TableColumnResize'
-import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
 import { TablePriorityEditor } from './TablePriorityEditor'
 import type { PriorityEditorProps } from './TablePriorityEditor'
 import type { Component } from 'solid-js'

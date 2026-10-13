@@ -49,7 +49,7 @@ External state changes update the controls without another filter store.
 The fixture uses CSS for colors, spacing, and drag handles.
 The `details` prop supplies sub-table callbacks and content. Its icon-only toggle occupies a narrow first column.
 Changed fields stay highlighted. The fixture keeps edit descriptions available to screen readers without visible row status text.
-`../table/TableFilter.tsx` accepts a value and change callback, so a parent can compose its own filter panel.
+`TableFilter` from `@table/ui/table` accepts a value and change callback, so a parent can compose its own filter panel.
 
 The parent owns named views and storage through the existing controlled Table API.
 Records, drafts, and pending requests remain separate from view configuration.
@@ -330,7 +330,7 @@ The handle exposes its label and current pixel width through a vertical ARIA sep
 
 Display options can hide resize controls independently of header filters and sorting. Hiding controls preserves current widths.
 Resizing remains available when local record processing is disabled.
-`../table/TableColumnResize.tsx` receives a width, bounds, and a change callback. It owns the gesture listeners.
+`TableColumnResize` from `@table/ui/table` receives a width, bounds, and a change callback. It owns the gesture listeners.
 The Table component updates one width in Grow table mode, or both adjacent widths in one update in Keep table width mode.
 Controlled Table state still requires the caller to accept width updates.
 

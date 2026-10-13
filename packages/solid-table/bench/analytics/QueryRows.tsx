@@ -1,6 +1,6 @@
 import { Show, createEffect, onCleanup } from 'solid-js'
 import { uiDensity } from '@table/ui'
-import { TableRow } from '../table/Table'
+import { TableRow } from '@table/ui/table'
 import { VirtualRows } from '../table/VirtualRows'
 import { createTableVirtualizer } from '../table/createVirtualizer'
 import type { UIDensity } from '@table/ui'

@@ -1,5 +1,5 @@
 import { For, Show, createUniqueId } from 'solid-js'
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 
 export type TableFilterProps = {
   label: string

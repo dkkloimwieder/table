@@ -1,5 +1,5 @@
 import { For, Show, onCleanup } from 'solid-js'
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 import { TableSort } from './TableSort'
 import type { JSX } from '@solidjs/web'
 import type { NativeColumn, NativeTable } from '@tanstack/solid-table/native'

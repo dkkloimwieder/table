@@ -8,12 +8,31 @@
   "exports": {
     ".": "./src/index.ts",
     "./styles.css": "./src/styles/styles.css",
-    "./density": "./src/styles/density.ts"
+    "./density": "./src/styles/density.ts",
+    "./table": "./src/table/index.ts",
+    "./events": "./src/utils/nativeEvents.ts"
   },
   "sideEffects": [
     "**/*.css"
   ],
   "scripts": {
-    "test:types": "tsc --project tsconfig.json"
+    "test:types": "tsc --project tsconfig.json",
+    "test:eslint": "eslint ./src --ignore-pattern \"src/virtual/vendor/**\" ./bench/styles/main.ts ./bench/styles/vite.config.ts",
+    "test:boundaries": "node scripts/check-imports.mjs"
+  },
+  "peerDependencies": {
+    "solid-js": ">=2.0.0-rc.14 <3.0.0",
+    "@solidjs/web": ">=2.0.0-rc.14 <3.0.0",
+    "@tanstack/solid-table": ">=9.2.4 <10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/solid-table": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "solid-js": "2.0.0-rc.14",
+    "@solidjs/web": "2.0.0-rc.14",
+    "@tanstack/solid-table": "workspace:*"
   }
 }

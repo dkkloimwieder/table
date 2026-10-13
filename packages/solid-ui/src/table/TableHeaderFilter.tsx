@@ -5,7 +5,7 @@ import {
   createUniqueId,
   onCleanup,
 } from 'solid-js'
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 import { TableFilter } from './TableFilter'
 import type { TableFilterProps } from './TableFilter'
 

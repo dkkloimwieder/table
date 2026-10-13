@@ -210,6 +210,9 @@ importers:
       '@size-limit/preset-small-lib':
         specifier: ^13.1.1
         version: 13.1.1(size-limit@13.1.1)
+      '@table/ui':
+        specifier: workspace:*
+        version: link:packages/solid-ui
       '@tanstack/eslint-config':
         specifier: 0.4.0
         version: 0.4.0(@typescript-eslint/utils@8.68.0(eslint@10.10.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3))(eslint-import-resolver-node@0.3.10(supports-color@7.2.0))(eslint@10.10.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@6.0.3)
@@ -16651,9 +16654,6 @@ importers:
         specifier: workspace:*
         version: link:../table-core
     devDependencies:
-      '@table/ui':
-        specifier: workspace:*
-        version: link:../solid-ui
       '@solidjs/testing-library':
         specifier: 1.0.0-beta.3
         version: 1.0.0-beta.3(@solidjs/web@2.0.0-rc.14(solid-js@2.0.0-rc.14))(solid-js@2.0.0-rc.14)
@@ -16692,7 +16692,17 @@ importers:
         specifier: ^2.11.14
         version: 2.11.14(@testing-library/jest-dom@7.0.1(@testing-library/dom@10.4.1)(vitest@4.1.11))(solid-js@1.9.15)(supports-color@7.2.0)(vite@8.3.0(@types/node@26.5.1)(esbuild@0.28.2)(jiti@2.7.0)(less@4.6.7)(sass@1.101.0)(sugarss@5.0.1(postcss@8.5.28))(terser@5.49.0)(yaml@2.9.0))
 
-  packages/solid-ui: {}
+  packages/solid-ui:
+    devDependencies:
+      '@solidjs/web':
+        specifier: 2.0.0-rc.14
+        version: 2.0.0-rc.14(solid-js@2.0.0-rc.14)
+      '@tanstack/solid-table':
+        specifier: workspace:*
+        version: link:../solid-table
+      solid-js:
+        specifier: 2.0.0-rc.14
+        version: 2.0.0-rc.14
 
   packages/solid-ui-core:
     dependencies:

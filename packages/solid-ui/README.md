@@ -1,32 +1,35 @@
 # Shared UI presentation
 
 `@table/ui` is a private workspace package for generic styled controls and Table presentation.
-Shared scoped styles and density values are implemented. Component extraction follows Beads `table-qp8`.
-The package exports `uiScope`, `uiDensity`, `UI_DENSITIES`, and `UIDensity`. Component exports follow their source migrations.
+Shared Table, column controls, scoped styles, and density values are implemented. Remaining extraction follows Beads `table-qp8`.
+The root exports `uiScope`, `uiDensity`, `UI_DENSITIES`, and `UIDensity`.
+`@table/ui/table` exports Table presentation and column controls.
 It does not copy the running fixtures into a second renderer.
 
 ## Source layout
 
 `src/components` is the destination for styled form, overlay, and display controls.
-`src/table` is the destination for Table presentation and column controls.
+`src/table` owns Table presentation and column controls.
 `src/virtual` is the destination for the Solid virtual binding and visible row presentation.
 `src/virtual/vendor/virtual-core` contains the existing owned virtual engine after migration.
 `src/styles` contains scoped styles, shared variables, and optional themes.
 
 Applications explicitly import `@table/ui/styles.css`.
-The planned Table and virtual exports remain `@table/ui/table` and `@table/ui/virtual`.
+The virtual export remains planned as `@table/ui/virtual`.
 The source passes add these exports when their implementations exist.
 Native engine imports remain `@tanstack/solid-table/native`.
 
 ## Current source owners
 
-[Shared Table presentation](../solid-table/bench/table/README.md) remains the source until extraction.
-`Table.tsx`, `ReadOnlyTable.tsx`, and `Table*.tsx` column controls move to `src/table`.
+[Shared Table presentation](./src/table/README.md) now lives in `src/table`.
+Editing, read-only, and analytics consume the same package exports.
 `createVirtualizer.ts`, `VirtualRows.tsx`, and `virtualWindow.ts` move to `src/virtual`.
 The existing `bench/table/vendor/virtual-core` moves to `src/virtual/vendor/virtual-core` with its licenses and provenance.
 Shared Table, editor, header, column, and popup styles now live in `src/styles/components.css`.
 Fixtures retain page layout in their own CSS.
-Table extraction also removes reverse imports from example directories.
+`src/utils/nativeEvents.ts` owns the event helper. Library source never imports examples.
+The root workspace owns the fixture dependency on `@table/ui` to avoid a UI and engine dependency cycle.
+Solid stays external. The native engine peer is optional for consumers that only use other UI subpaths.
 
 Editing, analytics, read-only, popup, and WAMN fixtures remain application consumers under `packages/solid-table/bench`.
 Their transports, records, caches, validators, controllers, and mock services do not move into this package.

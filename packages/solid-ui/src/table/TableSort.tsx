@@ -1,4 +1,4 @@
-import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
+import { nativeEvents } from '../utils/nativeEvents'
 
 export function TableSort(props: {
   label: string

@@ -5,7 +5,7 @@ It also supports column visibility and ordering. It creates no editing model, dr
 The application supplies the native Table, its columns, and its records.
 Replacing the source updates the displayed values and preserves Table configuration.
 
-The shared component lives in `../table/ReadOnlyTable.tsx`.
+The shared component is exported from `@table/ui/table`.
 The editing and analytics demos use the same table structure and read-only row renderer.
 Analytics keeps filtering and search disabled for complete query exports.
 

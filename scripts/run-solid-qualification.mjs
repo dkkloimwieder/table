@@ -35,14 +35,8 @@ export function qualificationStages(output, { wamn = false } = {}) {
       '--project',
       'packages/solid-ui/bench/styles/tsconfig.json',
     ]),
-    stage('ui-lint', [
-      'exec',
-      'eslint',
-      'packages/solid-ui/src/index.ts',
-      'packages/solid-ui/src/styles/density.ts',
-      'packages/solid-ui/bench/styles/main.ts',
-      'packages/solid-ui/bench/styles/vite.config.ts',
-    ]),
+    stage('ui-lint', ['--filter', '@table/ui', 'run', 'test:eslint']),
+    stage('ui-boundaries', ['--filter', '@table/ui', 'run', 'test:boundaries']),
     stage('ui-styles-build', [
       'exec',
       'vite',

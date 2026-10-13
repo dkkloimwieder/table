@@ -7,11 +7,14 @@ import {
   createSignal,
 } from 'solid-js'
 import { uiDensity, uiScope } from '@table/ui'
+import {
+  TableColumnMove,
+  TableHeaderName,
+  Table as TablePresentation,
+  moveColumn,
+} from '@table/ui/table'
 import { createTable } from '@tanstack/solid-table/native'
 import { nativeEvents } from '../../../../examples/solid/virtualized-rows/src/nativeEvents'
-import { TableColumnMove, moveColumn } from '../table/TableColumnMove'
-import { Table as TablePresentation } from '../table/Table'
-import { TableHeaderName } from '../table/TableHeaderName'
 import { DEFAULT_PREVIEW_LIMIT } from './types'
 import { QueryRows } from './QueryRows'
 import type { UIDensity } from '@table/ui'
