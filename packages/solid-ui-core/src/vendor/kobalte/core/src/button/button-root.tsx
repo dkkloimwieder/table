@@ -1,0 +1,112 @@
+/*
+ * Portions of this file are based on code from react-spectrum.
+ * Apache License Version 2.0, Copyright 2020 Adobe.
+ *
+ * Credits to the React Spectrum team:
+ * https://github.com/adobe/react-spectrum/blob/a13802d8be6f83af1450e56f7a88527b10d9cadf/packages/@react-aria/button/src/useButton.ts
+ *
+ * Portions of this file are based on code from ariakit.
+ * MIT Licensed, Copyright (c) Diego Haz.
+ *
+ * Credits to the Ariakit team:
+ * https://github.com/ariakit/ariakit/blob/8a13899ff807bbf39f3d89d2d5964042ba4d5287/packages/ariakit/src/button/button.ts
+ */
+
+import type { ValidComponent } from '@solidjs/web'
+import {
+  createMemo,
+  createSignal,
+  merge,
+  omit,
+  type Ref,
+  untrack,
+} from 'solid-js'
+
+import {
+  type ElementOf,
+  Polymorphic,
+  type PolymorphicProps,
+} from '../polymorphic/index.tsx'
+import { createTagName } from '../primitives/index.ts'
+import { isButton } from './is-button.ts'
+
+export interface ButtonRootOptions {}
+
+export interface ButtonRootCommonProps<T extends HTMLElement = HTMLElement> {
+  /** Whether the button is disabled. */
+  disabled: boolean | undefined
+  type: string | undefined
+  ref: Ref<T>
+  tabindex: number | string | undefined
+}
+
+export interface ButtonRootRenderProps extends ButtonRootCommonProps {
+  role: 'menuitem' | 'button' | undefined
+  'aria-disabled': 'true' | undefined
+  'data-disabled': string | undefined
+}
+
+export type ButtonRootProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = ButtonRootOptions & Partial<ButtonRootCommonProps<ElementOf<T>>>
+
+/**
+ * Button enables users to trigger an action or event, such as submitting a form,
+ * opening a dialog, canceling an action, or performing a delete operation.
+ * This component is based on the [WAI-ARIA Button Pattern](https://www.w3.org/WAI/ARIA/apg/patterns/button/)
+ */
+export function ButtonRoot<T extends ValidComponent = 'button'>(
+  props: PolymorphicProps<T, ButtonRootProps<T>>,
+) {
+  const [ref, setRef] = createSignal<HTMLElement | undefined>(undefined, {
+    ownedWrite: true,
+  })
+
+  const mergedProps = merge({ type: 'button' }, props as ButtonRootProps)
+
+  const others = omit(mergedProps, 'ref', 'type', 'disabled')
+
+  const tagName = createTagName(ref, () => 'button')
+
+  const isNativeButton = createMemo(() => {
+    const elementTagName = tagName()
+
+    if (elementTagName == null) {
+      return false
+    }
+
+    return isButton({ tagName: elementTagName, type: mergedProps.type })
+  })
+
+  const isNativeInput = createMemo(() => {
+    return tagName() === 'input'
+  })
+
+  const isNativeLink = createMemo(() => {
+    return tagName() === 'a' && ref()?.getAttribute('href') != null
+  })
+
+  return (
+    <Polymorphic<ButtonRootRenderProps>
+      as="button"
+      ref={[setRef, untrack(() => mergedProps.ref)]}
+      type={isNativeButton() || isNativeInput() ? mergedProps.type : undefined}
+      role={!isNativeButton() && !isNativeLink() ? 'button' : undefined}
+      tabindex={
+        !isNativeButton() && !isNativeLink() && !mergedProps.disabled
+          ? 0
+          : undefined
+      }
+      disabled={
+        isNativeButton() || isNativeInput() ? mergedProps.disabled : undefined
+      }
+      aria-disabled={
+        !isNativeButton() && !isNativeInput() && mergedProps.disabled
+          ? 'true'
+          : undefined
+      }
+      data-disabled={mergedProps.disabled ? '' : undefined}
+      {...others}
+    />
+  )
+}

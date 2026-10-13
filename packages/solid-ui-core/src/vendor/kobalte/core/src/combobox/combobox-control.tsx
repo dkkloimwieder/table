@@ -1,0 +1,105 @@
+import type { JSX, ValidComponent } from '@solidjs/web'
+import { type Accessor, children, omit, type Ref } from 'solid-js'
+
+import {
+  type FormControlDataSet,
+  useFormControlContext,
+} from '../form-control/index.ts'
+import {
+  type ElementOf,
+  Polymorphic,
+  type PolymorphicProps,
+} from '../polymorphic/index.tsx'
+import {
+  type ComboboxDataSet,
+  useComboboxContext,
+} from './combobox-context.tsx'
+
+export interface ComboboxControlState<Option> {
+  /** The selected options. */
+  selectedOptions: Accessor<Option[]>
+
+  /** A function to remove an option from the selection. */
+  remove: (option: Option) => void
+
+  /** A function to clear the selection. */
+  clear: () => void
+}
+
+export interface ComboboxControlOptions<Option> {
+  /**
+   * The children of the combobox control.
+   * Can be a `JSX.Element` or a _render prop_ for having access to the internal state.
+   */
+  children?:
+    JSX.Element | ((state: ComboboxControlState<Option>) => JSX.Element)
+}
+
+export interface ComboboxControlCommonProps<
+  T extends HTMLElement = HTMLElement,
+> {
+  ref: Ref<T>
+}
+
+export interface ComboboxControlRenderProps
+  extends ComboboxControlCommonProps, FormControlDataSet, ComboboxDataSet {
+  children: JSX.Element
+}
+
+export type ComboboxControlProps<
+  Option,
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = ComboboxControlOptions<Option> &
+  Partial<ComboboxControlCommonProps<ElementOf<T>>>
+
+/**
+ * Contains the combobox input and trigger.
+ */
+export function ComboboxControl<Option, T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, ComboboxControlProps<Option, T>>,
+) {
+  const formControlContext = useFormControlContext()
+  const context = useComboboxContext()
+
+  const others = omit(props as ComboboxControlProps<Option>, 'ref', 'children')
+
+  const selectionManager = () => context.listState().selectionManager()
+
+  return (
+    <Polymorphic<ComboboxControlRenderProps>
+      as="div"
+      ref={[context.setControlRef, props.ref as (el: HTMLElement) => void]}
+      {...context.dataset()}
+      {...formControlContext.dataset()}
+      {...others}
+    >
+      <ComboboxControlChild
+        state={{
+          selectedOptions: () => context.selectedOptions(),
+          remove: (option) => context.removeOptionFromSelection(option),
+          clear: () => selectionManager().clearSelection(),
+        }}
+      >
+        {props.children}
+      </ComboboxControlChild>
+    </Polymorphic>
+  )
+}
+
+interface ComboboxControlChildProps<Option> extends Pick<
+  ComboboxControlOptions<Option>,
+  'children'
+> {
+  state: ComboboxControlState<Option>
+}
+
+function ComboboxControlChild<Option>(
+  props: ComboboxControlChildProps<Option>,
+) {
+  const resolvedChildren = children(() => {
+    const body = props.children
+    return typeof body === 'function' ? body(props.state) : body
+  })
+
+  return <>{resolvedChildren()}</>
+}

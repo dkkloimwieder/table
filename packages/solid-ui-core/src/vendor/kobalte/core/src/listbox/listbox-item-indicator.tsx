@@ -1,0 +1,66 @@
+import type { ValidComponent } from '@solidjs/web'
+import { merge, omit, Show } from 'solid-js'
+
+import {
+  type ElementOf,
+  Polymorphic,
+  type PolymorphicProps,
+} from '../polymorphic/index.tsx'
+import {
+  type ListboxItemDataSet,
+  useListboxItemContext,
+} from './listbox-item-context.tsx'
+
+export interface ListboxItemIndicatorOptions {
+  /**
+   * Used to force mounting when more control is needed.
+   * Useful when controlling animation with SolidJS animation libraries.
+   */
+  forceMount?: boolean
+}
+
+export interface ListboxItemIndicatorCommonProps<
+  _T extends HTMLElement = HTMLElement,
+> {
+  id: string
+}
+
+export interface ListboxItemIndicatorRenderProps
+  extends ListboxItemIndicatorCommonProps, ListboxItemDataSet {
+  'aria-hidden': 'true'
+}
+
+export type ListboxItemIndicatorProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = ListboxItemIndicatorOptions &
+  Partial<ListboxItemIndicatorCommonProps<ElementOf<T>>>
+
+/**
+ * The visual indicator rendered when the item is selected.
+ * You can style this element directly, or you can use it as a wrapper to put an icon into, or both.
+ */
+export function ListboxItemIndicator<T extends ValidComponent = 'div'>(
+  props: PolymorphicProps<T, ListboxItemIndicatorProps<T>>,
+) {
+  const context = useListboxItemContext()
+
+  const mergedProps = merge(
+    {
+      id: context.generateId('indicator'),
+    },
+    props as ListboxItemIndicatorProps,
+  )
+
+  const others = omit(mergedProps, 'forceMount')
+
+  return (
+    <Show when={mergedProps.forceMount || context.isSelected()}>
+      <Polymorphic<ListboxItemIndicatorRenderProps>
+        as="div"
+        aria-hidden="true"
+        {...context.dataset()}
+        {...others}
+      />
+    </Show>
+  )
+}

@@ -12,6 +12,9 @@ import {
 test('qualification selects shared toolchain and package changes', () => {
   for (const path of [
     'packages/solid-table/src/native.ts',
+    'packages/solid-ui-core/src/controls/select.ts',
+    'packages/solid-ui/src/table/Table.tsx',
+    'patches/solid-primitives-scroll-3.0.0-next.4.patch',
     'packages/table-core/src/index.ts',
     'examples/solid/virtualized-rows/src/nativeEvents.ts',
     'scripts/rewrite-table-core-dts.mjs',

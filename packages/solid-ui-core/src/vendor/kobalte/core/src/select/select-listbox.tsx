@@ -1,0 +1,88 @@
+import { callHandler } from '../../../utils/src/index.ts'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import { type Component, createEffect, merge, omit } from 'solid-js'
+import type {
+  ListboxRootCommonProps,
+  ListboxRootRenderProps,
+} from '../listbox/index.tsx'
+import * as Listbox from '../listbox/index.tsx'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import { useSelectContext } from './select-context.tsx'
+
+export interface SelectListboxOptions<Option, OptGroup = never> extends Pick<
+  Listbox.ListboxRootOptions<Option, OptGroup>,
+  'scrollRef' | 'scrollToItem' | 'children'
+> {}
+
+export interface SelectListboxCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends ListboxRootCommonProps<T> {
+  'aria-labelledby': string | undefined
+}
+
+export interface SelectListboxRenderProps
+  extends SelectListboxCommonProps, ListboxRootRenderProps {}
+
+export type SelectListboxProps<
+  Option,
+  OptGroup = never,
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = SelectListboxOptions<Option, OptGroup> &
+  Partial<SelectListboxCommonProps<ElementOf<T>>>
+
+/**
+ * Contains all the items of a `Select`.
+ */
+export function SelectListbox<
+  Option = any,
+  OptGroup = never,
+  T extends ValidComponent = 'ul',
+>(props: PolymorphicProps<T, SelectListboxProps<Option, OptGroup, T>>) {
+  const context = useSelectContext()
+
+  const mergedProps = merge(
+    {
+      id: context.generateId('listbox'),
+    },
+    props as SelectListboxProps<Option, OptGroup>,
+  )
+
+  const others = omit(mergedProps, 'ref', 'id', 'onKeyDown')
+
+  createEffect(
+    () => mergedProps.id,
+    (id) => context.registerListboxId(id),
+  )
+
+  const onKeyDown: JSX.EventHandlerUnion<HTMLElement, KeyboardEvent> = (e) => {
+    callHandler(e, mergedProps.onKeyDown)
+
+    // Prevent from clearing the selection by `createSelectableCollection` on escape.
+    if (e.key === 'Escape') {
+      e.preventDefault()
+    }
+  }
+
+  return (
+    <Listbox.Root<
+      Option,
+      OptGroup,
+      Component<Omit<SelectListboxRenderProps, keyof ListboxRootRenderProps>>
+    >
+      ref={[context.setListboxRef, mergedProps.ref]}
+      id={mergedProps.id}
+      state={context.listState()}
+      virtualized={context.isVirtualized()}
+      autoFocus={context.autoFocus()}
+      shouldSelectOnPressUp
+      shouldFocusOnHover
+      shouldFocusWrap={context.shouldFocusWrap()}
+      disallowTypeAhead={context.disallowTypeAhead()}
+      aria-labelledby={context.listboxAriaLabelledBy()}
+      renderItem={context.renderItem}
+      renderSection={context.renderSection}
+      onKeyDown={onKeyDown}
+      {...others}
+    />
+  )
+}

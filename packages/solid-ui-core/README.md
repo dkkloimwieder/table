@@ -1,12 +1,13 @@
 # Owned component behavior
 
 `@table/ui-core` is a private workspace package for generic component behavior.
-The workspace structure exists. Component source migration remains under Beads `table-qp8.1.1`.
-The package exposes no component API yet.
+The first source pass contains Select, Combobox, and their required Kobalte Core and Utils modules.
+The component subpaths export the owned Kobalte behavior API.
+Styled generic controls follow in the presentation package.
 
 ## Source layout
 
-`src/controls` contains public behavior entry points after migration.
+`src/controls` contains the Select and Combobox behavior entry points.
 `src/vendor/kobalte` contains the selected upstream Core and Utils source.
 Vendor source keeps its licenses, original hashes, and local repair history.
 Shared Kobalte modules have one owner and one copy.
@@ -18,20 +19,20 @@ This pass does not redesign those behaviors.
 
 ## Existing inputs
 
-The current Select fixture is in [the popup directory](../solid-table/bench/popup/README.md).
-Its ignored `.input/kobalte/packages/core/src` and `utils/src` directories still supply runtime source.
-The source task moves the required modules into this package.
-It replaces [compiler-time repairs](../solid-table/bench/popup/port.ts) with reviewable source changes.
-The event helper must stop importing an example before it becomes library code.
-The external scroll repair remains separate from vendored Kobalte source.
+The Select fixture is in [the popup directory](../solid-table/bench/popup/README.md).
+It imports `@table/ui-core/select` through the workspace dependency.
+A basic Combobox fixture imports `@table/ui-core/combobox`.
+Ignored downloaded source and compiler-time source rewrites no longer supply either implementation.
+The event helper lives in this package and imports no examples.
+The external scroll repair uses a shared pnpm patch.
 
 ## Dependencies
 
 Solid, Solid Primitives, and Floating UI remain external.
 Components import primitives when they need them.
 Component tests cover those imports without a separate prerequisite task.
-The source migration declares the required dependency versions from the current qualified inputs.
-No dependency pins change during this structure pass.
+The package declares the required external dependency versions from the previous popup inputs.
+Existing workspace versions and unrelated peer assignments remain unchanged.
 
 This package contains no styles, Table renderer, records, transports, or application validation rules.
 The presentation package imports this package. This package never imports presentation or application code.
@@ -44,5 +45,15 @@ From the repository root, run:
 pnpm --filter @table/ui-core test:types
 ```
 
-This command currently tests the package scaffold.
-The source migration expands it to the actual owned modules.
+This command tests all owned source, including both behavior entry points.
+Strict types, unused declarations, return paths, and indexed accesses remain checked.
+The fixture lint command still checks its application code for unused declarations.
+
+Run the source inventory and focused source tests:
+
+```sh
+pnpm --filter @table/ui-core test:vendor
+pnpm --filter @table/ui-core test:lib
+```
+
+The [vendor record](./src/vendor/kobalte/README.md) describes origins and local changes.

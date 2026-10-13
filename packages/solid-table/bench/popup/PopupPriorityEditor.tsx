@@ -1,4 +1,4 @@
-import { Select } from '@kobalte/core/select'
+import { Select } from '@table/ui-core/select'
 import {
   createEffect,
   createMemo,

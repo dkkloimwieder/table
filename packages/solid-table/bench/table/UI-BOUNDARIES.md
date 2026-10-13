@@ -1,20 +1,21 @@
 # Generic UI boundaries
 
 This decision defines the generic UI library under Beads epic `table-qp8`.
-The private package scaffolds now exist at the paths below.
-Component exports and source migrations remain planned.
+The private workspace packages now exist at the paths below.
+Select and Combobox behavior exports exist in `@table/ui-core`.
+Styled controls and shared Table extraction remain planned.
 Follow-up issues implement them in focused changes.
 WAMN is a prospective consumer. Its interface does not define the library API.
 
 ## Packages
 
-`packages/solid-ui-core` will provide private package `@table/ui-core`.
+`packages/solid-ui-core` provides private package `@table/ui-core`.
 It owns the selected Kobalte behavior and shared Kobalte utilities.
 Component subpaths expose behavior without importing presentation CSS.
 For example, `@table/ui-core/select` exposes the owned Select behavior.
 Its vendor directory contains original licenses, provenance, and documented source repairs.
 
-`packages/solid-ui` will provide private package `@table/ui`.
+`packages/solid-ui` provides the private scaffold for `@table/ui`.
 It owns styled controls and shared Table presentation.
 The root exports styled controls. `@table/ui/table` exports Table and column controls.
 `@table/ui/virtual` exports the existing virtual engine binding and row presentation.
@@ -225,5 +226,4 @@ pnpm --filter @tanstack/solid-table test:ui:contracts
 ```
 
 This command compiles every TypeScript example in this decision.
-It does not prove that planned packages or components already exist.
-The follow-up consumer tests establish that behavior.
+The examples specify contracts. Component tests establish behavior.

@@ -1,0 +1,9 @@
+diff --git a/dist/preventScroll.js b/dist/preventScroll.js
+--- a/dist/preventScroll.js
++++ b/dist/preventScroll.js
+@@ -2 +2 @@
+-import { createEffect, createSignal } from "solid-js";
++import { createEffect, createSignal, runWithOwner } from "solid-js";
+@@ -18 +18 @@
+-	stack: createSignal([], { ownedWrite: true }),
++	stack: runWithOwner(null, () => createSignal([], { ownedWrite: true })),

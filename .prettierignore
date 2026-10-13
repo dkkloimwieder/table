@@ -10,5 +10,6 @@
 **/test-results
 pnpm-lock.yaml
 docs/config.json
+packages/solid-ui-core/src/vendor/kobalte/**/LICENSE.md
 
 .angular

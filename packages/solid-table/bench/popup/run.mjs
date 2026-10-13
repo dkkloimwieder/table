@@ -50,11 +50,15 @@ const server = createServer(async (request, response) => {
 if (!process.env.BENCH_URL) {
   const modules = JSON.parse(await readFile(assets + 'modules.json', 'utf8'))
   assert.ok(
-    modules.some((id) => id.includes('/kobalte/packages/core/src/select/')),
+    modules.some((id) =>
+      id.includes('/solid-ui-core/src/vendor/kobalte/core/src/select/'),
+    ),
   )
   assert.ok(
     !modules.some((id) =>
-      /table-core|@tanstack\/store|virtual-core|solid-form/.test(id),
+      /table-core|@tanstack\/store|virtual-core|solid-form|\.input\/kobalte|node_modules\/@kobalte\//.test(
+        id,
+      ),
     ),
   )
   for (const name of ['solid-js', '@solidjs/web', '@solidjs/signals']) {
@@ -159,6 +163,27 @@ async function record(name, work) {
   }
 }
 try {
+  await record(
+    'vendored Combobox opens, filters, and selects through owned input events',
+    async () => {
+      await page.goto(`${url}?combobox=1`)
+      const input = page.getByRole('combobox', { name: 'Category' })
+      await input.fill('Bet')
+      await page.getByRole('option', { name: 'Beta', exact: true }).click()
+      await settle()
+      assert.equal(
+        await page
+          .getByRole('status', { name: 'Selected category' })
+          .textContent(),
+        'beta',
+      )
+      assert.equal(await input.inputValue(), 'Beta')
+      await page.getByRole('button', { name: 'Show categories' }).click()
+      await press('Escape')
+      assert.equal(await page.getByRole('listbox').count(), 0)
+      assert.equal(await input.inputValue(), 'Beta')
+    },
+  )
   await page.goto(url)
   await applicationRecordCases({
     page,

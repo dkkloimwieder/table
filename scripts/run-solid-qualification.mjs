@@ -8,7 +8,7 @@ const root = fileURLToPath(new URL('../', import.meta.url))
 
 export function selectsSolidQualification(paths) {
   return paths.some((path) =>
-    /^(packages\/(solid-table|table-core)\/|examples\/solid\/|scripts\/(run-solid-qualification|rewrite-table-core-dts)\.mjs$|scripts\/tests\/solid-qualification\.test\.mjs$|\.github\/workflows\/pr\.yml$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|nx\.json$|tsconfig\.json$|eslint\.config\.js$)/.test(
+    /^(packages\/(solid-table|solid-ui|solid-ui-core|table-core)\/|patches\/|examples\/solid\/|scripts\/(run-solid-qualification|rewrite-table-core-dts)\.mjs$|scripts\/tests\/solid-qualification\.test\.mjs$|\.github\/workflows\/pr\.yml$|package\.json$|pnpm-lock\.yaml$|pnpm-workspace\.yaml$|nx\.json$|tsconfig\.json$|eslint\.config\.js$)/.test(
       path,
     ),
   )
@@ -21,6 +21,13 @@ export function qualificationStages(output, { wamn = false } = {}) {
     stage('core-build', ['--filter', '@tanstack/table-core', 'run', 'build']),
     stage('solid-build', [...pkg, 'run', 'build']),
     stage('popup-prepare', [...pkg, 'exec', 'node', 'bench/popup/prepare.mjs']),
+    stage('ui-core-types', ['--filter', '@table/ui-core', 'run', 'test:types']),
+    stage('ui-core-source-tests', [
+      '--filter',
+      '@table/ui-core',
+      'run',
+      'test:lib',
+    ]),
     stage('fixture-types', [...pkg, 'run', 'test:fixtures:types']),
     stage('fixture-lint', [...pkg, 'run', 'test:fixtures:eslint']),
     stage('analytics-server', [

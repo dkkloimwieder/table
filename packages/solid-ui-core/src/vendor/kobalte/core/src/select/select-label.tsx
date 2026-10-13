@@ -1,0 +1,55 @@
+import { callHandler } from '../../../utils/src/index.ts'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import { type Component, omit } from 'solid-js'
+
+import {
+  FormControlLabel,
+  type FormControlLabelCommonProps,
+  type FormControlLabelRenderProps,
+} from '../form-control/index.ts'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import { useSelectContext } from './select-context.tsx'
+
+export interface SelectLabelOptions {}
+
+export interface SelectLabelCommonProps<
+  T extends HTMLElement = HTMLElement,
+> extends FormControlLabelCommonProps<T> {
+  onClick: JSX.EventHandlerUnion<T, MouseEvent>
+}
+
+export interface SelectLabelRenderProps
+  extends SelectLabelCommonProps, FormControlLabelRenderProps {}
+
+export type SelectLabelProps<
+  T extends ValidComponent | HTMLElement = HTMLElement,
+> = SelectLabelOptions & Partial<SelectLabelCommonProps<ElementOf<T>>>
+
+/**
+ * The label that gives the user information on the select.
+ */
+export function SelectLabel<T extends ValidComponent = 'span'>(
+  props: PolymorphicProps<T, SelectLabelProps<T>>,
+) {
+  const context = useSelectContext()
+
+  const others = omit(props as SelectLabelProps, 'onClick')
+
+  const onClick: JSX.EventHandlerUnion<any, MouseEvent> = (e) => {
+    callHandler(e, props.onClick)
+
+    if (!context.isDisabled()) {
+      context.triggerRef()?.focus()
+    }
+  }
+
+  return (
+    <FormControlLabel<
+      Component<Omit<SelectLabelRenderProps, keyof FormControlLabelRenderProps>>
+    >
+      as="span"
+      onClick={onClick}
+      {...others}
+    />
+  )
+}

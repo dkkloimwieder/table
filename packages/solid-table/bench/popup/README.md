@@ -13,36 +13,18 @@ This interface adds no record store or copy of the collection.
 
 ## Source and local repairs
 
-`prepare.mjs` downloads Kobalte revision `e9d426d438b7c9ea0cc81bd1133831a20cd5fcae` from the upstream `solid2` branch.
-The [immutable source](https://github.com/kobaltedev/kobalte/tree/e9d426d438b7c9ea0cc81bd1133831a20cd5fcae) pins Solid rc.3.
-The archive SHA-256 is `c07f47331a9aee20f69e2e55d81454f0b48976e2e6e98551da2b27a9169c6f70`.
-Preparation extracts runtime sources and licenses into the ignored `.input` directory.
-It excludes upstream tests, applications, and documentation.
-
-`dependencies-lock.json` fixes the complete npm dependency graph in a separate scratch directory.
-It includes Kobalte core `2.0.0-alpha.2`, utils `2.0.0-alpha.0`, and scroll primitives `3.0.0-next.4`.
-Overrides pin Solid, web, and signals to rc.14.
+The fixture imports checked-in source from the private `@table/ui-core` workspace package.
+[The vendor record](../../../solid-ui-core/src/vendor/kobalte/README.md) identifies the source revision, licenses, original hashes, and local repairs.
+Select and Combobox share one Core and Utils subset.
+The workspace lockfile declares external primitives and runtime versions.
 The fixture uses the workspace compiler and TypeScript 6.0.3.
-Preparation records source and dependency hashes in `.input/provenance.json`.
 
-`port.ts` applies focused source repairs during compilation.
-It does not modify the downloaded source or installed packages.
-The repairs address observed failures:
+`prepare.mjs` now runs the source integrity audit. It downloads no runtime source or dependencies.
+The Vite configuration applies no source rewrite plugin or Kobalte source alias.
+Focus, refs, scrolling, and owned listener repairs appear directly in the checked-in source.
+The external scroll registry repair uses a shared pnpm patch.
+Bead `table-gd3.6.7.9` still tracks repair retirement after matched upstream fixes.
 
-1. Focus handlers read current values once through `untrack`, even when an effect synchronously dispatches focus.
-2. A plain positioner reference array survives compilation. The compiler drops the upstream form with an outer TypeScript assertion.
-3. Keyboard navigation scrolls the list viewport. The upstream document scroll can move a pointer target before release.
-4. Owned DOM listeners release callbacks when the popup closes. Earlier snapshots retain records through detached nodes and browser event caches.
-5. The global scroll signal uses `runWithOwner(null, ...)`. Its lifetime must not retain the first popup owner.
-
-The event helper covers the DOM events used by this fixed-choice fixture.
-Custom component properties pass through unchanged.
-This experiment does not qualify every Kobalte component or polymorphic rendering combination.
-The reference callback binds once when its element mounts.
-The scroll repair also runs during development because that dependency bypasses Vite prebundling.
-Bead `table-gd3.6.7.9` tracks retirement of these repairs after matched upstream fixes.
-
-Set `BENCH_KOBALTE_UNPATCHED=1` when building or serving to reproduce the upstream behavior without these repairs.
 The initial standalone probe produced `STRICT_READ_UNTRACKED` diagnostics during focus.
 Table integration also exposed positioning, scrolling, Tab order, and disposal defects.
 The [heap findings](../heap-findings.md#kobalte-popup-editing) describe the retaining paths and measured results.
@@ -78,8 +60,7 @@ pnpm --filter @tanstack/solid-table exec vite --config bench/popup/vite.config.t
 
 Open `http://127.0.0.1:7782/?size=25&save=all` for Table editing.
 Open `http://127.0.0.1:7782/?standalone=1` for the independent popup.
-Preparation uses `/tmp/table-kobalte-popup-deps` by default on Linux.
-Set `KOBALTE_DEPS` before preparation to choose another dependency directory.
+Open `http://127.0.0.1:7782/?combobox=1` for the basic Combobox source-wiring fixture.
 
 Build the source fixture and run its Chromium scenarios:
 
@@ -108,12 +89,15 @@ NODE_ENV=development BENCH_DEVELOPMENT=1 pnpm --filter @tanstack/solid-table exe
 BENCH_DEVELOPMENT=1 node packages/solid-table/bench/popup/run.mjs
 ```
 
-The qualification host uses `PLAYWRIGHT_BROWSERS_PATH=/tmp/table-solid2-browsers` for its existing Chromium installation.
+The qualification host uses `PLAYWRIGHT_BROWSERS_PATH=/tmp/table-solid-export-browsers` for its existing Chromium installation.
 It also uses `TMPDIR=/dev/shm` for browser scratch files because the temporary filesystem has a quota.
 Set these variables only for browser commands on that host.
 `BENCH_URL=http://127.0.0.1:7782/` tests the running development preview.
 `BENCH_OUTPUT` selects the JSON report path.
 
 The module audit requires one Solid runtime and rejects table-core, TanStack Store, virtual-core, and Form.
-TypeScript tests the wrapper against the published Select declarations.
-The compiler builds the patched source. This fixture does not run the upstream Kobalte test suite.
+TypeScript tests the wrapper against the owned source.
+The module audit also rejects downloaded or installed Kobalte implementations.
+The basic Combobox case covers input filtering, selection, and Escape.
+Generic styled choice controls and deeper Combobox behavior remain separate tasks.
+This fixture does not run the upstream Kobalte test suite.
