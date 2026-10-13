@@ -1,8 +1,10 @@
 # Shared UI presentation
 
 `@table/ui` is a private workspace package for generic styled controls and Table presentation.
-Shared Table, virtual presentation, column controls, scoped styles, and density values are implemented. Remaining controls follow Beads `table-qp8`.
-The root exports `uiScope`, `uiDensity`, `UI_DENSITIES`, and `UIDensity`.
+Shared Table, virtual presentation, choice controls, column controls, scoped styles, and density values are implemented.
+Remaining controls follow Beads `table-qp8`.
+The root exports `Select`, `Combobox`, `uiScope`, `uiDensity`, `UI_DENSITIES`, and `UIDensity`.
+The `select` and `combobox` subpaths also export their control types.
 `@table/ui/table` exports Table presentation and column controls.
 It does not copy the running fixtures into a second renderer.
 
@@ -60,3 +62,35 @@ This command tests all package source.
 The root `pnpm test:solid:qualification` command also tests isolated style scopes, density, focus, and themes.
 Source passes add their own type and behavior tests.
 The [boundary decision](../solid-table/bench/table/UI-BOUNDARIES.md) defines the public contract and component catalog.
+
+## Choice controls
+
+Select and Combobox provide styled parts over the owned Core implementations.
+Use `Select` or `Select.Root` with `Label`, `Trigger`, `Value`, `Portal`, `Content`, and `Listbox`.
+Use `Combobox` or `Combobox.Root` with `Label`, `Control`, `Input`, `Trigger`, `Portal`, `Content`, and `Listbox`.
+Both controls retain Core option keys, groups, disabled options, multiple selection, and custom element rendering through `as`.
+Use `Description` and `ErrorMessage` to link help and errors to the control.
+Add `HiddenSelect` when a native form must submit the selected key.
+
+The application supplies `options`, `value`, and `onChange`.
+Pass `null` to represent an empty controlled selection.
+For Combobox, `inputValue` and `onInputChange` control search text independently of the selected value.
+The application updates search text after selection when its interface requires that behavior.
+When the application rejects a text change, the input retains the supplied text.
+
+For server results, pass `defaultFilter={() => true}` to preserve the supplied option list.
+The application owns requests, cancellation, pages, loading state, and the label of an off-page selection.
+An option page update preserves the controlled value and does not emit a selection change.
+Supply the selected option object with its label when the current page does not contain it.
+
+`Content` accepts `status` and `footer` content.
+Combobox permits an empty list by default so that loading and empty messages remain visible.
+The application can set `allowsEmptyCollection={false}` to close an empty list.
+Footer buttons receive Tab focus, and Tab leaves the popup in normal control order.
+Selection and Escape restore focus when the popup owns focus.
+Outside interactions preserve the new focus target.
+
+The default portal mount uses the nearest `data-ui-portal-root`, then the enclosing style scope.
+Pass `mount` to choose another host.
+Both controls use the shared compact styles, density variables, and live scope theme.
+The popup fixture uses Select as a Table editor and tests both controls as standalone form fields.

@@ -3,7 +3,8 @@
   "compilerOptions": {
     "jsx": "preserve",
     "jsxImportSource": "@solidjs/web",
-    "types": []
+    "types": [],
+    "allowImportingTsExtensions": true
   },
   "include": ["src"]
 }

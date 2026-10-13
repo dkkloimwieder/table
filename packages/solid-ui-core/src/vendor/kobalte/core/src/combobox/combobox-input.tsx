@@ -7,21 +7,19 @@
  * https://github.com/adobe/react-spectrum/blob/ba727bdc0c4a57626131e84d9c9b661d0b65b754/packages/@react-aria/combobox/src/useComboBox.ts
  */
 
+import { createSignal, merge, omit, untrack } from 'solid-js'
 import { callHandler } from '../../../utils/src/index.ts'
-import type { JSX, ValidComponent } from '@solidjs/web'
-import { createSignal, merge, omit, type Ref } from 'solid-js'
 
 import {
   createFormControlField,
-  type FormControlDataSet,
   useFormControlContext,
 } from '../form-control/index.ts'
-import {
-  type ElementOf,
-  Polymorphic,
-  type PolymorphicProps,
-} from '../polymorphic/index.tsx'
+import { Polymorphic } from '../polymorphic/index.tsx'
 import { useComboboxContext } from './combobox-context.tsx'
+import type { Ref } from 'solid-js'
+import type { FormControlDataSet } from '../form-control/index.ts'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
 
 export interface ComboboxInputOptions {}
 
@@ -143,6 +141,8 @@ export function ComboboxInput<T extends ValidComponent = 'input'>(
     const target = e.target as HTMLInputElement
 
     context.setInputValue(target.value)
+    const accepted = untrack(context.inputValue) ?? ''
+    if (target.value !== accepted) target.value = accepted
 
     if (context.isOpen()) {
       if (collection().getSize() <= 0 && !context.allowsEmptyCollection()) {
@@ -158,7 +158,7 @@ export function ComboboxInput<T extends ValidComponent = 'input'>(
   const onKeyDown: JSX.EventHandlerUnion<HTMLInputElement, KeyboardEvent> = (
     e,
   ) => {
-    callHandler(e, mergedProps.onKeyDown)
+    if (callHandler(e, mergedProps.onKeyDown)) return
 
     if (formControlContext.isReadOnly() || isDisabled()) {
       return
@@ -306,7 +306,7 @@ export function ComboboxInput<T extends ValidComponent = 'input'>(
           context.setInputRef(el)
           setRef(el)
         },
-        mergedProps.ref as (element: HTMLInputElement) => void,
+        mergedProps.ref,
       ]}
       id={fieldProps.id()}
       value={context.inputValue()}

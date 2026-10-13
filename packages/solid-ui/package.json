@@ -11,7 +11,9 @@
     "./density": "./src/styles/density.ts",
     "./table": "./src/table/index.ts",
     "./events": "./src/utils/nativeEvents.ts",
-    "./virtual": "./src/virtual/index.ts"
+    "./virtual": "./src/virtual/index.ts",
+    "./select": "./src/components/Select.tsx",
+    "./combobox": "./src/components/Combobox.tsx"
   },
   "sideEffects": [
     "**/*.css"
@@ -36,5 +38,9 @@
     "solid-js": "2.0.0-rc.14",
     "@solidjs/web": "2.0.0-rc.14",
     "@tanstack/solid-table": "workspace:*"
+  },
+  "dependencies": {
+    "@solid-primitives/focus": "1.0.0-next.4",
+    "@table/ui-core": "workspace:*"
   }
 }

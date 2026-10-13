@@ -689,3 +689,23 @@
 :where([data-ui]) select {
   color: inherit;
 }
+
+:where([data-ui]) .choice-control {
+  display: flex;
+  align-items: stretch;
+  gap: var(--ui-gap, 6px);
+}
+:where([data-ui]) .choice-control .choice-input {
+  flex: 1;
+  min-width: 0;
+}
+:where([data-ui]) .choice-toggle {
+  flex: none;
+}
+:where([data-ui]) .choice-footer,
+:where([data-ui]) .choice-status {
+  padding: var(--ui-cell-padding-y, 6px) var(--ui-cell-padding-x, 8px);
+}
+:where([data-ui]) [data-invalid] {
+  border-color: var(--ui-error, #9d251e);
+}

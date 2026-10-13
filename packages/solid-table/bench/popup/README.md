@@ -13,7 +13,8 @@ This interface adds no record store or copy of the collection.
 
 ## Source and local repairs
 
-The fixture imports checked-in source from the private `@table/ui-core` workspace package.
+The fixture imports styled Select and Combobox from the private `@table/ui` workspace package.
+Those controls use checked-in behavior from `@table/ui-core`.
 [The vendor record](../../../solid-ui-core/src/vendor/kobalte/README.md) identifies the source revision, licenses, original hashes, and local repairs.
 Select and Combobox share one Core and Utils subset.
 The workspace lockfile declares external primitives and runtime versions.
@@ -46,7 +47,8 @@ Existing editing locks keep filters, sorting, grouping, and layout fixed during 
 The demonstration includes an empty choice and a disabled choice.
 Its application schema rejects an empty priority and allows recovery in place.
 Nullable application schemas can accept the same empty value.
-Searchable record references, paging, multiple selection, touch gestures, and other browsers require separate work.
+Generic Combobox search and caller-supplied pages have a separate form fixture.
+Production record references, multiple selection, touch gestures, and other browsers require separate work.
 WAMN Form/UI and Zaidan wrappers remain outside this fixture.
 
 ## Run the fixture
@@ -61,6 +63,11 @@ pnpm --filter @tanstack/solid-table exec vite --config bench/popup/vite.config.t
 Open `http://127.0.0.1:7782/?size=25&save=all` for Table editing.
 Open `http://127.0.0.1:7782/?standalone=1` for the independent popup.
 Open `http://127.0.0.1:7782/?combobox=1` for the basic Combobox source-wiring fixture.
+Open `http://127.0.0.1:7782/?choices=1` for controlled choice fields and application-supplied pages.
+
+The choice cases test pointer and keyboard selection, disabled options, rejected text changes, empty lists, loading content, and changed pages.
+They also test off-page labels, native form values, custom item elements, footer focus, error links, and disposal.
+The application supplies every page and label. The controls make no service requests.
 
 Build the source fixture and run its Chromium scenarios:
 
@@ -99,5 +106,6 @@ The module audit requires one Solid runtime and rejects table-core, TanStack Sto
 TypeScript tests the wrapper against the owned source.
 The module audit also rejects downloaded or installed Kobalte implementations.
 The basic Combobox case covers input filtering, selection, and Escape.
-Generic styled choice controls and deeper Combobox behavior remain separate tasks.
+The controlled choice cases cover the shared styled controls.
+Deeper component coverage remains separate work after the first source pass.
 This fixture does not run the upstream Kobalte test suite.

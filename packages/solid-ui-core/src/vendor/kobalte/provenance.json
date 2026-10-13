@@ -18,7 +18,7 @@
     },
     "core/src/combobox/combobox-base.tsx": {
       "upstreamSha256": "81fd5a18f0e8c515ee6e0f3ac0fdaccbb3d332cbb80118dcc3fe017ab93f7566",
-      "localSha256": "1a17a92fe79f11f239fb5712beefee36aeedfb230a02669c15b9d5025307f670"
+      "localSha256": "373d0f298c0f2370319bd0a6f7a07f23bd14cfae0370dc9d514440ba21793cc6"
     },
     "core/src/combobox/combobox-content.tsx": {
       "upstreamSha256": "7545e2833b0ee4267c6636048ebf904c6a749dbce09e0ee5689908cdd69d13f2",
@@ -42,7 +42,7 @@
     },
     "core/src/combobox/combobox-input.tsx": {
       "upstreamSha256": "94ab2b1bed787051f4bbf154555c84d6d284f11d4511f913f9d46403678dffe9",
-      "localSha256": "fd42a99aa1cc306512116b1f80710ebf42e8c5d2e3547ac7115cd93b781c848e"
+      "localSha256": "6c292aabffc0a78ab8af977ff8fd2d2f867443b0934804194f3d7a53bec13fe2"
     },
     "core/src/combobox/combobox-listbox.tsx": {
       "upstreamSha256": "79ac6fb9645d61cf3c062177685952985eefedf0094f9eee609ff49f87513fdd",
@@ -330,7 +330,7 @@
     },
     "core/src/select/hidden-select-base.tsx": {
       "upstreamSha256": "fcf912ecb16f145fe2ea4a0746a07798c787e5ea71da35bf7773586c530ae52c",
-      "localSha256": "22d79048fcbfcdc448f2fd2900e27e646436682040404bcf2ad6ca478ac393ff"
+      "localSha256": "0496f18aa2894a7b2635d7a8fcf2c168aed943a12f4c50693bfedf9f77be6f42"
     },
     "core/src/select/index.tsx": {
       "upstreamSha256": "703640b1f494fdfc0dcc5f5c261651c54c0609fb94ce33c07338cf2000d2d4ba",
@@ -338,7 +338,7 @@
     },
     "core/src/select/select-base.tsx": {
       "upstreamSha256": "96659e93e1ebd146d4a18b8f5d986c1e088d4283956f050a060e0df1c13465e7",
-      "localSha256": "3e7c5936eba894345c1455f7b2e120ee9c8ceb3d725670d4e679b0bd21307a55"
+      "localSha256": "5cafff643aa3b7bd1c80626576a772c92e36c172580b76f47f16d83d17cd877c"
     },
     "core/src/select/select-content.tsx": {
       "upstreamSha256": "75f9d9d9a3ac570a9805d952ea3aec8a2d87b942e1e74c7c3be8c17698a97b27",
@@ -374,7 +374,7 @@
     },
     "core/src/select/select-trigger.tsx": {
       "upstreamSha256": "faba6c23c27856dd5e37a936142f55921f6cb12860464a499c0875721e609870",
-      "localSha256": "a32dacdda9c0fac422a917f8b9a1ba1d2c8a0ba85a8122d55edfb3d492f45771"
+      "localSha256": "7ee791360cb342369c4beadfe7a4dfa886e402b193beee264ec3c1adbc3f4001"
     },
     "core/src/select/select-value.tsx": {
       "upstreamSha256": "227ad55032bacd010aee6f558922a34e74031b56df84acc854d25c4e955d8d69",

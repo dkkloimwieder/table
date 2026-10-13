@@ -6,14 +6,21 @@
  * https://github.com/adobe/react-spectrum/blob/0a1d0cd4e1b2f77eed7c0ea08fce8a04f8de6921/packages/@react-aria/select/src/HiddenSelect.tsx
  */
 
+import {
+  For,
+  createEffect,
+  createSignal,
+  omit,
+  onCleanup,
+  untrack,
+} from 'solid-js'
 import { callHandler, visuallyHiddenStyles } from '../../../utils/src/index.ts'
-import type { ComponentProps, JSX } from '@solidjs/web'
-import { createEffect, createSignal, For, omit, Show, untrack } from 'solid-js'
-
 import { useFormControlContext } from '../form-control/index.ts'
+import { isSameSelection } from '../selection/utils.ts'
+import type { ComponentProps, JSX } from '@solidjs/web'
+
 import type { Collection, CollectionNode } from '../primitives/index.ts'
 import type { SelectionManager } from '../selection/index.ts'
-import { isSameSelection } from '../selection/utils.ts'
 
 // In Safari, the <select> cannot have `display: none` or `hidden` for autofill to work.
 // In Firefox, there must be a <label> to identify the <select> whereas other browsers
@@ -67,37 +74,53 @@ export function HiddenSelectBase(props: HiddenSelectBaseProps) {
   const formControlContext = useFormControlContext()
 
   let isInternalChangeEvent = false
+  let disposed = false
+  onCleanup(() => {
+    disposed = true
+  })
 
-  const renderOption = (key: string) => {
-    const item = props.collection.getItem(key)
-
-    return (
-      <Show when={item?.type === 'item'}>
-        <option value={key} selected={props.selectionManager.isSelected(key)}>
-          {item?.textValue}
-        </option>
-      </Show>
-    )
+  const optionKeys = () => {
+    const keys = props.isVirtualized
+      ? []
+      : [...props.collection.getKeys()].filter(
+          (key) => props.collection.getItem(key)?.type === 'item',
+        )
+    return [...new Set([...props.selectionManager.selectedKeys(), ...keys])]
   }
 
-  // Dispatch native event on selection change for form libraries.
+  // Apply native selection after the browser processes replacement option nodes.
   createEffect(
-    () => props.selectionManager.selectedKeys(),
-    (keys, prevKeys) => {
-      if (prevKeys && isSameSelection(keys, prevKeys)) {
-        return
-      }
-
-      isInternalChangeEvent = true
-
-      untrack(ref)?.dispatchEvent(
-        new Event('input', { bubbles: true, cancelable: true }),
-      )
-      untrack(ref)?.dispatchEvent(
-        new Event('change', { bubbles: true, cancelable: true }),
-      )
+    () => ({
+      collection: props.collection,
+      keys: props.selectionManager.selectedKeys(),
+    }),
+    ({ keys }, previous) => {
+      const select = untrack(ref)
+      if (!select) return
+      const changed = previous && !isSameSelection(keys, previous.keys)
+      queueMicrotask(() => {
+        if (
+          disposed ||
+          !select.isConnected ||
+          !untrack(() =>
+            isSameSelection(keys, props.selectionManager.selectedKeys()),
+          )
+        )
+          return
+        for (const option of select.options)
+          option.selected = keys.has(option.value)
+        if (!keys.size && !select.multiple) select.value = ''
+        if (!changed) return
+        // Form listeners receive the new value. Internal events do not select it again.
+        isInternalChangeEvent = true
+        select.dispatchEvent(
+          new Event('input', { bubbles: true, cancelable: true }),
+        )
+        select.dispatchEvent(
+          new Event('change', { bubbles: true, cancelable: true }),
+        )
+      })
     },
-    { defer: true },
   )
 
   // If virtualized, only render the selected options in the hidden <select> so the value can be submitted to a server.
@@ -120,7 +143,6 @@ export function HiddenSelectBase(props: HiddenSelectBaseProps) {
         name={formControlContext.name()}
         required={formControlContext.isRequired()}
         disabled={formControlContext.isDisabled()}
-        size={props.collection.getSize()}
         value={props.selectionManager.firstSelectedKey() ?? ''}
         onChange={(e) => {
           callHandler(
@@ -133,9 +155,7 @@ export function HiddenSelectBase(props: HiddenSelectBaseProps) {
           // which would result in an infinite loop.
           if (!isInternalChangeEvent) {
             // enable form autofill
-            props.selectionManager.setSelectedKeys(
-              new Set([(e.target as HTMLSelectElement).value]),
-            )
+            props.selectionManager.setSelectedKeys(new Set([e.target.value]))
           }
 
           isInternalChangeEvent = false
@@ -143,16 +163,16 @@ export function HiddenSelectBase(props: HiddenSelectBaseProps) {
         {...others}
       >
         <option />
-        <Show
-          when={props.isVirtualized}
-          fallback={
-            <For each={[...props.collection.getKeys()]}>{renderOption}</For>
-          }
-        >
-          <For each={[...props.selectionManager.selectedKeys()]}>
-            {renderOption}
-          </For>
-        </Show>
+        <For each={optionKeys()}>
+          {(key) => (
+            <option
+              value={key}
+              selected={props.selectionManager.isSelected(key)}
+            >
+              {props.collection.getItem(key)?.textValue ?? key}
+            </option>
+          )}
+        </For>
       </select>
     </div>
   )

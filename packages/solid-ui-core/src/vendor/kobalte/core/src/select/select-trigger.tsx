@@ -7,26 +7,21 @@
  * https://github.com/adobe/react-spectrum/blob/5c1920e50d4b2b80c826ca91aff55c97350bf9f9/packages/@react-aria/menu/src/useMenuTrigger.ts
  */
 
+import { createEffect, merge, omit, untrack } from 'solid-js'
 import { callHandler } from '../../../utils/src/index.ts'
-import type { JSX, ValidComponent } from '@solidjs/web'
-import {
-  type Component,
-  createEffect,
-  merge,
-  omit,
-  untrack,
-  type Ref,
-} from 'solid-js'
 
 import * as Button from '../button/index.tsx'
 import {
   createFormControlField,
-  type FormControlDataSet,
   useFormControlContext,
 } from '../form-control/index.ts'
-import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
 import { createTypeSelect } from '../selection/index.ts'
-import { type SelectDataSet, useSelectContext } from './select-context.tsx'
+import { useSelectContext } from './select-context.tsx'
+import type { Component, Ref } from 'solid-js'
+import type { FormControlDataSet } from '../form-control/index.ts'
+import type { SelectDataSet } from './select-context.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
 
 export interface SelectTriggerOptions {}
 
@@ -43,6 +38,7 @@ export interface SelectTriggerCommonProps<
   'aria-label': string | undefined
   'aria-labelledby': string | undefined
   'aria-describedby': string | undefined
+  'aria-invalid': 'true' | undefined
 }
 
 export interface SelectTriggerRenderProps
@@ -223,7 +219,7 @@ export function SelectTrigger<T extends ValidComponent = 'button'>(
     })
 
   createEffect(
-    () => fieldProps.id()!,
+    () => fieldProps.id(),
     (id) => context.registerTriggerId(id),
   )
 
@@ -257,6 +253,9 @@ export function SelectTrigger<T extends ValidComponent = 'button'>(
       aria-label={fieldProps.ariaLabel()}
       aria-labelledby={ariaLabelledBy()}
       aria-describedby={fieldProps.ariaDescribedBy()}
+      aria-invalid={
+        formControlContext.validationState() === 'invalid' ? 'true' : undefined
+      }
       onPointerDown={onPointerDown}
       onClick={onClick}
       onKeyDown={onKeyDown}

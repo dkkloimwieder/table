@@ -1,5 +1,5 @@
 import { uiScope } from '@table/ui'
-import { Combobox } from '@table/ui-core/combobox'
+import { Combobox } from '@table/ui/combobox'
 import { createSignal } from 'solid-js'
 
 const options = [
@@ -10,7 +10,6 @@ const options = [
 
 /** A source-wiring check, before the generic styled choice controls. */
 export function ComboboxSmoke() {
-  let input: HTMLInputElement | undefined
   const [value, setValue] = createSignal<(typeof options)[number] | null>(null)
   return (
     <main data-ui-portal-root="" {...uiScope()}>
@@ -30,18 +29,10 @@ export function ComboboxSmoke() {
       >
         <Combobox.Label>Category</Combobox.Label>
         <Combobox.Control>
-          <Combobox.Input
-            ref={(node) => {
-              input = node
-            }}
-          />
+          <Combobox.Input />
           <Combobox.Trigger aria-label="Show categories">Open</Combobox.Trigger>
         </Combobox.Control>
-        <Combobox.Portal
-          mount={
-            input?.closest<HTMLElement>('[data-ui-portal-root]') ?? undefined
-          }
-        >
+        <Combobox.Portal>
           <Combobox.Content class="popup-content">
             <Combobox.Listbox class="popup-listbox" />
           </Combobox.Content>

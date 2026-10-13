@@ -1,2 +1,6 @@
 export { UI_DENSITIES, uiDensity, uiScope } from './styles/density'
 export type { UIDensity } from './styles/density'
+export { Select } from './components/Select'
+export { Combobox } from './components/Combobox'
+export type { SelectRootProps } from '@table/ui-core/select'
+export type { ComboboxRootProps } from '@table/ui-core/combobox'

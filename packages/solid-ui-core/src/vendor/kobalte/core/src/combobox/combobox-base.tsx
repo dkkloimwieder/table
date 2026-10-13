@@ -7,15 +7,11 @@
  * https://github.com/adobe/react-spectrum/blob/ba727bdc0c4a57626131e84d9c9b661d0b65b754/packages/@react-aria/combobox/src/useComboBox.ts
  */
 
-import type { ValidationState } from '../../../utils/src/index.ts'
 import { createFormResetListener } from '@solid-primitives/form'
 import { isAppleDevice } from '@solid-primitives/platform'
 import { createPresence } from '@solid-primitives/presence'
 import { access } from '@solid-primitives/utils'
-import type { JSX, ValidComponent } from '@solidjs/web'
 import {
-  type Accessor,
-  type Component,
   createEffect,
   createMemo,
   createSignal,
@@ -25,44 +21,42 @@ import {
   untrack,
 } from 'solid-js'
 import {
-  createFormControl,
   FORM_CONTROL_PROP_NAMES,
   FormControlContext,
-  type FormControlDataSet,
+  createFormControl,
 } from '../form-control/index.ts'
 import { createFilter } from '../i18n/index.tsx'
-import { createListState, ListKeyboardDelegate } from '../list/index.ts'
+import { ListKeyboardDelegate, createListState } from '../list/index.ts'
 import { announce } from '../live-announcer/index.ts'
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { Popper } from '../popper/index.tsx'
 import {
-  type ElementOf,
-  Polymorphic,
-  type PolymorphicProps,
-} from '../polymorphic/index.tsx'
-import { Popper, type PopperRootOptions } from '../popper/index.tsx'
-import {
-  type CollectionNode,
   createControllableSignal,
   createDisclosureState,
   createRegisterId,
   getItemCount,
 } from '../primitives/index.ts'
-import {
-  createSelectableCollection,
-  type FocusStrategy,
-  type KeyboardDelegate,
-  Selection,
-  type SelectionBehavior,
-  type SelectionMode,
+import { Selection, createSelectableCollection } from '../selection/index.ts'
+import { COMBOBOX_INTL_TRANSLATIONS } from './combobox.intl.ts'
+import { ComboboxContext } from './combobox-context.tsx'
+import type {
+  FocusStrategy,
+  KeyboardDelegate,
+  SelectionBehavior,
+  SelectionMode,
 } from '../selection/index.ts'
-import {
-  COMBOBOX_INTL_TRANSLATIONS,
-  type ComboboxIntlTranslations,
-} from './combobox.intl.ts'
-import {
-  ComboboxContext,
-  type ComboboxContextValue,
-  type ComboboxDataSet,
+import type { ComboboxIntlTranslations } from './combobox.intl.ts'
+import type { CollectionNode } from '../primitives/index.ts'
+import type { PopperRootOptions } from '../popper/index.tsx'
+import type { FormControlDataSet } from '../form-control/index.ts'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { Accessor, Component } from 'solid-js'
+import type {
+  ComboboxContextValue,
+  ComboboxDataSet,
 } from './combobox-context.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type { ValidationState } from '../../../utils/src/index.ts'
 import type { ComboboxTriggerMode } from './types.ts'
 
 export interface ComboboxBaseItemComponentProps<Option> {
@@ -100,20 +94,23 @@ export interface ComboboxBaseOptions<Option, OptGroup = never> extends Omit<
    */
   onOpenChange?: (isOpen: boolean, triggerMode?: ComboboxTriggerMode) => void
 
+  /** The controlled text value, independent of selected options. */
+  inputValue?: string
+
   /** Handler that is called when the combobox input value changes. */
   onInputChange?: (value: string) => void
 
   /** The controlled value of the combobox. */
-  value?: Option[]
+  value?: Array<Option>
 
   /**
    * The value of the combobox when initially rendered.
    * Useful when you do not need to control the value.
    */
-  defaultValue?: Option[]
+  defaultValue?: Array<Option>
 
   /** Event handler called when the value changes. */
-  onChange?: (value: Option[]) => void
+  onChange?: (value: Array<Option>) => void
 
   /** The interaction required to display the combobox menu. */
   triggerMode?: ComboboxTriggerMode
@@ -298,6 +295,7 @@ export function ComboboxBase<
     'defaultOpen',
     'onOpenChange',
     'onInputChange',
+    'inputValue',
     'value',
     'defaultValue',
     'onChange',
@@ -394,7 +392,7 @@ export function ComboboxBase<
   const [showAllOptions, setShowAllOptions] = createSignal(false)
 
   const [lastDisplayedOptions, setLastDisplayedOptions] = createSignal(
-    untrack(() => mergedProps.options!),
+    untrack(() => mergedProps.options),
   )
 
   const disclosureState = createDisclosureState({
@@ -405,6 +403,7 @@ export function ComboboxBase<
   })
 
   const [inputValue, setInputValue] = createControllableSignal<string>({
+    value: () => mergedProps.inputValue,
     defaultValue: () => '',
     onChange: (value) => {
       mergedProps.onInputChange?.(value)
@@ -480,12 +479,13 @@ export function ComboboxBase<
 
     // The combobox doesn't contains option groups.
     if (optionGroupChildren == null) {
-      return mergedProps.options as Option[]
+      return mergedProps.options as Array<Option>
     }
 
-    return mergedProps.options!.flatMap(
+    return mergedProps.options.flatMap(
       (item) =>
-        ((item as any)[optionGroupChildren] as Option[]) ?? (item as Option),
+        ((item as any)[optionGroupChildren] as Array<Option>) ??
+        (item as Option),
     )
   })
 
@@ -518,13 +518,13 @@ export function ComboboxBase<
 
     // The combobox doesn't contains option groups.
     if (optionGroupChildren == null) {
-      return (mergedProps.options as Option[]).filter(filterFn)
+      return (mergedProps.options as Array<Option>).filter(filterFn)
     }
 
-    const filteredGroups: OptGroup[] = []
-    for (const optGroup of mergedProps.options as OptGroup[]) {
+    const filteredGroups: Array<OptGroup> = []
+    for (const optGroup of mergedProps.options as Array<OptGroup>) {
       const filteredChildrenOptions = (
-        (optGroup as any)[optionGroupChildren] as Option[]
+        (optGroup as any)[optionGroupChildren] as Array<Option>
       ).filter(filterFn)
       if (filteredChildrenOptions.length === 0) continue
 
@@ -540,7 +540,7 @@ export function ComboboxBase<
   const displayedOptions = createMemo(() => {
     if (disclosureState.isOpen()) {
       if (showAllOptions()) {
-        return mergedProps.options!
+        return mergedProps.options
       }
       return filteredOptions()
     }
@@ -550,12 +550,14 @@ export function ComboboxBase<
   // Track what action is attempting to open the combobox.
   let openTriggerMode: ComboboxTriggerMode | undefined = 'focus'
 
-  const getOptionsFromValues = (values: Set<string>): Option[] => {
+  const getOptionsFromValues = (values: Set<string>): Array<Option> => {
     return [...values]
-      .map((value) =>
-        allOptions().find((option) => getOptionValue(option) === value),
+      .map(
+        (value) =>
+          allOptions().find((option) => getOptionValue(option) === value) ??
+          mergedProps.value?.find((option) => getOptionValue(option) === value),
       )
-      .filter((option) => option != null) as Option[]
+      .filter((option) => option != null)
   }
 
   const listState = createListState({
@@ -634,7 +636,7 @@ export function ComboboxBase<
     const showAllOptions = setShowAllOptions(triggerMode === 'manual')
 
     const hasOptions = showAllOptions
-      ? mergedProps.options!.length > 0
+      ? mergedProps.options.length > 0
       : filteredOptions().length > 0
 
     // Don't open if there is no option.
@@ -734,12 +736,17 @@ export function ComboboxBase<
 
   const resetInputValue = (selectedKeys: Set<string>) =>
     untrack(() => {
+      if (mergedProps.inputValue !== undefined) return
       if (mergedProps.selectionMode === 'single') {
         const selectedKey = [...selectedKeys][0]
 
-        const selectedOption = allOptions().find(
-          (option) => getOptionValue(option) === selectedKey,
-        )
+        const selectedOption =
+          allOptions().find(
+            (option) => getOptionValue(option) === selectedKey,
+          ) ??
+          mergedProps.value?.find(
+            (option) => getOptionValue(option) === selectedKey,
+          )
         if (mergedProps.noResetInputOnBlur && !selectedOption) return
         setInputValue(selectedOption ? getOptionLabel(selectedOption) : '')
       } else {
@@ -765,14 +772,14 @@ export function ComboboxBase<
         const [prevFilteredOptions, prevShowAllOptions] = prevInput
         setLastDisplayedOptions(
           prevShowAllOptions
-            ? untrack(() => mergedProps.options!)
+            ? untrack(() => mergedProps.options)
             : prevFilteredOptions,
         )
       } else {
         const [curFilteredOptions, curShowAllOptions] = input
         setLastDisplayedOptions(
           curShowAllOptions
-            ? untrack(() => mergedProps.options!)
+            ? untrack(() => mergedProps.options)
             : curFilteredOptions,
         )
       }
@@ -907,7 +914,7 @@ export function ComboboxBase<
     contentPresent,
     autoFocus: focusStrategy,
     inputValue,
-    triggerMode: () => mergedProps.triggerMode!,
+    triggerMode: () => mergedProps.triggerMode,
     activeDescendant,
     controlRef,
     inputRef,
@@ -945,7 +952,7 @@ export function ComboboxBase<
           <Polymorphic<ComboboxBaseRenderProps>
             as="div"
             role="group"
-            id={access(formControlProps.id)!}
+            id={access(formControlProps.id)}
             {...formControlContext.dataset()}
             {...dataset()}
             {...others}

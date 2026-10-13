@@ -1,4 +1,4 @@
-import { uiDensity, uiScope } from '../../src/index'
+import { uiDensity, uiScope } from '../../src/styles/density'
 
 function configure(
   id: string,

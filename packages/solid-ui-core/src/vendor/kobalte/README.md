@@ -27,6 +27,18 @@ Dependency iteration avoids unchecked array access.
 Combobox now returns its plural option-count announcement instead of discarding that string.
 A focused source test covers zero, one, and multiple results.
 
+Combobox accepts `inputValue` for application-controlled search text.
+It keeps that text separate from selection, blur, and Escape.
+The input restores the accepted text when the application rejects an input change.
+Its keyboard handler respects a caller that prevents the default action.
+Styled controls use this behavior to give footer buttons keyboard access.
+Select does not prune application-controlled values when the current option page changes.
+Both controls resolve missing selected options from the supplied controlled value.
+The hidden select retains missing selected keys for native form submission.
+It reapplies native selection after the browser processes replacement option nodes.
+Select exposes `aria-invalid` on its trigger when its validation state is invalid.
+These repairs do not fetch options or store a separate record cache.
+
 The external scroll registry uses the existing owner repair through a pnpm patch.
 Solid, Solid Primitives, Floating UI, and internationalized number formatting remain external.
 No installed Kobalte module supplies the library implementation.

@@ -14,7 +14,8 @@
     ".": "./src/index.ts",
     "./select": "./src/controls/select.ts",
     "./combobox": "./src/controls/combobox.ts",
-    "./polymorphic": "./src/vendor/kobalte/core/src/polymorphic/index.tsx"
+    "./polymorphic": "./src/vendor/kobalte/core/src/polymorphic/index.tsx",
+    "./events": "./src/events.ts"
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",

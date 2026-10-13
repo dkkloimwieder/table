@@ -9,6 +9,7 @@ import { promisify } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { loadavg } from 'node:os'
 import { chromium } from '@playwright/test'
+import { choiceCases } from './choice-cases.mjs'
 import { fieldConfigurationCases } from '../editing/field-configuration-cases.mjs'
 import { editingCallbackCases } from '../editing/editing-callback-cases.mjs'
 import { applicationRecordCases } from '../editing/application-record-cases.mjs'
@@ -175,6 +176,7 @@ async function record(name, work) {
   }
 }
 try {
+  await choiceCases({ page, url, record, press })
   await record(
     'popup inherits live scope themes without changing placement or size',
     async () => {

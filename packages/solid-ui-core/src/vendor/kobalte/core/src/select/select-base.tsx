@@ -6,14 +6,10 @@
  * https://github.com/adobe/react-spectrum/blob/5c1920e50d4b2b80c826ca91aff55c97350bf9f9/packages/@react-aria/select/src/useSelect.ts
  */
 
-import type { ValidationState } from '../../../utils/src/index.ts'
 import { createFormResetListener } from '@solid-primitives/form'
 import { createPresence } from '@solid-primitives/presence'
 import { access } from '@solid-primitives/utils'
-import type { JSX, ValidComponent } from '@solidjs/web'
 import {
-  type Accessor,
-  type Component,
   createEffect,
   createMemo,
   createSignal,
@@ -23,36 +19,31 @@ import {
   untrack,
 } from 'solid-js'
 import {
-  createFormControl,
   FORM_CONTROL_PROP_NAMES,
   FormControlContext,
-  type FormControlDataSet,
+  createFormControl,
 } from '../form-control/index.ts'
 import { createCollator } from '../i18n/index.tsx'
-import { createListState, ListKeyboardDelegate } from '../list/index.ts'
-import {
-  type ElementOf,
-  Polymorphic,
-  type PolymorphicProps,
-} from '../polymorphic/index.tsx'
-import { Popper, type PopperRootOptions } from '../popper/index.tsx'
-import {
-  type CollectionNode,
-  createDisclosureState,
-  createRegisterId,
-} from '../primitives/index.ts'
-import {
-  type FocusStrategy,
-  type KeyboardDelegate,
-  Selection,
-  type SelectionBehavior,
-  type SelectionMode,
+import { ListKeyboardDelegate, createListState } from '../list/index.ts'
+import { Polymorphic } from '../polymorphic/index.tsx'
+import { Popper } from '../popper/index.tsx'
+import { createDisclosureState, createRegisterId } from '../primitives/index.ts'
+import { Selection } from '../selection/index.ts'
+import { SelectContext } from './select-context.tsx'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import type { PopperRootOptions } from '../popper/index.tsx'
+import type { CollectionNode } from '../primitives/index.ts'
+import type {
+  FocusStrategy,
+  KeyboardDelegate,
+  SelectionBehavior,
+  SelectionMode,
 } from '../selection/index.ts'
-import {
-  SelectContext,
-  type SelectContextValue,
-  type SelectDataSet,
-} from './select-context.tsx'
+import type { FormControlDataSet } from '../form-control/index.ts'
+import type { Accessor, Component } from 'solid-js'
+import type { SelectContextValue, SelectDataSet } from './select-context.tsx'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type { ValidationState } from '../../../utils/src/index.ts'
 
 export interface SelectBaseItemComponentProps<T> {
   /** The item to render. */
@@ -81,16 +72,16 @@ export interface SelectBaseOptions<Option, OptGroup = never> extends Omit<
   onOpenChange?: (isOpen: boolean) => void
 
   /** The controlled value of the select. */
-  value?: Option[]
+  value?: Array<Option>
 
   /**
    * The value of the select when initially rendered.
    * Useful when you do not need to control the value.
    */
-  defaultValue?: Option[]
+  defaultValue?: Array<Option>
 
   /** Event handler called when the value changes. */
-  onChange?: (value: Option[]) => void
+  onChange?: (value: Array<Option>) => void
 
   /** The content that will be rendered when no value or defaultValue is set. */
   placeholder?: JSX.Element
@@ -404,12 +395,13 @@ export function SelectBase<
 
     // The combobox doesn't contains option groups.
     if (optionGroupChildren == null) {
-      return mergedProps.options as Option[]
+      return mergedProps.options as Array<Option>
     }
 
-    return mergedProps.options!.flatMap(
+    return mergedProps.options.flatMap(
       (item) =>
-        ((item as any)[optionGroupChildren] as Option[]) ?? (item as Option),
+        ((item as any)[optionGroupChildren] as Array<Option>) ??
+        (item as Option),
     )
   })
 
@@ -418,12 +410,14 @@ export function SelectBase<
     return flattenOptions().map((option) => getOptionValue(option))
   })
 
-  const getOptionsFromValues = (values: Set<string>): Option[] => {
+  const getOptionsFromValues = (values: Set<string>): Array<Option> => {
     return [...values]
-      .map((value) =>
-        flattenOptions().find((option) => getOptionValue(option) === value),
+      .map(
+        (value) =>
+          flattenOptions().find((option) => getOptionValue(option) === value) ??
+          mergedProps.value?.find((option) => getOptionValue(option) === value),
       )
-      .filter((option) => option != null) as Option[]
+      .filter((option) => option != null)
   }
 
   const disclosureState = createDisclosureState({
@@ -489,7 +483,7 @@ export function SelectBase<
 
   const open = (focusStrategy: FocusStrategy | boolean) => {
     // Don't open if there is no option.
-    if (mergedProps.options!.length <= 0) {
+    if (mergedProps.options.length <= 0) {
       return
     }
 
@@ -557,10 +551,11 @@ export function SelectBase<
     return mergedProps.sectionComponent?.({ section })
   }
 
-  // Delete selected keys that do not match any option in the listbox.
+  // Only prune local selections. The application owns controlled off-page values.
   createEffect(
     () => flattenOptionKeys(),
     (keys) => {
+      if (untrack(() => mergedProps.value) !== undefined) return
       const selectionManager = untrack(() => listState.selectionManager())
       const currentSelectedKeys = [
         ...untrack(() => selectionManager.selectedKeys()),
@@ -622,7 +617,7 @@ export function SelectBase<
           <Polymorphic<SelectBaseRenderProps>
             as="div"
             role="group"
-            id={access(formControlProps.id)!}
+            id={access(formControlProps.id)}
             {...formControlContext.dataset()}
             {...dataset()}
             {...others}
