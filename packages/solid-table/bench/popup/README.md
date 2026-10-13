@@ -119,3 +119,10 @@ Open `?overlays=1` for Popover, DropdownMenu, and Tooltip.
 The fixture uses application-owned state and action callbacks.
 It also places Popover and DropdownMenu inside a modal Dialog.
 Browser cases cover pointer and keyboard input, nested menus, focus, placement, force-mounted content, and disposal.
+
+## Display and status
+
+Open `?display=1` for native display components and Toast.
+The fixture gives loading and empty content the same reserved viewport.
+Toast uses application-owned visibility and actions.
+Browser cases exercise progress semantics, announcements, themes, keyboard focus, timer pauses, rejection, and disposal.

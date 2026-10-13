@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { displayCases } from './display-cases.mjs'
 import { overlayCases } from './overlay-cases.mjs'
 import { dialogCases } from './dialog-cases.mjs'
 import { booleanCases } from './boolean-cases.mjs'
@@ -96,15 +97,19 @@ const browser = await chromium.launch({
   executablePath: process.env.BENCH_EXECUTABLE_PATH,
 })
 report.browser = browser.version()
-const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
-page.setDefaultTimeout(7000)
-page.on('pageerror', (error) => report.errors.push(error.stack))
-page.on('console', (message) => {
-  if (!['warning', 'error'].includes(message.type())) return
-  if (message.text().startsWith('[HOT_SCOPE_TIME]'))
-    report.timing.push(message.text())
-  else report.warnings.push(message.text())
-})
+async function createPage() {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
+  page.setDefaultTimeout(7000)
+  page.on('pageerror', (error) => report.errors.push(error.stack))
+  page.on('console', (message) => {
+    if (!['warning', 'error'].includes(message.type())) return
+    if (message.text().startsWith('[HOT_SCOPE_TIME]'))
+      report.timing.push(message.text())
+    else report.warnings.push(message.text())
+  })
+  return page
+}
+const page = await createPage()
 const call = (name, ...args) =>
   page.evaluate(({ name, args }) => window.editingFixture[name](...args), {
     name,
@@ -180,6 +185,7 @@ async function record(name, work) {
   }
 }
 try {
+  await displayCases({ createPage, url, record })
   await overlayCases({ page, url, record, press, settle })
   await dialogCases({ page, url, record, press, settle })
   await booleanCases({ page, url, record, press, settle })

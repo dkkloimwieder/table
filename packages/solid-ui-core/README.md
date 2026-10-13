@@ -58,3 +58,12 @@ pnpm --filter @table/ui-core test:lib
 ```
 
 The [vendor record](./src/vendor/kobalte/README.md) describes origins and local changes.
+
+## Toast state
+
+`@table/ui-core/toast` exports `createToastState`, `ToastOptions`, and `ToastDismissReason`.
+This small owned helper uses the existing external controlled signal primitive.
+Each instance owns its visibility proposals, pause reasons, timer, and document listeners.
+It provides no global queue or application operation.
+Display markup and announcement roles live in the UI package.
+The Kobalte source subset remains unchanged for this component family.

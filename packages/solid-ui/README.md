@@ -218,3 +218,48 @@ Portal uses the trigger's style scope or `data-ui-portal-root`.
 Pass an explicit `mount` for another host.
 Applications import the shared stylesheet and own popup content, action policy, and asynchronous operations.
 The fixture at `?overlays=1` tests these controls in source, distribution, and development builds.
+
+## Display and status
+
+The root and `@table/ui/display` export Badge, Card, Separator, InlineAlert, EmptyState, Spinner, Skeleton, and Progress.
+These components use native markup and the shared compact tokens.
+Badge and InlineAlert accept `tone`: `neutral`, `success`, `warning`, or `error`.
+Card accepts arbitrary content. Separator supports horizontal and vertical orientation or decorative presentation.
+EmptyState fills its parent's reserved height.
+Skeleton reserves a compact row height by default. The application can supply another size through `style`.
+Loading components do not resize the Table viewport.
+Spinner respects reduced motion and stays hidden from assistive technology unless the application supplies an accessible label.
+
+InlineAlert defaults to `announce="off"`.
+Use `polite` for a status announcement or `assertive` for an urgent alert.
+Choose one announcement source for each message.
+Spinner and Skeleton create no live regions.
+Progress uses native `progress` semantics and requires an application-supplied accessible name.
+Its default maximum is 100. Values stay between zero and the maximum.
+Omit `value` for indeterminate progress.
+
+## Toast
+
+The root and `@table/ui/toast` export Toast with Root, Region, Title, Description, and CloseButton.
+The application supplies notification children and the list of notifications inside Region.
+Use `open` and `onOpenChange` for controlled visibility or `defaultOpen` for uncontrolled visibility.
+Toast defaults to open when neither property is supplied.
+The application can reject a close proposal.
+`onDismiss` reports `timeout`, `close`, or `escape` for application policy.
+Actions use ordinary Button children and do not close the notification automatically.
+
+Toast owns one timer and creates one live region with atomic messages.
+Its default priority is `polite`. Use `assertive` for urgent messages.
+Opening keeps the current focus target.
+Close and Escape return focus to the previous control when focus stays inside the notification.
+Use `onCloseAutoFocus` with `preventDefault()` to choose another focus target.
+Prevented click and keyboard handlers suppress the default dismissal.
+
+Duration defaults to 5000 milliseconds. Zero or `persistent` disables automatic dismissal.
+A duration or persistence change restarts the timer.
+Hover, focus, and page inactivity pause the remaining duration.
+A rejected timeout proposes closure once until its timer configuration changes or the notification reopens.
+Application removal restores focus when the notification owns focus.
+Unmounting cancels timers and document listeners.
+There is no module-wide notification store. Applications own queues, limits, asynchronous operations, and persistence.
+The browser fixture at `?display=1` covers native semantics, geometry, focus, timing, and disposal.

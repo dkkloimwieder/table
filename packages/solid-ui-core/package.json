@@ -23,7 +23,8 @@
     "./alert-dialog": "./src/controls/alert-dialog.ts",
     "./popover": "./src/controls/popover.ts",
     "./dropdown-menu": "./src/controls/dropdown-menu.ts",
-    "./tooltip": "./src/controls/tooltip.ts"
+    "./tooltip": "./src/controls/tooltip.ts",
+    "./toast": "./src/controls/toast.ts"
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",

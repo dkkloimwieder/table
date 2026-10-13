@@ -11,8 +11,22 @@ import { NativeFieldsFixture } from './NativeFieldsFixture'
 import { BooleanControls } from './BooleanControls'
 import { DialogControls } from './DialogControls'
 import { OverlayControls } from './OverlayControls'
+import { DisplayControls } from './DisplayControls'
 
-if (new URLSearchParams(location.search).has('overlays')) {
+if (new URLSearchParams(location.search).has('display')) {
+  const dispose = render(
+    () => <DisplayControls />,
+    document.getElementById('root')!,
+  )
+  // eslint-disable-next-line require-yield -- Use the qualified synchronous runtime disposal path.
+  const cleanup = action(function* () {
+    dispose()
+  })
+  window.displayFixture.stop = () => {
+    cleanup()
+    flush()
+  }
+} else if (new URLSearchParams(location.search).has('overlays')) {
   const dispose = render(
     () => <OverlayControls />,
     document.getElementById('root')!,

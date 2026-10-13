@@ -23,7 +23,9 @@
     "./sheet": "./src/components/Sheet.tsx",
     "./popover": "./src/components/Popover.tsx",
     "./dropdown-menu": "./src/components/DropdownMenu.tsx",
-    "./tooltip": "./src/components/Tooltip.tsx"
+    "./tooltip": "./src/components/Tooltip.tsx",
+    "./display": "./src/components/Display.tsx",
+    "./toast": "./src/components/Toast.tsx"
   },
   "sideEffects": [
     "**/*.css"
