@@ -33,6 +33,38 @@ export async function consumerCases({ page, url, record, press, settle }) {
   }
 
   await record(
+    'consumer: joined search uses one clear button and keeps native search semantics',
+    async () => {
+      await open()
+      const search = page.getByRole('searchbox', {
+        name: 'Search all columns',
+        exact: true,
+      })
+      await search.fill('Existing')
+      assert.equal(await search.getAttribute('type'), 'search')
+      const bounds = await search.boundingBox()
+      await search.click({
+        position: { x: bounds.width - 14, y: bounds.height / 2 },
+      })
+      assert.equal(await search.inputValue(), 'Existing')
+      const clear = page.getByRole('button', {
+        name: 'Clear search',
+        exact: true,
+      })
+      assert.equal(await clear.count(), 1)
+      await clear.focus()
+      await press('Space')
+      assert.equal(await search.inputValue(), '')
+      assert.equal(
+        await search.evaluate((node) => node === document.activeElement),
+        true,
+      )
+      await search.fill('Existing')
+      await press('Escape')
+      assert.equal(await search.inputValue(), '')
+    },
+  )
+  await record(
     'consumer: public controls share styles and accept application updates beside Table',
     async () => {
       await open()

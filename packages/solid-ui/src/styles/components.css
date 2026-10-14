@@ -294,6 +294,11 @@
   align-items: stretch;
   min-width: 0;
 }
+:where([data-ui])
+  .filter-input:has(.clear-input)
+  input[type='search']::-webkit-search-cancel-button {
+  display: none;
+}
 :where([data-ui]) .filter-input:has(:focus-visible) {
   outline: 2px solid var(--ui-focus, #1657a8);
   outline-offset: 2px;
