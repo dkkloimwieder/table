@@ -92,7 +92,9 @@ export function PopoverPortal(props: Core.PopoverPortalProps) {
   )
 }
 export const Popover = /* @__PURE__ */ Object.assign(PopoverRoot, {
-  ...Core.Popover,
+  // Refresh proxies hide function keys. Copy named parts without enumerating them.
+  Anchor: Core.Anchor,
+  Arrow: Core.Arrow,
   Root: PopoverRoot,
   Portal: PopoverPortal,
   Trigger: PopoverTrigger,

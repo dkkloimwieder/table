@@ -53,6 +53,12 @@ test('qualification covers both browser inputs and keeps heap work separate', ()
       )
     }
   }
+  const live = stages.find(({ name }) => name === 'popup-live-browser')
+  assert.ok(live)
+  assert.equal(live.args.at(-1), 'bench/popup/run-live.mjs')
+  assert.equal(live.env.NODE_ENV, 'development')
+  assert.equal(live.env.BENCH_OUTPUT, '/tmp/solid-gates/popup-live.json')
+  assert.equal(live.env.BENCH_URL, undefined)
   assert.ok(stages.some(({ name }) => name === 'hydration'))
   assert.ok(stages.some(({ name }) => name === 'analytics-server'))
   assert.ok(stages.every(({ env }) => !env.BENCH_HEAPS && !env.BENCH_WORKLOAD))

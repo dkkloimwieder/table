@@ -99,6 +99,16 @@ export function qualificationStages(output, { wamn = false } = {}) {
       )
     }
   }
+  stages.push(
+    stage(
+      'popup-live-browser',
+      [...pkg, 'exec', 'node', 'bench/popup/run-live.mjs'],
+      {
+        NODE_ENV: 'development',
+        BENCH_OUTPUT: resolve(output, 'popup-live.json'),
+      },
+    ),
+  )
   if (wamn) {
     stages.push(
       stage('wamn-inputs', [

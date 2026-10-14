@@ -126,7 +126,18 @@ export function SelectListbox<
 }
 
 export const Select = /* @__PURE__ */ Object.assign(SelectRoot, {
-  ...Core.Select,
+  // Refresh proxies hide function keys. Copy named parts without enumerating them.
+  Arrow: Core.Arrow,
+  Description: Core.Description,
+  ErrorMessage: Core.ErrorMessage,
+  HiddenSelect: Core.HiddenSelect,
+  Icon: Core.Icon,
+  ItemDescription: Core.ItemDescription,
+  ItemIndicator: Core.ItemIndicator,
+  ItemLabel: Core.ItemLabel,
+  Label: Core.Label,
+  Section: Core.Section,
+  Value: Core.Value,
   Root: SelectRoot,
   Trigger: SelectTrigger,
   Content: SelectContent,

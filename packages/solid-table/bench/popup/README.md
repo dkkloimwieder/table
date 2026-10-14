@@ -42,6 +42,25 @@ Production WAMN components and generator output remain outside this fixture.
 The existing popup runner includes the consumer cases in source, distribution, and development runs.
 Run only these cases with `BENCH_CASE_PATTERN='^consumer:'` and disable benchmark workloads with `BENCH_WORKLOADS=0`.
 
+## Live development regression
+
+The qualification suite also starts a temporary Vite development server.
+`run-live.mjs` tests every public part of the choice, menu, overlay, and dialog components.
+It reloads their modules through Vite hot updates and makes sure that the form draft survives.
+Then it runs the full popup interaction suite against that server.
+The script closes its temporary server and leaves existing review servers running.
+
+Solid refresh wraps component functions in proxies.
+These proxies support direct property access but hide keys from object enumeration.
+Styled components copy named parts explicitly because spreading a proxied compound function drops its parts.
+Built files do not use these refresh proxies, so built development tests alone cannot catch this failure.
+
+From the repository root, run the live regression with the installed Chromium browser:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/tmp/table-solid-export-browsers TMPDIR=/dev/shm node packages/solid-table/bench/popup/run-live.mjs
+```
+
 ## Source and local repairs
 
 The fixture imports styled Select and Combobox from the private `@table/ui` workspace package.

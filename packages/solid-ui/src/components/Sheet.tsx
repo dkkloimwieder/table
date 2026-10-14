@@ -29,7 +29,13 @@ export function SheetRoot(props: SheetRootProps) {
 }
 
 export const Sheet = /* @__PURE__ */ Object.assign(SheetRoot, {
-  ...Dialog,
+  // Refresh proxies hide function keys. Copy named parts without enumerating them.
+  Portal: Dialog.Portal,
+  Trigger: Dialog.Trigger,
+  CloseButton: Dialog.CloseButton,
+  Overlay: Dialog.Overlay,
+  Title: Dialog.Title,
+  Description: Dialog.Description,
   Root: SheetRoot,
   Content: SheetContent,
 })

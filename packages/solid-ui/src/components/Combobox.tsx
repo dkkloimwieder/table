@@ -151,7 +151,17 @@ export function ComboboxControl<Option, T extends ValidComponent = 'div'>(
 }
 
 export const Combobox = /* @__PURE__ */ Object.assign(ComboboxRoot, {
-  ...Core.Combobox,
+  // Refresh proxies hide function keys. Copy named parts without enumerating them.
+  Arrow: Core.Arrow,
+  Description: Core.Description,
+  ErrorMessage: Core.ErrorMessage,
+  HiddenSelect: Core.HiddenSelect,
+  Icon: Core.Icon,
+  ItemDescription: Core.ItemDescription,
+  ItemIndicator: Core.ItemIndicator,
+  ItemLabel: Core.ItemLabel,
+  Label: Core.Label,
+  Section: Core.Section,
   Root: ComboboxRoot,
   Trigger: ComboboxTrigger,
   Content: ComboboxContent,

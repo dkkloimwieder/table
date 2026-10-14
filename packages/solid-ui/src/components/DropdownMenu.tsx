@@ -171,7 +171,14 @@ export function DropdownMenuPortal(props: Core.DropdownMenuPortalProps) {
   )
 }
 export const DropdownMenu = /* @__PURE__ */ Object.assign(DropdownMenuRoot, {
-  ...Core.DropdownMenu,
+  // Refresh proxies hide function keys. Copy named parts without enumerating them.
+  Arrow: Core.Arrow,
+  Group: Core.Group,
+  Icon: Core.Icon,
+  ItemIndicator: Core.ItemIndicator,
+  ItemLabel: Core.ItemLabel,
+  RadioGroup: Core.RadioGroup,
+  Sub: Core.Sub,
   Root: DropdownMenuRoot,
   Portal: DropdownMenuPortal,
   Trigger: DropdownMenuTrigger,

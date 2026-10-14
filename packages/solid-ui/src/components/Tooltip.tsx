@@ -50,7 +50,8 @@ export function TooltipPortal(props: Core.TooltipPortalProps) {
   )
 }
 export const Tooltip = /* @__PURE__ */ Object.assign(TooltipRoot, {
-  ...Core.Tooltip,
+  // Refresh proxies hide function keys. Copy named parts without enumerating them.
+  Arrow: Core.Arrow,
   Root: TooltipRoot,
   Portal: TooltipPortal,
   Trigger: TooltipTrigger,
