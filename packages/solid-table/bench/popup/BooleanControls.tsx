@@ -170,7 +170,9 @@ export function BooleanControls() {
         <Checkbox id="uncontrolled" name="default" defaultChecked>
           <Checkbox.Input />
           <Checkbox.Control>
-            <Checkbox.Indicator />
+            <Checkbox.Indicator>
+              <span data-custom-checkbox-mark="">★</span>
+            </Checkbox.Indicator>
           </Checkbox.Control>
           <Checkbox.Label>Default choice</Checkbox.Label>
         </Checkbox>

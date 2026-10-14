@@ -44,7 +44,16 @@ export function CheckboxIndicator<T extends ValidComponent = 'div'>(
   const context = Core.useCheckboxContext()
   return (
     <Primitive {...props} class={'ui-check-indicator ' + (props.class ?? '')}>
-      {props.children ?? (context.indeterminate() ? '−' : '✓')}
+      {props.children ?? (
+        <svg
+          class="ui-check-mark"
+          viewBox="0 0 16 16"
+          aria-hidden="true"
+          tabindex={-1}
+        >
+          <path d={context.indeterminate() ? 'M3 8h10' : 'm2 8 4 4 8-9'} />
+        </svg>
+      )}
     </Primitive>
   )
 }

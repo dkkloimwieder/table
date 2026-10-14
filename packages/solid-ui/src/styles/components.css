@@ -836,7 +836,23 @@
   cursor: pointer;
 }
 :where([data-ui]) .ui-check-indicator {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
   line-height: 1;
+}
+:where([data-ui]) .ui-check-mark {
+  display: block;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 :where([data-ui]) .ui-radio-control,
 :where([data-ui]) .ui-radio-indicator {

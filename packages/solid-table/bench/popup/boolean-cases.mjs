@@ -20,6 +20,74 @@ export async function booleanCases({ page, url, record, press, settle }) {
       Object.fromEntries(new FormData(document.querySelector('form'))),
     )
   await record(
+    'booleans: checked and mixed SVG marks fill the box and preserve custom children',
+    async () => {
+      await open()
+      for (const font of [12, 18]) {
+        await page
+          .locator('main')
+          .evaluate(
+            (node, font) =>
+              node.style.setProperty('--ui-font-size', `${font}px`),
+            font,
+          )
+        for (const indeterminate of [false, true]) {
+          await configure({ checked: true, indeterminate })
+          const mark = page.locator('[data-control=checkbox] .ui-check-mark')
+          assert.equal(await mark.getAttribute('aria-hidden'), 'true')
+          assert.equal(await mark.evaluate((node) => node.tabIndex), -1)
+          const geometry = await mark.evaluate((svg) => {
+            const path = svg.querySelector('path')
+            const ink = path.getBBox()
+            const bounds = svg.getBoundingClientRect()
+            const control = svg
+              .closest('.ui-check-control')
+              .getBoundingClientRect()
+            const stroke = parseFloat(getComputedStyle(svg).strokeWidth)
+            return {
+              width: bounds.width,
+              height: bounds.height,
+              controlWidth: control.width,
+              controlHeight: control.height,
+              inkWidth:
+                ((ink.width + stroke) / svg.viewBox.baseVal.width) *
+                bounds.width,
+              inkX: ink.x,
+              inkY: ink.y,
+              inkRight: ink.x + ink.width,
+              inkBottom: ink.y + ink.height,
+              stroke,
+            }
+          })
+          assert.equal(geometry.controlWidth, font + 4)
+          assert.equal(geometry.controlHeight, font + 4)
+          assert.equal(geometry.width, geometry.controlWidth - 2)
+          assert.equal(geometry.height, geometry.controlHeight - 2)
+          assert.ok(
+            geometry.inkWidth >=
+              geometry.controlWidth * (indeterminate ? 0.65 : 0.75),
+          )
+          assert.ok(
+            geometry.inkX >= geometry.stroke / 2 &&
+              geometry.inkY >= geometry.stroke / 2,
+          )
+          assert.ok(
+            geometry.inkRight <= 16 - geometry.stroke / 2 &&
+              geometry.inkBottom <= 16 - geometry.stroke / 2,
+          )
+        }
+      }
+      assert.equal(
+        await page.locator('[data-custom-checkbox-mark]').textContent(),
+        '★',
+      )
+      assert.equal(
+        await page.locator('#uncontrolled .ui-check-mark').count(),
+        0,
+      )
+    },
+  )
+  await record(
     'booleans: labels, controls, Space and native form values follow controlled state',
     async () => {
       await open()
@@ -138,8 +206,10 @@ export async function booleanCases({ page, url, record, press, settle }) {
         true,
       )
       assert.equal(
-        await page.locator('.ui-check-indicator').first().textContent(),
-        '−',
+        await page
+          .locator('[data-control=checkbox] .ui-check-mark path')
+          .getAttribute('d'),
+        'M3 8h10',
       )
       assert.equal(
         await switched().getAttribute('aria-describedby'),
