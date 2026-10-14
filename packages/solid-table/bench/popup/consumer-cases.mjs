@@ -33,6 +33,55 @@ export async function consumerCases({ page, url, record, press, settle }) {
   }
 
   await record(
+    'consumer: column visibility uses the shared checkbox and responds to labels and Space',
+    async () => {
+      await open()
+      await page.getByText('Display columns', { exact: true }).click()
+      const column = page.getByRole('checkbox', {
+        name: 'Show Region',
+        exact: true,
+      })
+      assert.equal(await column.isChecked(), true)
+      const controls = await page
+        .locator('.ui-checkbox .ui-check-control')
+        .evaluateAll((nodes) =>
+          nodes.map((node) => {
+            const style = getComputedStyle(node)
+            return [
+              style.width,
+              style.height,
+              style.border,
+              style.backgroundColor,
+            ]
+          }),
+        )
+      assert.equal(controls.length, 4)
+      assert.ok(
+        controls.every(
+          (style) => JSON.stringify(style) === JSON.stringify(controls[0]),
+        ),
+      )
+      assert.equal(
+        await page.locator('.display-fields .ui-check-mark').count(),
+        3,
+      )
+      await page.getByText('Show Region', { exact: true }).click()
+      assert.equal(await column.isChecked(), false)
+      assert.equal(
+        await page.getByRole('columnheader', { name: /Region/ }).count(),
+        0,
+      )
+      await column.focus()
+      await press('Space')
+      assert.equal(await column.isChecked(), true)
+      assert.equal(
+        await page.getByRole('columnheader', { name: /Region/ }).count(),
+        1,
+      )
+    },
+  )
+
+  await record(
     'consumer: joined search uses one clear button and keeps native search semantics',
     async () => {
       await open()

@@ -36,10 +36,25 @@ assert.ok(
 )
 assert.ok(
   !modules.some((path) =>
-    /table-core|@tanstack\/store|virtual-core|zod\/|createEditing|solid-form|kobalte/.test(
+    /table-core|@tanstack\/store|virtual-core|zod\/|createEditing|solid-form|node_modules\/@kobalte\//.test(
       path,
     ),
   ),
+)
+const ownedCheckboxModules = modules.filter((path) =>
+  path.includes('/solid-ui-core/src/vendor/kobalte/'),
+)
+assert.ok(
+  ownedCheckboxModules.some((path) => path.endsWith('/checkbox-root.tsx')),
+  'column controls use the owned shared checkbox',
+)
+assert.ok(
+  ownedCheckboxModules.every((path) =>
+    /\/utils\/src\/|\/core\/src\/(checkbox|form-control|polymorphic)\/|\/core\/src\/primitives\/(create-tag-name|create-toggle-state)\//.test(
+      path,
+    ),
+  ),
+  'read-only Table retains only checkbox behavior and its shared helpers',
 )
 report.moduleAudit = true
 const server = createServer(async (request, response) => {
@@ -186,7 +201,14 @@ try {
   })
   await test('Display controls and application replacements preserve table state', async () => {
     await page.getByText('Display columns', { exact: true }).click()
-    await page.getByLabel('Show Category', { exact: true }).uncheck()
+    const amount = page.getByRole('checkbox', {
+      name: 'Show Amount',
+      exact: true,
+    })
+    assert.equal(await amount.isDisabled(), true)
+    await page.getByText('Show Amount', { exact: true }).click({ force: true })
+    assert.equal(await amount.isChecked(), true)
+    await page.getByText('Show Category', { exact: true }).click()
     await page
       .getByRole('button', { name: 'Move Amount column', exact: true })
       .focus()

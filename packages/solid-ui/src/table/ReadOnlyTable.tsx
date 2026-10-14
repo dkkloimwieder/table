@@ -1,6 +1,5 @@
 import { For, Show, createMemo } from 'solid-js'
-import { Input } from '../components/NativeFields'
-import { nativeEvents } from '../utils/nativeEvents'
+import { Checkbox } from '../components/Checkbox'
 import { TableSort } from './TableSort'
 import { Table } from './Table'
 import { TableFilter } from './TableFilter'
@@ -91,18 +90,18 @@ export function ReadOnlyTable<T, M>(props: {
           <legend>Visible columns</legend>
           <For each={table.getColumns()}>
             {(column) => (
-              <label class="check-option">
-                <Input
-                  type="checkbox"
-                  checked={column.getIsVisible()}
-                  disabled={column.columnDef?.enableHiding === false}
-                  ref={nativeEvents<HTMLInputElement>({
-                    change: (event) =>
-                      column.toggleVisibility(event.currentTarget.checked),
-                  })}
-                />
-                Show {label(column)}
-              </label>
+              <Checkbox
+                class="check-option"
+                checked={column.getIsVisible()}
+                disabled={column.columnDef?.enableHiding === false}
+                onChange={(checked) => column.toggleVisibility(checked)}
+              >
+                <Checkbox.Input />
+                <Checkbox.Control>
+                  <Checkbox.Indicator />
+                </Checkbox.Control>
+                <Checkbox.Label>Show {label(column)}</Checkbox.Label>
+              </Checkbox>
             )}
           </For>
         </fieldset>

@@ -62,6 +62,7 @@ function start() {
           ...textColumn,
           id: 'amount',
           header: 'Amount',
+          enableHiding: false,
           accessorKey: 'amount',
           sortFn: (a, b) => Number(a) - Number(b),
           aggregationFn: nativeAggregations.sum,
