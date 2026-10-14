@@ -33,6 +33,50 @@ export async function consumerCases({ page, url, record, press, settle }) {
   }
 
   await record(
+    'consumer: Enter stays within fields and review requires explicit button activation',
+    async () => {
+      await open()
+      const controls = [
+        page.getByRole('textbox', { name: 'Display name', exact: true }),
+        input(),
+        page.getByRole('checkbox', { name: 'Include details', exact: true }),
+        page.getByRole('switch', { name: 'Enable updates', exact: true }),
+      ]
+      for (const control of controls) {
+        await control.focus()
+        await press('Enter')
+        assert.equal((await read()).confirm, false)
+        assert.equal(await page.getByRole('alertdialog').count(), 0)
+      }
+      assert.equal(
+        (await requests()).history.filter(
+          (entry) => entry.request.kind === 'save',
+        ).length,
+        0,
+      )
+      await controls[2].focus()
+      await press('Space')
+      assert.equal((await read()).checked, true)
+      await controls[3].focus()
+      await press('Space')
+      assert.equal((await read()).enabled, false)
+      await button('Review record').focus()
+      await press('Enter')
+      await page
+        .getByRole('alertdialog', { name: 'Save this record?' })
+        .waitFor()
+      assert.equal((await read()).confirm, true)
+      await button('Keep editing').click()
+      await button('Review record').focus()
+      await press('Space')
+      await page
+        .getByRole('alertdialog', { name: 'Save this record?' })
+        .waitFor()
+      assert.equal((await read()).confirm, true)
+    },
+  )
+
+  await record(
     'consumer: column visibility uses the shared checkbox and responds to labels and Space',
     async () => {
       await open()

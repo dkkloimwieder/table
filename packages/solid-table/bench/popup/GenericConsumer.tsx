@@ -239,7 +239,6 @@ export function GenericConsumer() {
           ref={nativeEvents<HTMLFormElement>({
             submit(event) {
               event.preventDefault()
-              review()
             },
           })}
         >
@@ -344,7 +343,9 @@ export function GenericConsumer() {
               </Switch.Control>
               <Switch.Label>{labels.switch}</Switch.Label>
             </Switch>
-            <Button type="submit">Review record</Button>
+            <Button type="button" onClick={review}>
+              Review record
+            </Button>
           </FieldSet>
           <Show when={formError() && !confirm()}>
             <InlineAlert tone="error" announce="polite">
