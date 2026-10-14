@@ -58,6 +58,7 @@ pnpm --filter @table/ui-core test:lib
 ```
 
 The [vendor record](./src/vendor/kobalte/README.md) describes origins and local changes.
+Its [maintenance procedure](./src/vendor/kobalte/README.md#update-a-vendor-revision) covers the inventory, build contributions, original comparison, and exact patch replay.
 
 ## Toast state
 

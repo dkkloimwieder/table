@@ -29,3 +29,10 @@ Browser workloads cover paging, wrapped text, expansion, resizing, pinning, anch
 
 The engine has no external runtime package dependencies.
 Other repository examples can still use the installed TanStack Virtual package.
+
+## Maintenance
+
+The [shared vendor procedure](../../../../../solid-ui-core/src/vendor/kobalte/README.md#update-a-vendor-revision) covers source inventories, original comparison, patch replay, and build contributions.
+From the repository root, run `pnpm audit:solid:vendor --bundles` to include both owned vendor subsets.
+Supply `--virtual-upstream` with the exact pinned package directory to test original hashes and generate its local repair patch.
+The replay test requires every resulting source and license hash to match the checked-in copy.
