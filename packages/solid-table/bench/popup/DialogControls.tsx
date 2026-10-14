@@ -16,6 +16,7 @@ export function DialogControls() {
   const [modal, setModal] = createSignal(true)
   const [preventEscape, setPreventEscape] = createSignal(false)
   const [preventOutside, setPreventOutside] = createSignal(false)
+  const [preventInitialFocus, setPreventInitialFocus] = createSignal(false)
   const [preventClose, setPreventClose] = createSignal(false)
   const [redirect, setRedirect] = createSignal(false)
   const [long, setLong] = createSignal(false)
@@ -40,6 +41,8 @@ export function DialogControls() {
       if ('modal' in next) setModal(next.modal!)
       if ('preventEscape' in next) setPreventEscape(next.preventEscape!)
       if ('preventOutside' in next) setPreventOutside(next.preventOutside!)
+      if ('preventInitialFocus' in next)
+        setPreventInitialFocus(next.preventInitialFocus!)
       if ('preventClose' in next) setPreventClose(next.preventClose!)
       if ('redirect' in next) setRedirect(next.redirect!)
       if ('long' in next) setLong(next.long!)
@@ -108,6 +111,9 @@ export function DialogControls() {
             data-content="main"
             ref={() => {
               refs++
+            }}
+            onOpenAutoFocus={(event) => {
+              if (preventInitialFocus()) event.preventDefault()
             }}
             onEscapeKeyDown={(event) => {
               if (preventEscape()) event.preventDefault()
@@ -209,6 +215,7 @@ declare global {
         modal?: boolean
         preventEscape?: boolean
         preventOutside?: boolean
+        preventInitialFocus?: boolean
         preventClose?: boolean
         redirect?: boolean
         long?: boolean

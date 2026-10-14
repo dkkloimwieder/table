@@ -1,29 +1,25 @@
 import { createFocusTrap } from '@solid-primitives/focus'
-import {
-  createHideOutside,
-  type FocusOutsideEvent,
-  type InteractOutsideEvent,
-  type PointerDownOutsideEvent,
-} from '@solid-primitives/interaction'
 
 import { combineStyle } from '@solid-primitives/props'
 import { createPreventScroll } from '@solid-primitives/scroll'
-import type { JSX, ValidComponent } from '@solidjs/web'
-import {
-  type Component,
-  createEffect,
-  createSignal,
-  omit,
-  Show,
-} from 'solid-js'
-import {
-  DismissableLayer,
-  type DismissableLayerCommonProps,
-  type DismissableLayerRenderProps,
-} from '../dismissable-layer/index.ts'
-import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
+import { Show, createEffect, createSignal, omit } from 'solid-js'
+import { createModalHideOutside } from '../../../../../controls/modal-hide-outside.ts'
+import { DismissableLayer } from '../dismissable-layer/index.ts'
 import { Popper } from '../popper/index.tsx'
-import { type SelectDataSet, useSelectContext } from './select-context.tsx'
+import { useSelectContext } from './select-context.tsx'
+import type { Component } from 'solid-js'
+import type { SelectDataSet } from './select-context.tsx'
+import type {
+  DismissableLayerCommonProps,
+  DismissableLayerRenderProps,
+} from '../dismissable-layer/index.ts'
+import type {
+  FocusOutsideEvent,
+  InteractOutsideEvent,
+  PointerDownOutsideEvent,
+} from '@solid-primitives/interaction'
+import type { JSX, ValidComponent } from '@solidjs/web'
+import type { ElementOf, PolymorphicProps } from '../polymorphic/index.tsx'
 
 export interface SelectContentOptions {
   /**
@@ -105,13 +101,13 @@ export function SelectContent<T extends ValidComponent = 'div'>(
   }
 
   // aria-hide everything except the content (better supported equivalent to setting aria-modal)
-  createHideOutside({
-    disabled: () => !(context.isOpen() && context.isModal()),
+  createModalHideOutside({
+    element: ref,
+    enabled: () => context.isOpen() && context.isModal(),
     targets: () => {
       const el = ref()
       return el ? [el] : []
     },
-    alwaysVisibleSelector: '[data-kb-top-layer], [data-live-announcer]',
   })
 
   createPreventScroll({

@@ -6,8 +6,6 @@
  * https://github.com/radix-ui/primitives/blob/81b25f4b40c54f72aeb106ca0e64e1e09655153e/packages/react/menu/src/Menu.tsx
  */
 
-import { createHideOutside } from '@solid-primitives/interaction'
-
 import { createPresence } from '@solid-primitives/presence'
 import {
   Show,
@@ -19,6 +17,7 @@ import {
   onCleanup,
   untrack,
 } from 'solid-js'
+import { createModalHideOutside } from '../../../../../controls/modal-hide-outside.ts'
 import { createListState } from '../list/index.ts'
 import { useOptionalMenubarContext } from '../menubar/menubar-context.tsx'
 import { useOptionalNavigationMenuContext } from '../navigation-menu/navigation-menu-context.tsx'
@@ -234,16 +233,14 @@ export function Menu(props: MenuProps) {
   }
 
   // aria-hide everything except the content (better supported equivalent to setting aria-modal)
-  createHideOutside({
-    disabled: () =>
-      !(
-        parentMenuContext == null &&
-        disclosureState.isOpen() &&
-        rootContext.isModal()
-      ),
+  createModalHideOutside({
+    element: contentRef,
+    enabled: () =>
+      parentMenuContext == null &&
+      disclosureState.isOpen() &&
+      rootContext.isModal(),
     targets: () =>
       [contentRef(), ...nestedMenus()].filter(Boolean) as Array<Element>,
-    alwaysVisibleSelector: '[data-kb-top-layer], [data-live-announcer]',
   })
 
   createEffect(

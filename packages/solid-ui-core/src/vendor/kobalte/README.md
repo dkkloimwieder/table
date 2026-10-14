@@ -56,6 +56,9 @@ Dialog trigger and close handlers respect prevented caller events.
 Caller focus restoration takes precedence over the default trigger focus.
 Dialogs without a connected trigger retain the focus primitive's previous focus target.
 Modal content exposes `aria-modal`. AlertDialog prevents outside dismissal.
+Background hiding waits until focus enters the mounted modal.
+The shared Core helper follows the external focus trap or caller focus callback and releases its listener on closure.
+This order prevents `aria-hidden` from hiding a focused opener before delayed initial focus runs.
 
 The external scroll registry uses the existing owner repair through a pnpm patch.
 Solid, Solid Primitives, Floating UI, and internationalized number formatting remain external.

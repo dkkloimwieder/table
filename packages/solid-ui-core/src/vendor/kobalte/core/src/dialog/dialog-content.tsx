@@ -7,7 +7,6 @@
  */
 
 import { createFocusTrap } from '@solid-primitives/focus'
-import { createHideOutside } from '@solid-primitives/interaction'
 
 import { createPreventScroll } from '@solid-primitives/scroll'
 import {
@@ -18,6 +17,7 @@ import {
   omit,
   untrack,
 } from 'solid-js'
+import { createModalHideOutside } from '../../../../../controls/modal-hide-outside.ts'
 import { DismissableLayer } from '../dismissable-layer/index.ts'
 import { useDialogContext } from './dialog-context.tsx'
 import type { Component } from 'solid-js'
@@ -197,15 +197,10 @@ export function DialogContent<T extends ValidComponent = 'div'>(
     }
   }
 
-  // aria-hide everything except the content (better supported equivalent to setting aria-modal)
-  // Use context.contentRef (a signal) so the effect re-runs when the element mounts.
-  createHideOutside({
-    disabled: () => !(context.isOpen() && context.modal()),
-    targets: () => {
-      const el = context.contentRef()
-      return el ? [el] : []
-    },
-    alwaysVisibleSelector: '[data-kb-top-layer], [data-live-announcer]',
+  // The external focus trap moves focus after paint. Do not hide its opener first.
+  createModalHideOutside({
+    element: ref,
+    enabled: () => context.isOpen() && context.modal(),
   })
 
   createPreventScroll({

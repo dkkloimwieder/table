@@ -132,6 +132,8 @@ try {
   })
   const page = await browser.newPage()
   page.setDefaultTimeout(10000)
+  const accessibility = await page.context().newCDPSession(page)
+  await accessibility.send('Accessibility.enable')
   page.on('pageerror', (error) => report.errors.push(error.stack))
   page.on('console', (message) => {
     if (

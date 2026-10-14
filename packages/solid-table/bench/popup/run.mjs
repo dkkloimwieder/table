@@ -101,6 +101,26 @@ report.browser = browser.version()
 async function createPage() {
   const page = await browser.newPage({ viewport: { width: 1280, height: 900 } })
   page.setDefaultTimeout(7000)
+  const accessibility = await page.context().newCDPSession(page)
+  await accessibility.send('Accessibility.enable')
+  await page.addInitScript(() => {
+    window.hiddenFocusViolations = []
+    const setAttribute = Element.prototype.setAttribute
+    Element.prototype.setAttribute = function (name, value) {
+      if (
+        name === 'aria-hidden' &&
+        value === 'true' &&
+        this.contains(document.activeElement)
+      ) {
+        window.hiddenFocusViolations.push({
+          hidden: this.id || this.tagName,
+          focused:
+            document.activeElement?.id || document.activeElement?.textContent,
+        })
+      }
+      return setAttribute.call(this, name, value)
+    }
+  })
   page.on('pageerror', (error) => report.errors.push(error.stack))
   page.on('console', (message) => {
     if (!['warning', 'error'].includes(message.type())) return
@@ -175,6 +195,11 @@ async function record(name, work) {
   try {
     await work()
     await settle()
+    assert.deepEqual(
+      await page.evaluate(() => window.hiddenFocusViolations ?? []),
+      [],
+      'focus never enters a newly hidden accessibility subtree',
+    )
     assert.deepEqual(report.errors.slice(errors), [])
     assert.deepEqual(report.warnings.slice(warnings), [])
     report.cases.push(name)

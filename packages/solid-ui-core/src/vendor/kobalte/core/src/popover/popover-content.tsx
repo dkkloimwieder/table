@@ -3,7 +3,6 @@ import {
   createFocusTrap,
   getFocusableTreeWalker,
 } from '@solid-primitives/focus'
-import { createHideOutside } from '@solid-primitives/interaction'
 
 import { combineStyle } from '@solid-primitives/props'
 import { createPreventScroll } from '@solid-primitives/scroll'
@@ -15,6 +14,7 @@ import {
   omit,
   untrack,
 } from 'solid-js'
+import { createModalHideOutside } from '../../../../../controls/modal-hide-outside.ts'
 import { DismissableLayer } from '../dismissable-layer/index.ts'
 import { Popper } from '../popper/index.tsx'
 import { usePopoverContext } from './popover-context.tsx'
@@ -200,14 +200,10 @@ export function PopoverContent<T extends ValidComponent = 'div'>(
     }
   }
 
-  // aria-hide everything except the content (better supported equivalent to setting aria-modal)
-  createHideOutside({
-    disabled: () => !(context.isOpen() && context.isModal()),
-    targets: () => {
-      const el = ref()
-      return el ? [el] : []
-    },
-    alwaysVisibleSelector: '[data-kb-top-layer], [data-live-announcer]',
+  // The external focus trap moves focus after paint. Do not hide its opener first.
+  createModalHideOutside({
+    element: ref,
+    enabled: () => context.isOpen() && context.isModal(),
   })
 
   createPreventScroll({

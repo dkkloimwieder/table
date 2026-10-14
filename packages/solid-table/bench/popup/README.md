@@ -48,6 +48,9 @@ The qualification suite also starts a temporary Vite development server.
 `run-live.mjs` tests every public part of the choice, menu, overlay, and dialog components.
 It reloads their modules through Vite hot updates and makes sure that the form draft survives.
 Then it runs the full popup interaction suite against that server.
+Browser pages enable Chromium accessibility tracking so focused `aria-hidden` warnings remain visible.
+The runner also records synchronous attempts to hide a focused element and rejects them.
+Modal background hiding waits for initial focus and respects caller focus callbacks.
 The script closes its temporary server and leaves existing review servers running.
 
 Solid refresh wraps component functions in proxies.

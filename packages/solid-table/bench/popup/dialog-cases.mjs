@@ -59,6 +59,47 @@ export async function dialogCases({ page, url, record, press, settle }) {
     },
   )
   await record(
+    'dialogs: background hiding waits for caller-controlled initial focus',
+    async () => {
+      await open()
+      await configure({ preventInitialFocus: true })
+      await trigger().click()
+      await settle()
+      assert.equal(await focused(), 'Open dialog')
+      assert.equal(
+        await page
+          .locator('#outside-button')
+          .evaluate((node) => Boolean(node.closest('[aria-hidden="true"]'))),
+        false,
+      )
+      await main()
+        .getByRole('textbox', { name: 'Dialog name', exact: true })
+        .focus()
+      await settle()
+      assert.equal(
+        await page
+          .locator('#outside-button')
+          .evaluate((node) => Boolean(node.closest('[aria-hidden="true"]'))),
+        true,
+      )
+      assert.equal(
+        await page.evaluate(() =>
+          Boolean(document.activeElement?.closest('[aria-hidden="true"]')),
+        ),
+        false,
+      )
+      await press('Escape')
+      await settle()
+      assert.equal(await focused(), 'Open dialog')
+      assert.equal(
+        await page
+          .locator('#outside-button')
+          .evaluate((node) => Boolean(node.closest('[aria-hidden="true"]'))),
+        false,
+      )
+    },
+  )
+  await record(
     'dialogs: default-open dialogs inherit the owning theme and uncontrolled closure',
     async () => {
       await page.goto(`${url}?dialogs=1&defaultDialog=1&dark=1`)
