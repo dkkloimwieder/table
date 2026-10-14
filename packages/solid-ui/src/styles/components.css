@@ -52,17 +52,17 @@
   background-image:
     linear-gradient(
       45deg,
-      transparent 43%,
-      currentColor 43%,
-      currentColor 57%,
-      transparent 57%
+      transparent calc(50% - 0.75px),
+      currentColor calc(50% - 0.75px),
+      currentColor calc(50% + 0.75px),
+      transparent calc(50% + 0.75px)
     ),
     linear-gradient(
       135deg,
-      transparent 43%,
-      currentColor 43%,
-      currentColor 57%,
-      transparent 57%
+      transparent calc(50% - 0.75px),
+      currentColor calc(50% - 0.75px),
+      currentColor calc(50% + 0.75px),
+      transparent calc(50% + 0.75px)
     );
   background-repeat: no-repeat;
   background-size: 5px 5px;
