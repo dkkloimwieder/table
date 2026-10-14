@@ -35,6 +35,7 @@ export async function booleanCases({ page, url, record, press, settle }) {
           await configure({ checked: true, indeterminate })
           const mark = page.locator('[data-control=checkbox] .ui-check-mark')
           assert.equal(await mark.getAttribute('aria-hidden'), 'true')
+          assert.equal(await mark.getAttribute('tabindex'), null)
           assert.equal(await mark.evaluate((node) => node.tabIndex), -1)
           const geometry = await mark.evaluate((svg) => {
             const path = svg.querySelector('path')
@@ -75,6 +76,14 @@ export async function booleanCases({ page, url, record, press, settle }) {
             geometry.inkRight <= 16 - geometry.stroke / 2 &&
               geometry.inkBottom <= 16 - geometry.stroke / 2,
           )
+          await mark.click()
+          assert.equal(
+            await checkbox().evaluate(
+              (node) => node === document.activeElement,
+            ),
+            true,
+          )
+          assert.equal(await checkbox().isChecked(), false)
         }
       }
       assert.equal(
