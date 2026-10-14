@@ -93,9 +93,98 @@ try {
     ),
     true,
   )
+  for (const id of ['light', 'dark', 'comfortable']) {
+    const search = page.locator(`#${id}-search`)
+    const clear = page.locator(`#${id}-clear`)
+    const group = page.locator(`#${id} .filter-input`)
+    await search.focus()
+    assert.equal(
+      await group.evaluate((node) => getComputedStyle(node).outlineWidth),
+      '2px',
+    )
+    assert.equal(
+      await search.evaluate((node) => getComputedStyle(node).outlineStyle),
+      'none',
+    )
+    const bounds = await group.boundingBox()
+    const clearBounds = await clear.boundingBox()
+    assert.ok(bounds.x + bounds.width >= clearBounds.x + clearBounds.width)
+    await clear.focus()
+    assert.equal(
+      await group.evaluate((node) => getComputedStyle(node).outlineWidth),
+      '2px',
+    )
+    assert.equal(
+      await clear.evaluate((node) => getComputedStyle(node).outlineWidth),
+      '2px',
+    )
+    assert.equal(
+      await clear.evaluate((node) => getComputedStyle(node).outlineOffset),
+      '-3px',
+    )
+    const select = page.locator(`#${id}-select`)
+    await select.focus()
+    await page.keyboard.press('ArrowDown')
+    assert.equal(await select.inputValue(), 'second')
+    for (const direction of ['ltr', 'rtl']) {
+      await select.evaluate(
+        (node, direction) => (node.dir = direction),
+        direction,
+      )
+      const layout = await select.evaluate((node) => {
+        const style = getComputedStyle(node)
+        return {
+          appearance: style.appearance,
+          start: style.paddingInlineStart,
+          end: style.paddingInlineEnd,
+          positions: style.backgroundPositionX.split(', '),
+          image: style.backgroundImage,
+          color: style.color,
+        }
+      })
+      assert.equal(layout.appearance, 'none')
+      const caretInset =
+        direction === 'rtl'
+          ? layout.positions[0]
+          : layout.positions[1].match(/- (\d+px)/)[1]
+      assert.equal(
+        caretInset,
+        layout.start,
+        `${id} ${direction} text and caret use the same edge inset`,
+      )
+      assert.ok(parseFloat(layout.end) >= parseFloat(layout.start) + 10)
+      assert.ok(
+        layout.image.includes(layout.color),
+        'caret follows the control text color',
+      )
+    }
+    const list = page.locator(`#${id}-listbox`)
+    assert.equal(
+      await list.evaluate((node) => getComputedStyle(node).appearance),
+      'auto',
+    )
+    assert.equal(
+      await list.evaluate((node) => getComputedStyle(node).backgroundImage),
+      'none',
+    )
+  }
+  await page.emulateMedia({ forcedColors: 'active' })
+  assert.equal(
+    await page
+      .locator('#light-select')
+      .evaluate((node) => getComputedStyle(node).appearance),
+    'auto',
+  )
+  assert.equal(
+    await page
+      .locator('#light-select')
+      .evaluate((node) => getComputedStyle(node).backgroundImage),
+    'none',
+  )
+  await page.emulateMedia({ forcedColors: 'none' })
   assert.deepEqual(errors, [])
   console.log(
-    'PASS scoped styles, independent themes, density geometry, focus, and unrelated content',
+    'PASS scoped styles, themes, density, grouped focus, native caret spacing, and unrelated content',
   )
 } finally {
   await browser.close()
